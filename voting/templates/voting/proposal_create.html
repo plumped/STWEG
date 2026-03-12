@@ -2,18 +2,14 @@
 {% block title %}Neuer Antrag – {{ community.name }}{% endblock %}
 
 {% block content %}
-<div style="margin-bottom:1.5rem;">
-    <a href="{% url 'voting:proposal_list' community.id %}" style="font-size:0.875rem;color:var(--text-muted);text-decoration:none;">
-        ← {{ community.name }}
-    </a>
-</div>
+<a href="{% url 'voting:proposal_list' community.id %}" class="back-link">{{ community.name }}</a>
 
 <div class="page-header">
     <h1>Neuer Antrag</h1>
     <p>Erstelle einen Abstimmungsantrag für {{ community.name }}</p>
 </div>
 
-<div class="card">
+<div class="card" style="padding:2rem;">
     <form method="post">
         {% csrf_token %}
         <div class="form-group">
@@ -35,7 +31,7 @@
                 <option value="qualified" {% if form.majority_type.value == 'qualified' %}selected{% endif %}>Qualifiziertes Mehr (2/3 Köpfe + 2/3 Wertquoten)</option>
                 <option value="unanimous" {% if form.majority_type.value == 'unanimous' %}selected{% endif %}>Einstimmigkeit (Enthaltung = Nein)</option>
             </select>
-            <div id="majority-hint" style="font-size:0.8rem;color:var(--text-muted);margin-top:0.4rem;padding:0.5rem 0.75rem;background:var(--bg);border-radius:6px;"></div>
+            <div id="majority-hint" class="form-hint"></div>
         </div>
         <div class="form-group">
             <label for="id_deadline">Abstimmungsfrist (optional)</label>
@@ -47,7 +43,7 @@
             <button type="submit" class="btn btn-primary">Antrag erstellen</button>
             <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline">Abbrechen</a>
         </div>
-        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.75rem;">
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.875rem;">
             Der Antrag wird als Entwurf gespeichert. Du kannst ihn danach zur Abstimmung freigeben.
         </p>
     </form>

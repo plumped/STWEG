@@ -2,31 +2,23 @@
 {% block title %}{{ proposal.title }} – STWEG{% endblock %}
 
 {% block content %}
-<div style="margin-bottom:1.5rem;">
-    <a href="{% url 'voting:proposal_list' proposal.community.id %}" style="font-size:0.875rem;color:var(--text-muted);text-decoration:none;">
-        ← {{ proposal.community.name }}
-    </a>
-</div>
+<a href="{% url 'voting:proposal_list' proposal.community.id %}" class="back-link">{{ proposal.community.name }}</a>
 
 <div class="page-header">
-    <div class="flex gap-1" style="align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;">
+    <div class="flex items-center gap-xs" style="margin-bottom:0.8rem;flex-wrap:wrap;">
         {% if proposal.status == 'open' %}
             <span class="badge badge-open">Offen</span>
             {% if proposal.deadline_passed %}
-            <span class="badge" style="background:var(--red-light);color:var(--red);">Frist abgelaufen</span>
+                <span class="badge badge-danger">Frist abgelaufen</span>
             {% endif %}
         {% elif proposal.status == 'draft' %}
             <span class="badge badge-draft">Entwurf</span>
         {% else %}
             <span class="badge badge-closed">Abgeschlossen</span>
         {% endif %}
-        <span class="badge" style="background:var(--bg);border:1px solid var(--border);color:var(--text-muted);">
-            {{ proposal.get_majority_type_display }}
-        </span>
+        <span class="badge badge-neutral">{{ proposal.get_majority_type_display }}</span>
         {% if proposal.community.quorum %}
-        <span class="badge" style="background:var(--bg);border:1px solid var(--border);color:var(--text-muted);">
-            Quorum: {{ proposal.community.quorum }}‰
-        </span>
+        <span class="badge badge-neutral">Quorum: {{ proposal.community.quorum }}‰</span>
         {% endif %}
     </div>
     <h1>{{ proposal.title }}</h1>
@@ -35,47 +27,47 @@
     {% endif %}
 </div>
 
-<!-- Beschreibung -->
+<!-- Antragstext -->
 <div class="card">
-    <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.75rem;">Antrag</div>
-    <p style="white-space:pre-wrap;">{{ proposal.description }}</p>
+    <div class="section-label">Antrag</div>
+    <p style="white-space:pre-wrap;font-size:0.9rem;line-height:1.7;">{{ proposal.description }}</p>
 
-    <div style="margin-top:1rem;padding:0.75rem 1rem;background:var(--bg);border-radius:8px;font-size:0.8rem;color:var(--text-muted);">
-        <strong style="color:var(--text);">{{ proposal.get_majority_type_display }}</strong><br>
-        {% if proposal.majority_type == 'simple' %}
-            Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen. Wertquoten nicht ausschlaggebend.
-        {% elif proposal.majority_type == 'absolute' %}
-            Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten. Gesetzlicher Standard gemäss ZGB Art. 712m.
-        {% elif proposal.majority_type == 'qualified' %}
-            Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten.
-        {% elif proposal.majority_type == 'unanimous' %}
-            Alle abgegebenen Stimmen — <em>inklusive Enthaltungen</em> — müssen Ja sein.
-        {% endif %}
+    <div class="card-inset" style="margin-top:1.25rem;">
+        <div style="font-weight:600;font-size:0.85rem;margin-bottom:0.3rem;">{{ proposal.get_majority_type_display }}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.5;">
+            {% if proposal.majority_type == 'simple' %}
+                Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen. Wertquoten nicht ausschlaggebend.
+            {% elif proposal.majority_type == 'absolute' %}
+                Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten. Gesetzlicher Standard gemäss ZGB Art. 712m.
+            {% elif proposal.majority_type == 'qualified' %}
+                Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten.
+            {% elif proposal.majority_type == 'unanimous' %}
+                Alle abgegebenen Stimmen — <em>inklusive Enthaltungen</em> — müssen Ja sein.
+            {% endif %}
+        </div>
     </div>
 
     {% if proposal.created_by %}
-    <div style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-muted);">
+    <div style="margin-top:0.875rem;font-size:0.8rem;color:var(--text-muted);">
         Eingereicht von {{ proposal.created_by.get_full_name|default:proposal.created_by.username }}
         am {{ proposal.created_at|date:"d.m.Y" }}
     </div>
     {% endif %}
 </div>
 
-<!-- Beilagen / Dokumente -->
+<!-- Beilagen -->
 <div class="card mt-2">
-    <div class="flex-between" style="margin-bottom:0.75rem;">
-        <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);">
-            📎 Beilagen
-        </div>
+    <div class="flex-between items-center" style="margin-bottom:0.875rem;">
+        <div class="section-label" style="margin:0;">📎 Beilagen</div>
         <span style="font-size:0.75rem;color:var(--text-muted);">{{ documents|length }} Dokument{% if documents|length != 1 %}e{% endif %}</span>
     </div>
 
     {% if documents %}
     <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;">
         {% for doc in documents %}
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0.75rem;background:var(--bg);border-radius:8px;font-size:0.875rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.7rem 0.9rem;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-md);font-size:0.875rem;">
             <div>
-                <a href="{{ doc.file.url }}" target="_blank" style="color:var(--accent);font-weight:500;text-decoration:none;">
+                <a href="{{ doc.file.url }}" target="_blank" style="color:var(--accent);font-weight:600;text-decoration:none;">
                     📄 {{ doc.name }}
                 </a>
                 <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.1rem;">
@@ -87,14 +79,14 @@
             <form method="post" action="{% url 'voting:document_delete' proposal.pk doc.pk %}"
                   onsubmit="return confirm('Dokument «{{ doc.name }}» wirklich löschen?')">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-danger" style="padding:0.25rem 0.6rem;font-size:0.75rem;">✕</button>
+                <button type="submit" class="btn btn-danger btn-sm">✕</button>
             </form>
             {% endif %}
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <div style="font-size:0.875rem;color:var(--text-muted);margin-bottom:0.75rem;">Noch keine Beilagen vorhanden.</div>
+    <div style="font-size:0.875rem;color:var(--text-muted);margin-bottom:0.875rem;">Noch keine Beilagen vorhanden.</div>
     {% endif %}
 
     {% if is_creator %}
@@ -102,14 +94,14 @@
         {% csrf_token %}
         <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:0.75rem;align-items:end;">
             <div>
-                <label style="font-size:0.8rem;font-weight:500;display:block;margin-bottom:0.3rem;">Bezeichnung</label>
+                <label style="font-size:0.8rem;">Bezeichnung</label>
                 <input type="text" name="name" class="form-input" style="font-size:0.85rem;" placeholder="z.B. Offerte Sanitär AG" required>
             </div>
             <div>
-                <label style="font-size:0.8rem;font-weight:500;display:block;margin-bottom:0.3rem;">Datei (max. 20 MB)</label>
+                <label style="font-size:0.8rem;">Datei (max. 20 MB)</label>
                 <input type="file" name="file" class="form-input" style="font-size:0.85rem;" required>
             </div>
-            <button type="submit" class="btn btn-outline" style="font-size:0.85rem;">Hochladen</button>
+            <button type="submit" class="btn btn-outline btn-sm" style="align-self:end;">Hochladen</button>
         </div>
     </form>
     {% endif %}
@@ -144,33 +136,30 @@
 {% if proposal.status == 'open' and not proposal.deadline_passed %}
 {% for item in units_with_votes %}
 <div class="card mt-3">
-    <div class="flex-between" style="margin-bottom:0.75rem;">
+    <div class="flex-between items-center" style="margin-bottom:1rem;">
         <div>
-            <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);">
-                {% if item.is_proxy %}
-                    <span style="color:var(--amber);">Vollmacht ·</span>
-                {% endif %}
+            <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.3rem;">
+                {% if item.is_proxy %}<span style="color:var(--amber);">Vollmacht ·</span> {% endif %}
                 Einheit {{ item.unit.unit_number }} · {{ item.unit.quota }}‰
                 {% if item.is_proxy %}
-                    <span style="font-weight:400;text-transform:none;letter-spacing:0;"> von {{ item.unit.owner.get_full_name|default:item.unit.owner.username }}</span>
+                <span style="font-weight:400;text-transform:none;letter-spacing:0;"> von {{ item.unit.owner.get_full_name|default:item.unit.owner.username }}</span>
                 {% endif %}
             </div>
             {% if item.unit.description %}
-            <div style="font-size:0.8rem;color:var(--text-muted);">{{ item.unit.description }}</div>
+            <div style="font-size:0.82rem;color:var(--text-muted);">{{ item.unit.description }}</div>
             {% endif %}
         </div>
         {% if item.vote %}
         <span class="badge badge-open">✓ Abgestimmt</span>
         {% elif item.granted_proxy %}
-        <span class="badge" style="background:var(--amber-light);color:var(--amber);">Vollmacht erteilt</span>
+        <span class="badge badge-pending">Vollmacht erteilt</span>
         {% else %}
         <span class="badge badge-draft">Ausstehend</span>
         {% endif %}
     </div>
 
     {% if item.vote %}
-    <!-- Stimme bereits abgegeben -->
-    <div style="font-size:0.875rem;padding:0.25rem 0;">
+    <div style="padding:0.875rem 1rem;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-md);font-size:0.875rem;">
         Stimme: <strong>
         {% if item.vote.choice == 'yes' %}✅ Ja
         {% elif item.vote.choice == 'no' %}❌ Nein
@@ -180,26 +169,24 @@
         <span style="color:var(--red);font-size:0.8rem;"> — zählt als Nein bei Einstimmigkeit</span>
         {% endif %}
         {% if item.vote.comment %}
-        <br><em style="font-size:0.8rem;margin-top:0.25rem;display:block;">&ldquo;{{ item.vote.comment }}&rdquo;</em>
+        <div style="font-size:0.82rem;font-style:italic;color:var(--text-muted);margin-top:0.4rem;">&ldquo;{{ item.vote.comment }}&rdquo;</div>
         {% endif %}
     </div>
 
     {% elif item.granted_proxy %}
-    <!-- Vollmacht erteilt an jemand anderen -->
-    <div style="padding:0.75rem;background:var(--amber-light);border-radius:8px;font-size:0.875rem;margin-bottom:1rem;">
+    <div style="padding:0.875rem 1rem;background:var(--amber-light);border:1px solid var(--amber-border);border-radius:var(--r-md);font-size:0.875rem;margin-bottom:0.875rem;">
         <strong>Vollmacht erteilt</strong> an
         <strong>{{ item.granted_proxy.delegate.get_full_name|default:item.granted_proxy.delegate.username }}</strong>
-        {% if item.granted_proxy.note %}· <em>{{ item.granted_proxy.note }}</em>{% endif %}
-        <br><span style="font-size:0.8rem;color:var(--amber);">Diese Person kann die Stimme für dich abgeben.</span>
+        {% if item.granted_proxy.note %} · <em>{{ item.granted_proxy.note }}</em>{% endif %}
+        <div style="font-size:0.78rem;color:var(--amber);margin-top:0.25rem;">Diese Person kann die Stimme für dich abgeben.</div>
     </div>
     <form method="post" action="{% url 'voting:proxy_revoke' proposal.pk item.granted_proxy.pk %}"
           onsubmit="return confirm('Vollmacht für Einheit {{ item.unit.unit_number }} widerrufen?')">
         {% csrf_token %}
-        <button type="submit" class="btn btn-outline" style="font-size:0.85rem;">Vollmacht widerrufen</button>
+        <button type="submit" class="btn btn-outline btn-sm">Vollmacht widerrufen</button>
     </form>
 
     {% else %}
-    <!-- Abstimmungsformular -->
     <form method="post" class="vote-form">
         {% csrf_token %}
         <input type="hidden" name="action" value="vote">
@@ -207,18 +194,22 @@
         <div class="vote-options">
             <div class="vote-option">
                 <input type="radio" name="choice" id="yes_{{ item.unit.id }}" value="yes" required>
-                <label for="yes_{{ item.unit.id }}"><span class="vote-emoji">✅</span>Ja</label>
+                <label for="yes_{{ item.unit.id }}">
+                    <span class="vote-emoji">✅</span>Ja
+                </label>
             </div>
             <div class="vote-option no">
                 <input type="radio" name="choice" id="no_{{ item.unit.id }}" value="no" required>
-                <label for="no_{{ item.unit.id }}"><span class="vote-emoji">❌</span>Nein</label>
+                <label for="no_{{ item.unit.id }}">
+                    <span class="vote-emoji">❌</span>Nein
+                </label>
             </div>
             <div class="vote-option">
                 <input type="radio" name="choice" id="abstain_{{ item.unit.id }}" value="abstain" required>
                 <label for="abstain_{{ item.unit.id }}">
                     <span class="vote-emoji">⬜</span>Enthaltung
                     {% if proposal.majority_type == 'unanimous' %}
-                    <span style="font-size:0.7rem;display:block;color:var(--red);margin-top:0.1rem;">= Nein</span>
+                    <span style="font-size:0.7rem;display:block;color:var(--red);margin-top:0.2rem;">= Nein</span>
                     {% endif %}
                 </label>
             </div>
@@ -229,37 +220,33 @@
         </div>
 
         <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
-            <button type="submit" class="btn btn-primary vote-submit-btn" style="flex:1;justify-content:center;"
+            <button type="submit" class="btn btn-primary vote-submit-btn" style="flex:1;min-width:200px;"
                     data-unit="{{ item.unit.unit_number }}">
                 Stimme für Einheit {{ item.unit.unit_number }} abgeben
             </button>
-
             {% if item.is_own %}
-            <!-- Vollmacht erteilen (aufklappbar) -->
-            <button type="button" class="btn btn-outline" style="font-size:0.8rem;"
+            <button type="button" class="btn btn-outline btn-sm"
                     onclick="toggleProxy('proxy_{{ item.unit.id }}')">
                 Vollmacht erteilen
             </button>
             {% endif %}
         </div>
 
-        <!-- Hinweis: endgültig -->
-        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;display:flex;align-items:center;gap:0.3rem;">
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.6rem;">
             ⚠️ Die abgegebene Stimme ist endgültig und kann nicht geändert werden.
         </div>
     </form>
 
     {% if item.is_own %}
-    <!-- Vollmacht-Panel -->
-    <div id="proxy_{{ item.unit.id }}" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
-        <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.75rem;color:var(--text-muted);">Vollmacht für Einheit {{ item.unit.unit_number }}</div>
+    <div id="proxy_{{ item.unit.id }}" style="display:none;margin-top:1.25rem;padding:1.25rem;background:var(--surface-alt);border-radius:var(--r-md);border:1px solid var(--border);">
+        <div class="section-label">Vollmacht für Einheit {{ item.unit.unit_number }}</div>
         <form method="post" action="{% url 'voting:proxy_grant' proposal.pk %}">
             {% csrf_token %}
             <input type="hidden" name="unit_id" value="{{ item.unit.id }}">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.875rem;">
                 <div>
-                    <label style="font-size:0.8rem;font-weight:500;display:block;margin-bottom:0.3rem;">Bevollmächtigte Person *</label>
-                    <select name="delegate" class="form-select" style="font-size:0.85rem;" required>
+                    <label style="font-size:0.8rem;">Bevollmächtigte Person *</label>
+                    <select name="delegate" class="form-select" style="font-size:0.875rem;" required>
                         <option value="">— Person auswählen —</option>
                         {% for u in proxy_form.delegate.field.queryset %}
                         <option value="{{ u.id }}">
@@ -269,38 +256,39 @@
                     </select>
                 </div>
                 <div>
-                    <label style="font-size:0.8rem;font-weight:500;display:block;margin-bottom:0.3rem;">Bemerkung (optional)</label>
-                    <input type="text" name="note" class="form-input" style="font-size:0.85rem;" placeholder="z.B. Ferienabwesenheit">
+                    <label style="font-size:0.8rem;">Bemerkung (optional)</label>
+                    <input type="text" name="note" class="form-input" style="font-size:0.875rem;" placeholder="z.B. Ferienabwesenheit">
                 </div>
             </div>
-            <div style="display:flex;gap:0.5rem;">
-                <button type="submit" class="btn btn-primary" style="font-size:0.85rem;">Vollmacht erteilen</button>
-                <button type="button" class="btn btn-outline" style="font-size:0.85rem;" onclick="toggleProxy('proxy_{{ item.unit.id }}')">Abbrechen</button>
+            <div class="flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm">Vollmacht erteilen</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="toggleProxy('proxy_{{ item.unit.id }}')">Abbrechen</button>
             </div>
-            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;">
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.6rem;">
                 Die bevollmächtigte Person kann die Stimme für diese Einheit abgeben. Du kannst die Vollmacht widerrufen, solange noch nicht abgestimmt wurde.
             </div>
         </form>
     </div>
     {% endif %}
-
     {% endif %}
 </div>
 {% endfor %}
 
 {% elif proposal.status == 'open' and proposal.deadline_passed %}
-<div class="card mt-3" style="text-align:center;padding:2rem;color:var(--text-muted);">
-    <div style="font-size:1.5rem;margin-bottom:0.5rem;">⏱</div>
-    <div style="font-weight:500;">Abstimmungsfrist abgelaufen</div>
-    <div style="font-size:0.875rem;margin-top:0.25rem;">Die Abstimmung wird automatisch geschlossen.</div>
+<div class="card mt-3">
+    <div class="empty-state" style="padding:2rem;">
+        <span style="font-size:1.5rem;display:block;margin-bottom:0.5rem;">⏱</span>
+        <div class="empty-state-title">Abstimmungsfrist abgelaufen</div>
+        <div class="empty-state-sub">Die Abstimmung wird automatisch geschlossen.</div>
+    </div>
 </div>
 {% endif %}
 
 <!-- Ergebnisse -->
 {% if show_results and results %}
 <div class="card mt-3">
-    <div class="flex-between" style="margin-bottom:1rem;">
-        <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);">
+    <div class="flex-between items-center" style="margin-bottom:1.25rem;">
+        <div class="section-label" style="margin:0;">
             {% if proposal.status == 'closed' %}Endergebnis{% else %}Zwischenstand (nur für dich sichtbar){% endif %}
         </div>
         <div style="font-size:0.8rem;color:var(--text-muted);">
@@ -308,33 +296,29 @@
         </div>
     </div>
 
-    <!-- Beteiligung nach Köpfen + Wertquoten -->
+    <!-- Beteiligung -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
         <div>
-            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Beteiligung nach Köpfen</div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width:{{ results.participation }}%"></div>
-            </div>
-            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">
-                {{ results.total_voted }}/{{ results.total_units }} Eigentümer ({{ results.participation }}%)
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600;margin-bottom:0.4rem;">Beteiligung · Köpfe</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:{{ results.participation }}%"></div></div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;">
+                {{ results.total_voted }}/{{ results.total_units }} ({{ results.participation }}%)
             </div>
         </div>
         <div>
-            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Beteiligung nach Wertquoten</div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width:{{ results.participation_quota }}%"></div>
-            </div>
-            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600;margin-bottom:0.4rem;">Beteiligung · Wertquoten</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:{{ results.participation_quota }}%"></div></div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;">
                 {{ results.voted_quota }}‰ / {{ results.total_quota }}‰ ({{ results.participation_quota }}%)
             </div>
         </div>
     </div>
 
-    <!-- Quorum-Status -->
+    <!-- Quorum -->
     {% if results.quorum %}
-    <div style="padding:0.6rem 0.9rem;border-radius:8px;font-size:0.8rem;margin-bottom:1.25rem;
-        {% if results.quorum_met %}background:#EAF2EC;color:var(--accent);border:1px solid #B8DBBF;
-        {% else %}background:var(--red-light);color:var(--red);border:1px solid #F5C6C3;{% endif %}">
+    <div style="padding:0.65rem 0.9rem;border-radius:var(--r-md);font-size:0.82rem;font-weight:500;margin-bottom:1.25rem;
+        {% if results.quorum_met %}background:var(--accent-light);color:var(--accent);border:1px solid var(--accent-border);
+        {% else %}background:var(--red-light);color:var(--red);border:1px solid var(--red-border);{% endif %}">
         {% if results.quorum_met %}✓{% else %}✗{% endif %}
         Quorum {{ results.quorum }}‰:
         {% if results.quorum_met %}erreicht ({{ results.voted_quota }}‰ beteiligt)
@@ -343,47 +327,43 @@
     {% endif %}
 
     {% if proposal.majority_type == 'unanimous' %}
-    <!-- Einstimmigkeit -->
-    <div style="margin-bottom:1.25rem;">
-        <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">Stimmen (Enthaltung zählt als Nein)</div>
-        <div class="results-grid">
-            <div class="result-box">
-                <div class="result-number" style="color:var(--accent)">{{ results.yes_count }}</div>
-                <div class="result-label">Ja</div>
-            </div>
-            <div class="result-box">
-                <div class="result-number" style="color:var(--red)">{{ results.no_count|add:results.abstain_count }}</div>
-                <div class="result-label">Nein + Enthaltungen</div>
-            </div>
+    <div class="section-label">Stimmen (Enthaltung zählt als Nein)</div>
+    <div class="results-grid" style="margin-bottom:1.5rem;">
+        <div class="result-box">
+            <div class="result-number" style="color:var(--accent);">{{ results.yes_count }}</div>
+            <div class="result-label">Ja</div>
+        </div>
+        <div class="result-box">
+            <div class="result-number" style="color:var(--red);">{{ results.no_count|add:results.abstain_count }}</div>
+            <div class="result-label">Nein + Enthaltungen</div>
         </div>
     </div>
 
     {% else %}
 
     <!-- Nach Köpfen -->
-    <div style="margin-bottom:1.25rem;">
-        <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">
-            Nach Köpfen
-            {% if proposal.majority_type == 'qualified' %}<span style="font-size:0.75rem;font-weight:400;color:var(--text-muted);"> · Schwelle 2/3</span>{% endif %}
+    <div style="margin-bottom:1.5rem;">
+        <div class="section-label">
+            Nach Köpfen{% if proposal.majority_type == 'qualified' %} · Schwelle 2/3{% endif %}
         </div>
         <div class="results-grid">
             <div class="result-box">
-                <div class="result-number" style="color:var(--accent)">{{ results.yes_count }}</div>
+                <div class="result-number" style="color:var(--accent);">{{ results.yes_count }}</div>
                 <div class="result-label">Ja</div>
             </div>
             <div class="result-box">
-                <div class="result-number" style="color:var(--red)">{{ results.no_count }}</div>
+                <div class="result-number" style="color:var(--red);">{{ results.no_count }}</div>
                 <div class="result-label">Nein</div>
             </div>
         </div>
         {% if results.yes_count or results.no_count %}
-        <div style="position:relative;margin-top:0.6rem;">
+        <div style="position:relative;margin-top:0.875rem;">
             <div class="progress-bar">
                 <div class="progress-fill" style="width:{{ results.yes_pct_heads }}%"></div>
             </div>
             <div style="position:absolute;top:-3px;left:{{ results.threshold_pct }}%;width:2px;height:14px;background:var(--text-muted);border-radius:1px;"></div>
         </div>
-        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;display:flex;justify-content:space-between;">
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.35rem;display:flex;justify-content:space-between;">
             <span>{{ results.yes_pct_heads }}% Ja-Anteil (Basis: Ja+Nein)</span>
             <span>Schwelle: {{ results.threshold_pct }}%{% if results.abstain_count %} · {{ results.abstain_count }} Enthaltung{% if results.abstain_count != 1 %}en{% endif %} (neutral){% endif %}</span>
         </div>
@@ -392,29 +372,28 @@
 
     <!-- Nach Wertquoten -->
     {% if proposal.majority_type != 'simple' %}
-    <div>
-        <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">
-            Nach Wertquoten (‰)
-            {% if proposal.majority_type == 'qualified' %}<span style="font-size:0.75rem;font-weight:400;color:var(--text-muted);"> · Schwelle 2/3</span>{% endif %}
+    <div style="margin-bottom:1.5rem;">
+        <div class="section-label">
+            Nach Wertquoten (‰){% if proposal.majority_type == 'qualified' %} · Schwelle 2/3{% endif %}
         </div>
         <div class="results-grid">
             <div class="result-box">
-                <div class="result-number" style="color:var(--accent)">{{ results.yes_quota }}</div>
+                <div class="result-number" style="color:var(--accent);">{{ results.yes_quota }}</div>
                 <div class="result-label">Ja</div>
             </div>
             <div class="result-box">
-                <div class="result-number" style="color:var(--red)">{{ results.no_quota }}</div>
+                <div class="result-number" style="color:var(--red);">{{ results.no_quota }}</div>
                 <div class="result-label">Nein</div>
             </div>
         </div>
         {% if results.yes_quota or results.no_quota %}
-        <div style="position:relative;margin-top:0.6rem;">
+        <div style="position:relative;margin-top:0.875rem;">
             <div class="progress-bar">
                 <div class="progress-fill" style="width:{{ results.yes_pct_quota }}%"></div>
             </div>
             <div style="position:absolute;top:-3px;left:{{ results.threshold_pct }}%;width:2px;height:14px;background:var(--text-muted);border-radius:1px;"></div>
         </div>
-        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;display:flex;justify-content:space-between;">
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.35rem;display:flex;justify-content:space-between;">
             <span>{{ results.yes_pct_quota }}% Ja-Anteil (Basis: Ja+Nein)</span>
             <span>Schwelle: {{ results.threshold_pct }}%</span>
         </div>
@@ -423,16 +402,14 @@
     {% endif %}
     {% endif %}
 
-    <!-- Kriterien + Verdict -->
-    <div class="verdict {% if results.passed %}verdict-passed{% else %}verdict-failed{% endif %}" style="margin-top:1.5rem;">
+    <!-- Verdict -->
+    <div class="verdict {% if results.passed %}verdict-passed{% else %}verdict-failed{% endif %}">
         <div class="verdict-icon">{% if results.passed %}✅{% else %}❌{% endif %}</div>
         <div style="flex:1;">
             <div class="verdict-title">{% if results.passed %}Antrag angenommen{% else %}Antrag abgelehnt{% endif %}</div>
-            <div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.4rem;">
+            <div class="criteria-tags">
                 {% for criterion, ok in results.criteria.items %}
-                <span style="font-size:0.75rem;padding:0.2rem 0.65rem;border-radius:999px;
-                    {% if ok %}background:#B8DBBF;color:#1A4A2A;
-                    {% else %}background:#F5C6C3;color:#7A1A1A;{% endif %}">
+                <span class="tag {% if ok %}tag-ok{% else %}tag-fail{% endif %}">
                     {% if ok %}✓{% else %}✗{% endif %} {{ criterion }}
                 </span>
                 {% endfor %}
@@ -440,8 +417,7 @@
             {% if proposal.status == 'closed' %}
             <div class="verdict-sub" style="margin-top:0.5rem;">
                 Geschlossen am {{ proposal.closed_at|date:"d.m.Y, H:i" }}
-                · Anfechtungsfrist: 30 Tage (bis ca.
-                {{ proposal.closed_at|date:"d.m.Y" }})
+                · Anfechtungsfrist: 30 Tage (ZGB Art. 712m Abs. 2)
             </div>
             {% endif %}
         </div>
@@ -449,7 +425,7 @@
 </div>
 
 {% elif proposal.status == 'open' and not show_results %}
-<div class="card mt-3" style="padding:1.25rem;color:var(--text-muted);font-size:0.875rem;">
+<div class="card mt-3 card-inset" style="font-size:0.875rem;color:var(--text-muted);">
     🔒 Das Ergebnis wird nach Abschluss der Abstimmung veröffentlicht.
 </div>
 {% endif %}
@@ -460,19 +436,16 @@ function toggleProxy(id) {
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
-// Bestätigungsdialog vor endgültiger Stimmabgabe
 document.querySelectorAll('.vote-submit-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
         const form = this.closest('form');
         const selected = form.querySelector('input[name="choice"]:checked');
-        if (!selected) return; // HTML validation handles missing choice
+        if (!selected) return;
         const labels = {yes: 'Ja ✅', no: 'Nein ❌', abstain: 'Enthaltung ⬜'};
         const choice = labels[selected.value] || selected.value;
         const unitNum = this.getAttribute('data-unit');
         const msg = 'Stimme für Einheit ' + unitNum + ' mit «' + choice + '» abgeben?\n\n⚠️ Die Stimme ist endgültig und kann nicht geändert werden.';
-        if (!confirm(msg)) {
-            e.preventDefault();
-        }
+        if (!confirm(msg)) e.preventDefault();
     });
 });
 </script>
