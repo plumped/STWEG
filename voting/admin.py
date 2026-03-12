@@ -1,9 +1,9 @@
 from django.contrib import admin
-from .models import Community, Unit, Proposal, Vote
+from .models import Community, Unit, Proposal, Vote, ProposalDocument, Proxy
 
 @admin.register(Community)
 class CommunityAdmin(admin.ModelAdmin):
-    list_display = ['name', 'address', 'created_at']
+    list_display = ['name', 'address', 'quorum', 'created_at']
 
 @admin.register(Unit)
 class UnitAdmin(admin.ModelAdmin):
@@ -19,3 +19,13 @@ class ProposalAdmin(admin.ModelAdmin):
 class VoteAdmin(admin.ModelAdmin):
     list_display = ['proposal', 'unit', 'choice', 'voted_at']
     list_filter = ['proposal', 'choice']
+
+@admin.register(ProposalDocument)
+class ProposalDocumentAdmin(admin.ModelAdmin):
+    list_display = ['name', 'proposal', 'uploaded_by', 'uploaded_at']
+    list_filter = ['proposal']
+
+@admin.register(Proxy)
+class ProxyAdmin(admin.ModelAdmin):
+    list_display = ['unit', 'proposal', 'delegate', 'granted_by', 'granted_at']
+    list_filter = ['proposal']

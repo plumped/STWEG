@@ -12,6 +12,11 @@ class Community(models.Model):
         User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='created_communities'
     )
+    quorum = models.DecimalField(
+        max_digits=5, decimal_places=1, default=Decimal('0'),
+        verbose_name="Quorum (‰)",
+        help_text="Mindest-Beteiligung in Wertquoten ‰ für gültige Abstimmung (0 = kein Quorum)"
+    )
 
     def __str__(self):
         return self.name
@@ -66,13 +71,6 @@ class Proposal(models.Model):
         'absolute':  'Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen UND nach Wertquoten. Gesetzlicher Standard (ZGB Art. 712m).',
         'qualified': 'Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen UND nach Wertquoten. Für bauliche Veränderungen, Lifteinbau, grössere Investitionen.',
         'unanimous': 'Alle abgegebenen Stimmen (inkl. Enthaltungen) müssen Ja sein. Für Reglementsänderungen und Zweckänderungen.',
-    }
-
-    MAJORITY_EXAMPLES = {
-        'simple':    'Genehmigung Jahresrechnung, Budget, Hausordnung',
-        'absolute':  'Wahl/Abberufung der Verwaltung, ordentliche Unterhaltsarbeiten',
-        'qualified': 'Fassadensanierung, neue Heizung, Lifteinbau, grössere Investitionen',
-        'unanimous': 'Reglementsänderung, Zweckänderung eines Gebäudeteils',
     }
 
     community   = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='proposals')
@@ -132,6 +130,7 @@ class Proposal(models.Model):
         yes_quota   = sum(v.unit.quota for v in yes_votes)
         no_quota    = sum(v.unit.quota for v in no_votes)
         voted_quota = sum(v.unit.quota for v in votes)
+        total_quota = self.total_quota
 
         # Basis für Kopf- und Quoten-Mehrheit: nur Ja+Nein (Enthaltungen neutral)
         deciding_heads = yes_count + no_count
@@ -141,7 +140,7 @@ class Proposal(models.Model):
         heads_simple = yes_count > no_count
         quota_simple = yes_quota > no_quota
 
-        # Absolutes Mehr: Ja > Nein (sowohl Köpfe als auch Quoten)
+        # Absolutes Mehr
         heads_absolute = heads_simple
         quota_absolute = quota_simple
 
@@ -159,19 +158,29 @@ class Proposal(models.Model):
         # Einstimmigkeit: alle Stimmen inkl. Enthaltungen müssen Ja sein
         heads_unanimous = (total_voted > 0) and (yes_count == total_voted)
 
+        # Quorum-Prüfung
+        quorum = self.community.quorum
+        quorum_met = (not quorum) or (voted_quota >= quorum)
+
         mt = self.majority_type
         if mt == Proposal.MajorityType.SIMPLE:
-            passed   = heads_simple
+            vote_passed = heads_simple
             criteria = {'Köpfe': heads_simple}
         elif mt == Proposal.MajorityType.ABSOLUTE:
-            passed   = heads_absolute and quota_absolute
+            vote_passed = heads_absolute and quota_absolute
             criteria = {'Köpfe': heads_absolute, 'Wertquoten': quota_absolute}
         elif mt == Proposal.MajorityType.QUALIFIED:
-            passed   = heads_qualified and quota_qualified
+            vote_passed = heads_qualified and quota_qualified
             criteria = {'Köpfe (≥ 2/3)': heads_qualified, 'Wertquoten (≥ 2/3)': quota_qualified}
         else:  # UNANIMOUS
-            passed   = heads_unanimous
+            vote_passed = heads_unanimous
             criteria = {'Einstimmig (inkl. Enthaltungen)': heads_unanimous}
+
+        # Quorum als zusätzliches Kriterium wenn konfiguriert
+        if quorum:
+            criteria[f'Quorum (≥ {quorum}‰)'] = quorum_met
+
+        passed = vote_passed and quorum_met
 
         return {
             'yes_count':     yes_count,
@@ -182,13 +191,16 @@ class Proposal(models.Model):
             'yes_quota':     yes_quota,
             'no_quota':      no_quota,
             'voted_quota':   voted_quota,
-            'total_quota':   self.total_quota,
+            'total_quota':   total_quota,
             'criteria':      criteria,
             'passed':        passed,
+            'quorum_met':    quorum_met,
+            'quorum':        quorum,
             # legacy keys
             'heads_passed':  heads_simple,
             'quota_passed':  quota_absolute,
             'participation': round(total_voted / self.total_units * 100) if self.total_units else 0,
+            'participation_quota': round(float(voted_quota / total_quota * 100)) if total_quota else 0,
             # threshold helpers for progress bars
             'yes_pct_heads': round(yes_count / deciding_heads * 100) if deciding_heads else 0,
             'yes_pct_quota': round(float(yes_quota / deciding_quota * 100)) if deciding_quota else 0,
@@ -221,3 +233,46 @@ class Vote(models.Model):
 
     def __str__(self):
         return f"{self.unit} → {self.get_choice_display()}"
+
+
+class ProposalDocument(models.Model):
+    """Beilagendokument zu einem Antrag (Offerte, Plan, Budget, etc.)"""
+    proposal    = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name='documents')
+    name        = models.CharField(max_length=200, verbose_name="Bezeichnung")
+    file        = models.FileField(upload_to='proposal_docs/', verbose_name="Datei")
+    uploaded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True,
+        related_name='uploaded_documents'
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.proposal.title})"
+
+    class Meta:
+        verbose_name = "Dokument"
+        verbose_name_plural = "Dokumente"
+        ordering = ['uploaded_at']
+
+
+class Proxy(models.Model):
+    """Vollmacht: Einheitsbesitzer delegiert Stimmrecht an eine andere Person"""
+    proposal   = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name='proxies')
+    unit       = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='proxies')
+    delegate   = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='received_proxies',
+        verbose_name="Bevollmächtigte Person"
+    )
+    granted_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='granted_proxies'
+    )
+    granted_at = models.DateTimeField(auto_now_add=True)
+    note       = models.CharField(max_length=200, blank=True, verbose_name="Bemerkung")
+
+    class Meta:
+        unique_together = [('proposal', 'unit')]
+        verbose_name = "Vollmacht"
+        verbose_name_plural = "Vollmachten"
+
+    def __str__(self):
+        return f"Vollmacht {self.unit} → {self.delegate} für «{self.proposal.title}»"

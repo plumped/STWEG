@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
-from .models import Proposal, Vote, Community, Unit
+from .models import Proposal, Vote, Community, Unit, ProposalDocument, Proxy
 
 MAJORITY_CHOICES = [
     ('simple',    'Einfaches Mehr (nur Köpfe) — Jahresrechnung, Budget, Hausordnung'),
@@ -55,7 +55,7 @@ class VoteForm(forms.ModelForm):
 class CommunityForm(forms.ModelForm):
     class Meta:
         model = Community
-        fields = ['name', 'address']
+        fields = ['name', 'address', 'quorum']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'form-input',
@@ -66,10 +66,21 @@ class CommunityForm(forms.ModelForm):
                 'rows': 3,
                 'placeholder': 'Musterstrasse 12\n8000 Zürich',
             }),
+            'quorum': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'step': '0.1',
+                'min': '0',
+                'max': '1000',
+                'placeholder': '0 = kein Quorum',
+            }),
         }
         labels = {
             'name': 'Name der Gemeinschaft',
             'address': 'Adresse',
+            'quorum': 'Quorum (‰)',
+        }
+        help_texts = {
+            'quorum': 'Mindest-Beteiligung nach Wertquoten für gültige Abstimmungen (0 = kein Quorum). Häufig 500‰ (die Hälfte).',
         }
 
 
@@ -104,3 +115,39 @@ class UnitForm(forms.ModelForm):
             'description': 'Beschreibung (optional)',
             'quota': 'Wertquote (‰)',
         }
+
+
+class ProposalDocumentForm(forms.ModelForm):
+    class Meta:
+        model = ProposalDocument
+        fields = ['name', 'file']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'z.B. Offerte Sanitär GmbH, Grundrissplan, Budget',
+            }),
+            'file': forms.ClearableFileInput(attrs={'class': 'form-input'}),
+        }
+        labels = {
+            'name': 'Bezeichnung',
+            'file': 'Datei',
+        }
+
+
+class ProxyForm(forms.Form):
+    delegate = forms.ModelChoiceField(
+        queryset=User.objects.all().order_by('last_name', 'first_name', 'username'),
+        label='Bevollmächtigte Person',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        empty_label='— Person auswählen —',
+    )
+    note = forms.CharField(
+        max_length=200,
+        required=False,
+        label='Bemerkung (optional)',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'z.B. Ferienabwesenheit',
+        }),
+    )
+    unit_id = forms.IntegerField(widget=forms.HiddenInput())

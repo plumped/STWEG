@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Protokoll – {{ proposal.title }}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #1A1814;
+            background: white;
+            padding: 2.5cm 2cm;
+        }
+
+        .header {
+            border-bottom: 2px solid #2C5F3D;
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .brand {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.4rem;
+            color: #2C5F3D;
+        }
+
+        .meta {
+            text-align: right;
+            font-size: 0.8rem;
+            color: #7A7268;
+        }
+
+        h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin: 1rem 0 0.25rem;
+        }
+
+        h2 {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #7A7268;
+            margin: 1.5rem 0 0.5rem;
+            border-bottom: 1px solid #E2DDD6;
+            padding-bottom: 0.25rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-box {
+            background: #F5F3EF;
+            border-radius: 6px;
+            padding: 0.6rem 0.8rem;
+        }
+
+        .info-label {
+            font-size: 0.7rem;
+            color: #7A7268;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.2rem;
+        }
+
+        .info-value {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .description-box {
+            background: #F5F3EF;
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            white-space: pre-wrap;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            color: #3A3630;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        th {
+            background: #F5F3EF;
+            text-align: left;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #7A7268;
+            border-bottom: 1px solid #E2DDD6;
+        }
+
+        td {
+            padding: 0.45rem 0.6rem;
+            border-bottom: 1px solid #E2DDD6;
+            vertical-align: top;
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        .choice-yes  { color: #2C5F3D; font-weight: 600; }
+        .choice-no   { color: #C0392B; font-weight: 600; }
+        .choice-abs  { color: #7A7268; }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .result-box {
+            background: #F5F3EF;
+            border-radius: 6px;
+            padding: 0.6rem;
+            text-align: center;
+        }
+
+        .result-number {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.6rem;
+            line-height: 1;
+        }
+
+        .result-label {
+            font-size: 0.7rem;
+            color: #7A7268;
+            margin-top: 0.15rem;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: #E2DDD6;
+            border-radius: 999px;
+            overflow: hidden;
+            margin: 0.3rem 0;
+        }
+
+        .progress-fill { height: 100%; background: #2C5F3D; border-radius: 999px; }
+
+        .verdict {
+            border-radius: 8px;
+            padding: 0.9rem 1.1rem;
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .verdict-passed { background: #EAF2EC; border: 1px solid #B8DBBF; }
+        .verdict-failed { background: #FDECEA; border: 1px solid #F5C6C3; }
+
+        .verdict-icon { font-size: 1.5rem; }
+
+        .verdict-title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .verdict-passed .verdict-title { color: #2C5F3D; }
+        .verdict-failed .verdict-title { color: #C0392B; }
+
+        .criteria-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            margin-top: 0.4rem;
+        }
+
+        .tag {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+        }
+
+        .tag-ok { background: #B8DBBF; color: #1A4A2A; }
+        .tag-fail { background: #F5C6C3; color: #7A1A1A; }
+
+        .footer {
+            margin-top: 2rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #E2DDD6;
+            font-size: 0.75rem;
+            color: #7A7268;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .signature-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .signature-line {
+            border-top: 1px solid #1A1814;
+            padding-top: 0.4rem;
+            font-size: 0.8rem;
+            color: #7A7268;
+        }
+
+        @media print {
+            body { padding: 1.5cm 1.5cm; }
+            .no-print { display: none !important; }
+            @page { margin: 1.5cm; size: A4; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Print button (hidden when printing) -->
+<div class="no-print" style="text-align:right;margin-bottom:1.5rem;">
+    <button onclick="window.print()" style="background:#2C5F3D;color:white;border:none;padding:0.5rem 1.25rem;border-radius:8px;font-size:0.875rem;cursor:pointer;font-family:inherit;">
+        🖨 Als PDF drucken / speichern
+    </button>
+    <button onclick="window.close()" style="background:transparent;border:1px solid #E2DDD6;padding:0.5rem 1.25rem;border-radius:8px;font-size:0.875rem;cursor:pointer;font-family:inherit;margin-left:0.5rem;">
+        Schliessen
+    </button>
+</div>
+
+<!-- Header -->
+<div class="header">
+    <div class="header-top">
+        <div class="brand">STWEG Abstimmungsportal</div>
+        <div class="meta">
+            Protokoll erstellt: {{ generated_at|date:"d.m.Y, H:i" }}<br>
+            {{ community.address }}
+        </div>
+    </div>
+    <h1>{{ proposal.title }}</h1>
+    <div style="font-size:0.85rem;color:#7A7268;margin-top:0.25rem;">
+        {{ community.name }} ·
+        {% if proposal.status == 'closed' %}Abgeschlossen am {{ proposal.closed_at|date:"d.m.Y, H:i" }}{% else %}Status: Offen{% endif %}
+    </div>
+</div>
+
+<!-- Eckdaten -->
+<h2>Abstimmungsdetails</h2>
+<div class="info-grid">
+    <div class="info-box">
+        <div class="info-label">Mehrheitsart</div>
+        <div class="info-value" style="font-size:0.8rem;">{{ proposal.get_majority_type_display }}</div>
+    </div>
+    <div class="info-box">
+        <div class="info-label">Eröffnet</div>
+        <div class="info-value">{{ proposal.opened_at|date:"d.m.Y"|default:"–" }}</div>
+    </div>
+    <div class="info-box">
+        <div class="info-label">
+            {% if proposal.status == 'closed' %}Geschlossen{% else %}Frist{% endif %}
+        </div>
+        <div class="info-value">
+            {% if proposal.status == 'closed' %}{{ proposal.closed_at|date:"d.m.Y" }}
+            {% elif proposal.deadline %}{{ proposal.deadline|date:"d.m.Y, H:i" }}
+            {% else %}–{% endif %}
+        </div>
+    </div>
+    <div class="info-box">
+        <div class="info-label">Eingereicht von</div>
+        <div class="info-value" style="font-size:0.8rem;">
+            {{ proposal.created_by.get_full_name|default:proposal.created_by.username|default:"–" }}
+        </div>
+    </div>
+    <div class="info-box">
+        <div class="info-label">Einheiten total</div>
+        <div class="info-value">{{ results.total_units }}</div>
+    </div>
+    <div class="info-box">
+        <div class="info-label">Wertquoten total</div>
+        <div class="info-value">{{ results.total_quota }}‰</div>
+    </div>
+</div>
+
+<!-- Antragstext -->
+<h2>Antragstext</h2>
+<div class="description-box">{{ proposal.description }}</div>
+
+<!-- Vollmachten -->
+{% if proxies %}
+<h2>Vollmachten</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Einheit</th>
+            <th>Einheitsbesitzer</th>
+            <th>Bevollmächtigte Person</th>
+            <th>Bemerkung</th>
+            <th>Erteilt am</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for proxy in proxies %}
+        <tr>
+            <td><strong>{{ proxy.unit.unit_number }}</strong></td>
+            <td>{{ proxy.granted_by.get_full_name|default:proxy.granted_by.username }}</td>
+            <td>{{ proxy.delegate.get_full_name|default:proxy.delegate.username }}</td>
+            <td style="color:#7A7268;">{{ proxy.note|default:"–" }}</td>
+            <td>{{ proxy.granted_at|date:"d.m.Y" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- Stimmenliste -->
+<h2>Stimmenliste</h2>
+{% if votes %}
+<table>
+    <thead>
+        <tr>
+            <th>Einheit</th>
+            <th>Eigentümer</th>
+            <th>Wertquote</th>
+            <th>Stimme</th>
+            <th>Abgegeben am</th>
+            <th>Kommentar</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for vote in votes %}
+        <tr>
+            <td><strong>{{ vote.unit.unit_number }}</strong></td>
+            <td>{{ vote.unit.owner.get_full_name|default:vote.unit.owner.username }}</td>
+            <td>{{ vote.unit.quota }}‰</td>
+            <td>
+                {% if vote.choice == 'yes' %}<span class="choice-yes">✓ Ja</span>
+                {% elif vote.choice == 'no' %}<span class="choice-no">✗ Nein</span>
+                {% else %}<span class="choice-abs">– Enthaltung</span>{% endif %}
+            </td>
+            <td>{{ vote.voted_at|date:"d.m.Y, H:i" }}</td>
+            <td style="color:#7A7268;font-style:italic;">{{ vote.comment|default:"" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Nicht abgestimmt -->
+{% else %}
+<p style="color:#7A7268;font-size:0.85rem;">Keine Stimmen abgegeben.</p>
+{% endif %}
+
+<!-- Ergebnisse -->
+<h2>Abstimmungsergebnis</h2>
+
+<!-- Beteiligung -->
+<div style="margin-bottom:0.75rem;">
+    <div style="font-size:0.8rem;color:#7A7268;margin-bottom:0.25rem;">Beteiligung nach Köpfen: {{ results.total_voted }}/{{ results.total_units }} ({{ results.participation }}%)</div>
+    <div class="progress-bar"><div class="progress-fill" style="width:{{ results.participation }}%"></div></div>
+
+    <div style="font-size:0.8rem;color:#7A7268;margin-top:0.5rem;margin-bottom:0.25rem;">Beteiligung nach Wertquoten: {{ results.voted_quota }}‰ / {{ results.total_quota }}‰ ({{ results.participation_quota }}%)</div>
+    <div class="progress-bar"><div class="progress-fill" style="width:{{ results.participation_quota }}%"></div></div>
+</div>
+
+{% if results.quorum %}
+<div style="font-size:0.8rem;margin-bottom:0.75rem;padding:0.4rem 0.6rem;border-radius:6px;
+    {% if results.quorum_met %}background:#EAF2EC;color:#2C5F3D;{% else %}background:#FDECEA;color:#C0392B;{% endif %}">
+    {% if results.quorum_met %}✓{% else %}✗{% endif %}
+    Quorum ({{ results.quorum }}‰): {% if results.quorum_met %}erreicht{% else %}nicht erreicht{% endif %}
+</div>
+{% endif %}
+
+<div class="results-grid">
+    <div class="result-box">
+        <div class="result-number" style="color:#2C5F3D;">{{ results.yes_count }}</div>
+        <div class="result-label">Ja (Köpfe)</div>
+    </div>
+    <div class="result-box">
+        <div class="result-number" style="color:#C0392B;">{{ results.no_count }}</div>
+        <div class="result-label">Nein (Köpfe)</div>
+    </div>
+    {% if proposal.majority_type != 'simple' %}
+    <div class="result-box">
+        <div class="result-number" style="color:#2C5F3D;">{{ results.yes_quota }}‰</div>
+        <div class="result-label">Ja (Wertquoten)</div>
+    </div>
+    <div class="result-box">
+        <div class="result-number" style="color:#C0392B;">{{ results.no_quota }}‰</div>
+        <div class="result-label">Nein (Wertquoten)</div>
+    </div>
+    {% endif %}
+    {% if results.abstain_count %}
+    <div class="result-box">
+        <div class="result-number" style="color:#7A7268;">{{ results.abstain_count }}</div>
+        <div class="result-label">Enthaltungen</div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="verdict {% if results.passed %}verdict-passed{% else %}verdict-failed{% endif %}">
+    <div class="verdict-icon">{% if results.passed %}✅{% else %}❌{% endif %}</div>
+    <div>
+        <div class="verdict-title">{% if results.passed %}Antrag angenommen{% else %}Antrag abgelehnt{% endif %}</div>
+        <div class="criteria-tags">
+            {% for criterion, ok in results.criteria.items %}
+            <span class="tag {% if ok %}tag-ok{% else %}tag-fail{% endif %}">
+                {% if ok %}✓{% else %}✗{% endif %} {{ criterion }}
+            </span>
+            {% endfor %}
+        </div>
+        {% if proposal.status == 'closed' %}
+        <div style="font-size:0.75rem;color:#7A7268;margin-top:0.4rem;">
+            Anfechtungsfrist: 30 Tage ab Beschlussfassung (ZGB Art. 712m Abs. 2)
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Unterschriften -->
+<div class="signature-area" style="margin-top:3rem;">
+    <div>
+        <div style="font-size:0.75rem;color:#7A7268;margin-bottom:2rem;">Datum / Ort</div>
+        <div class="signature-line">Verwaltung / Versammlungsleitung</div>
+    </div>
+    <div>
+        <div style="font-size:0.75rem;color:#7A7268;margin-bottom:2rem;">&nbsp;</div>
+        <div class="signature-line">Protokollführer/in</div>
+    </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+    <span>STWEG Abstimmungsportal · {{ community.name }}</span>
+    <span>Protokoll erstellt am {{ generated_at|date:"d.m.Y, H:i" }}</span>
+</div>
+
+</body>
+</html>
