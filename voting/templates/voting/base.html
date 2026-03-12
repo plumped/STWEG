@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}STWEG Portal{% endblock %}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap');
+
+        :root {
+            --bg: #F5F3EF;
+            --surface: #FFFFFF;
+            --border: #E2DDD6;
+            --text: #1A1814;
+            --text-muted: #7A7268;
+            --accent: #2C5F3D;
+            --accent-light: #EAF2EC;
+            --red: #C0392B;
+            --red-light: #FDECEA;
+            --amber: #B7791F;
+            --amber-light: #FEF9EC;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* Nav */
+        nav {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 60px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.25rem;
+            color: var(--accent);
+            text-decoration: none;
+            letter-spacing: -0.02em;
+        }
+
+        .nav-brand span {
+            color: var(--text-muted);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 400;
+            margin-left: 0.5rem;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+
+        .nav-links a:hover { color: var(--text); }
+
+        /* Main layout */
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem;
+        }
+
+        /* Page header */
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-header h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 2rem;
+            font-weight: 400;
+            letter-spacing: -0.03em;
+            line-height: 1.2;
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            margin-top: 0.4rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .card-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Status badges */
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.65rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .badge-open { background: var(--accent-light); color: var(--accent); }
+        .badge-draft { background: var(--amber-light); color: var(--amber); }
+        .badge-closed { background: var(--border); color: var(--text-muted); }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.55rem 1.2rem;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+            transition: all 0.15s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover { background: #245033; }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-outline:hover { background: var(--bg); }
+
+        .btn-danger {
+            background: var(--red-light);
+            color: var(--red);
+            border: 1px solid #F5C6C3;
+        }
+
+        /* Forms */
+        .form-group { margin-bottom: 1.25rem; }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.4rem;
+        }
+
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            padding: 0.6rem 0.9rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            background: var(--surface);
+            color: var(--text);
+            transition: border-color 0.15s;
+        }
+
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Messages */
+        .messages { margin-bottom: 1.5rem; }
+
+        .message {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .message-success { background: var(--accent-light); color: var(--accent); }
+        .message-error { background: var(--red-light); color: var(--red); }
+
+        /* Progress bar */
+        .progress-bar {
+            height: 8px;
+            background: var(--border);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 999px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-fill-no { background: var(--red); }
+
+        /* Divider */
+        hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+
+        /* Flex helpers */
+        .flex { display: flex; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .gap-1 { gap: 0.5rem; }
+        .gap-2 { gap: 1rem; }
+        .mt-1 { margin-top: 0.5rem; }
+        .mt-2 { margin-top: 1rem; }
+        .mt-3 { margin-top: 1.5rem; }
+
+        /* Vote radio buttons */
+        .vote-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .vote-option input[type="radio"] { display: none; }
+
+        .vote-option label {
+            display: block;
+            text-align: center;
+            padding: 1rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .vote-option label:hover { border-color: var(--accent); }
+
+        .vote-option input:checked + label {
+            border-color: var(--accent);
+            background: var(--accent-light);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .vote-option.no input:checked + label {
+            border-color: var(--red);
+            background: var(--red-light);
+            color: var(--red);
+        }
+
+        .vote-emoji { font-size: 1.5rem; display: block; margin-bottom: 0.3rem; }
+
+        /* Results grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .result-box {
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .result-number {
+            font-family: 'DM Serif Display', serif;
+            font-size: 2rem;
+            line-height: 1;
+        }
+
+        .result-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        /* Verdict */
+        .verdict {
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            margin-top: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .verdict-passed { background: var(--accent-light); border: 1px solid #B8DBBF; }
+        .verdict-failed { background: var(--red-light); border: 1px solid #F5C6C3; }
+
+        .verdict-icon { font-size: 2rem; }
+
+        .verdict-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .verdict-passed .verdict-title { color: var(--accent); }
+        .verdict-failed .verdict-title { color: var(--red); }
+
+        .verdict-sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a class="nav-brand" href="{% url 'voting:dashboard' %}">
+            STWEG<span>Abstimmungsportal</span>
+        </a>
+        <div class="nav-links">
+            {% if user.is_authenticated %}
+                <a href="{% url 'voting:dashboard' %}">Übersicht</a>
+                <a href="{% url 'admin:index' %}">Admin</a>
+                <a href="{% url 'logout' %}">Abmelden</a>
+            {% else %}
+                <a href="{% url 'login' %}">Anmelden</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main>
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="message message-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

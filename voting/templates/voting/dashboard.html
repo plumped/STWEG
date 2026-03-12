@@ -1,0 +1,65 @@
+{% extends "voting/base.html" %}
+{% block title %}Dashboard – STWEG Portal{% endblock %}
+
+{% block content %}
+<div class="page-header flex-between">
+    <div>
+        <h1>Guten Tag, {{ user.first_name|default:user.username }}</h1>
+        <p>Deine laufenden Abstimmungen auf einen Blick</p>
+    </div>
+</div>
+
+{% if open_proposals %}
+<h2 style="font-size:0.8rem;font-weight:600;letter-spacing:0.08em;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.75rem;">
+    Offene Abstimmungen
+</h2>
+
+{% for proposal in open_proposals %}
+<a href="{% url 'voting:proposal_detail' proposal.pk %}" style="text-decoration:none;color:inherit;">
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div>
+            <div class="flex gap-1" style="align-items:center;margin-bottom:0.4rem;">
+                <span class="badge badge-open">Offen</span>
+                {% if proposal.id in voted_proposal_ids %}
+                <span class="badge" style="background:#F0EDE8;color:var(--text-muted);">✓ Abgestimmt</span>
+                {% else %}
+                <span class="badge" style="background:#FEF9EC;color:#B7791F;">Ausstehend</span>
+                {% endif %}
+            </div>
+            <div class="card-title">{{ proposal.title }}</div>
+            <div class="card-meta">{{ proposal.community.name }}
+                {% if proposal.deadline %} · Frist: {{ proposal.deadline|date:"d.m.Y" }}{% endif %}
+            </div>
+        </div>
+        <span style="color:var(--text-muted);font-size:1.25rem;">›</span>
+    </div>
+</a>
+{% endfor %}
+
+{% else %}
+<div class="card" style="text-align:center;padding:3rem;color:var(--text-muted);">
+    <div style="font-size:2.5rem;margin-bottom:0.75rem;">🗳</div>
+    <div style="font-weight:500;">Keine offenen Abstimmungen</div>
+    <div style="font-size:0.875rem;margin-top:0.25rem;">Alle Abstimmungen wurden erledigt.</div>
+</div>
+{% endif %}
+
+{% if communities %}
+<hr>
+<h2 style="font-size:0.8rem;font-weight:600;letter-spacing:0.08em;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.75rem;">
+    Meine Gemeinschaften
+</h2>
+{% for community in communities %}
+<div class="card flex-between">
+    <div>
+        <div class="card-title">{{ community.name }}</div>
+        <div class="card-meta">{{ community.address }}</div>
+    </div>
+    <div class="flex gap-1">
+        <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline">Alle Anträge</a>
+        <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary">+ Neu</a>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "voting/base.html" %}
+{% block title %}Neuer Antrag – {{ community.name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1.5rem;">
+    <a href="{% url 'voting:proposal_list' community.id %}" style="font-size:0.875rem;color:var(--text-muted);text-decoration:none;">
+        ← {{ community.name }}
+    </a>
+</div>
+
+<div class="page-header">
+    <h1>Neuer Antrag</h1>
+    <p>Erstelle einen Abstimmungsantrag für {{ community.name }}</p>
+</div>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="id_title">Titel *</label>
+            <input type="text" name="title" id="id_title" class="form-input"
+                   placeholder="z.B. Erneuerung Flachdach Hauptgebäude" required>
+        </div>
+        <div class="form-group">
+            <label for="id_description">Beschreibung *</label>
+            <textarea name="description" id="id_description" class="form-textarea" rows="6"
+                      placeholder="Beschreibe den Antrag detailliert. Was soll beschlossen werden? Was sind die Kosten? Welche Alternativen gibt es?" required></textarea>
+        </div>
+        <div class="form-group">
+            <label for="id_majority_type">Mehrheitsart *</label>
+            <select name="majority_type" id="id_majority_type" class="form-select">
+                <option value="double">Doppeltes Mehr (Köpfe + Wertquoten) — Standard</option>
+                <option value="simple">Einfaches Mehr (nur Köpfe)</option>
+                <option value="quota">Wertquoten-Mehrheit (nur Quoten)</option>
+            </select>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.4rem;">
+                Gemäss ZGB Art. 712m ist das doppelte Mehr der gesetzliche Standard für wichtige Beschlüsse.
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="id_deadline">Abstimmungsfrist (optional)</label>
+            <input type="datetime-local" name="deadline" id="id_deadline" class="form-input">
+        </div>
+        <hr>
+        <div class="flex gap-1">
+            <button type="submit" class="btn btn-primary">Antrag erstellen</button>
+            <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline">Abbrechen</a>
+        </div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.75rem;">
+            Der Antrag wird als Entwurf gespeichert. Du kannst ihn danach zur Abstimmung freigeben.
+        </p>
+    </form>
+</div>
+{% endblock %}

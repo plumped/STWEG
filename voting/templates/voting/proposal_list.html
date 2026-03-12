@@ -1,0 +1,52 @@
+{% extends "voting/base.html" %}
+{% block title %}{{ community.name }} – Anträge{% endblock %}
+
+{% block content %}
+<div class="page-header flex-between">
+    <div>
+        <h1>{{ community.name }}</h1>
+        <p>{{ community.address }}</p>
+    </div>
+    <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary">+ Neuer Antrag</a>
+</div>
+
+{% if proposals %}
+{% for proposal in proposals %}
+<a href="{% url 'voting:proposal_detail' proposal.pk %}" style="text-decoration:none;color:inherit;">
+    <div class="card" style="cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div class="flex-between">
+            <div>
+                <div class="flex gap-1" style="align-items:center;margin-bottom:0.4rem;">
+                    {% if proposal.status == 'open' %}
+                        <span class="badge badge-open">Offen</span>
+                        {% if proposal.id in voted_ids %}
+                        <span class="badge" style="background:#F0EDE8;color:var(--text-muted);">✓ Abgestimmt</span>
+                        {% else %}
+                        <span class="badge" style="background:var(--amber-light);color:var(--amber);">Ausstehend</span>
+                        {% endif %}
+                    {% elif proposal.status == 'draft' %}
+                        <span class="badge badge-draft">Entwurf</span>
+                    {% else %}
+                        <span class="badge badge-closed">Abgeschlossen</span>
+                    {% endif %}
+                </div>
+                <div class="card-title">{{ proposal.title }}</div>
+                <div class="card-meta">
+                    {{ proposal.get_majority_type_display }}
+                    {% if proposal.deadline %} · Frist {{ proposal.deadline|date:"d.m.Y" }}{% endif %}
+                    · {{ proposal.created_at|date:"d.m.Y" }}
+                </div>
+            </div>
+            <span style="color:var(--text-muted);font-size:1.25rem;">›</span>
+        </div>
+    </div>
+</a>
+{% endfor %}
+{% else %}
+<div class="card" style="text-align:center;padding:3rem;color:var(--text-muted);">
+    <div style="font-size:2.5rem;margin-bottom:0.75rem;">📋</div>
+    <div style="font-weight:500;">Noch keine Anträge</div>
+    <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary mt-2">Ersten Antrag erstellen</a>
+</div>
+{% endif %}
+{% endblock %}

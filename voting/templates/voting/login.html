@@ -1,0 +1,28 @@
+{% extends "voting/base.html" %}
+{% block title %}Anmelden – STWEG{% endblock %}
+
+{% block content %}
+<div style="max-width:400px;margin:3rem auto;">
+    <div class="page-header" style="text-align:center;">
+        <h1>Willkommen</h1>
+        <p>Melde dich an um abzustimmen</p>
+    </div>
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_username">Benutzername</label>
+                <input type="text" name="username" id="id_username" class="form-input" autofocus required>
+            </div>
+            <div class="form-group">
+                <label for="id_password">Passwort</label>
+                <input type="password" name="password" id="id_password" class="form-input" required>
+            </div>
+            {% if form.errors %}
+            <div class="message message-error">Benutzername oder Passwort falsch.</div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Anmelden</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

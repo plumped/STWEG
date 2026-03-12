@@ -1,0 +1,172 @@
+{% extends "voting/base.html" %}
+{% block title %}{{ proposal.title }} – STWEG{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1.5rem;">
+    <a href="{% url 'voting:proposal_list' proposal.community.id %}" style="font-size:0.875rem;color:var(--text-muted);text-decoration:none;">
+        ← {{ proposal.community.name }}
+    </a>
+</div>
+
+<div class="page-header">
+    <div class="flex gap-1" style="align-items:center;margin-bottom:0.75rem;">
+        {% if proposal.status == 'open' %}
+            <span class="badge badge-open">Offen</span>
+        {% elif proposal.status == 'draft' %}
+            <span class="badge badge-draft">Entwurf</span>
+        {% else %}
+            <span class="badge badge-closed">Abgeschlossen</span>
+        {% endif %}
+        <span style="font-size:0.8rem;color:var(--text-muted);">{{ proposal.get_majority_type_display }}</span>
+    </div>
+    <h1>{{ proposal.title }}</h1>
+    {% if proposal.deadline %}
+    <p>Abstimmungsfrist: <strong>{{ proposal.deadline|date:"d. F Y, H:i" }}</strong></p>
+    {% endif %}
+</div>
+
+<!-- Beschreibung -->
+<div class="card">
+    <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.75rem;">Antrag</div>
+    <p style="white-space:pre-wrap;">{{ proposal.description }}</p>
+    {% if proposal.created_by %}
+    <div style="margin-top:1rem;font-size:0.8rem;color:var(--text-muted);">
+        Eingereicht von {{ proposal.created_by.get_full_name|default:proposal.created_by.username }}
+        am {{ proposal.created_at|date:"d.m.Y" }}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Admin-Aktionen -->
+{% if proposal.created_by == request.user %}
+<div class="flex gap-1 mt-2">
+    {% if proposal.status == 'draft' %}
+    <form method="post" action="{% url 'voting:proposal_open' proposal.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">🔓 Abstimmung öffnen</button>
+    </form>
+    {% elif proposal.status == 'open' %}
+    <form method="post" action="{% url 'voting:proposal_close' proposal.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">🔒 Abstimmung schliessen</button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Abstimmen -->
+{% if proposal.status == 'open' %}
+<div class="card mt-3">
+    {% if existing_vote %}
+    <div style="font-size:0.875rem;color:var(--text-muted);text-align:center;padding:0.5rem 0;">
+        ✅ Du hast abgestimmt: <strong>
+        {% if existing_vote.choice == 'yes' %}Ja
+        {% elif existing_vote.choice == 'no' %}Nein
+        {% else %}Enthaltung{% endif %}
+        </strong>
+        {% if existing_vote.comment %}<br><em style="font-size:0.8rem;">„{{ existing_vote.comment }}"</em>{% endif %}
+    </div>
+    {% else %}
+    <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:1rem;">
+        Deine Stimme · {{ user_unit.unit_number }} ({{ user_unit.quota }}‰)
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <div class="vote-options">
+            <div class="vote-option">
+                <input type="radio" name="choice" id="yes" value="yes" required>
+                <label for="yes"><span class="vote-emoji">✅</span>Ja</label>
+            </div>
+            <div class="vote-option no">
+                <input type="radio" name="choice" id="no" value="no" required>
+                <label for="no"><span class="vote-emoji">❌</span>Nein</label>
+            </div>
+            <div class="vote-option">
+                <input type="radio" name="choice" id="abstain" value="abstain" required>
+                <label for="abstain"><span class="vote-emoji">⬜</span>Enthaltung</label>
+            </div>
+        </div>
+        <div class="form-group mt-2">
+            <label for="comment">Kommentar (optional)</label>
+            <textarea name="comment" id="comment" class="form-textarea" rows="2" placeholder="Begründung..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Stimme abgeben</button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Ergebnisse -->
+{% if results %}
+<div class="card mt-3">
+    <div class="flex-between" style="margin-bottom:1rem;">
+        <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);">
+            Zwischenstand / Ergebnis
+        </div>
+        <div style="font-size:0.8rem;color:var(--text-muted);">
+            {{ results.total_voted }}/{{ results.total_units }} Stimmen ({{ results.participation }}%)
+        </div>
+    </div>
+
+    <!-- Beteiligung -->
+    <div class="progress-bar" style="margin-bottom:1.5rem;">
+        <div class="progress-fill" style="width:{{ results.participation }}%"></div>
+    </div>
+
+    <!-- Nach Köpfen -->
+    <div style="margin-bottom:1.25rem;">
+        <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">Nach Köpfen</div>
+        <div class="results-grid">
+            <div class="result-box">
+                <div class="result-number" style="color:var(--accent)">{{ results.yes_count }}</div>
+                <div class="result-label">Ja-Stimmen</div>
+            </div>
+            <div class="result-box">
+                <div class="result-number" style="color:var(--red)">{{ results.no_count }}</div>
+                <div class="result-label">Nein-Stimmen</div>
+            </div>
+        </div>
+        {% if results.yes_count or results.no_count %}
+        <div class="progress-bar mt-1">
+            {% with total=results.yes_count|add:results.no_count %}
+            {% if total > 0 %}
+            <div class="progress-fill" style="width:{% widthratio results.yes_count total 100 %}%"></div>
+            {% endif %}
+            {% endwith %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Nach Wertquoten -->
+    <div>
+        <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">Nach Wertquoten (‰)</div>
+        <div class="results-grid">
+            <div class="result-box">
+                <div class="result-number" style="color:var(--accent)">{{ results.yes_quota }}</div>
+                <div class="result-label">Ja</div>
+            </div>
+            <div class="result-box">
+                <div class="result-number" style="color:var(--red)">{{ results.no_quota }}</div>
+                <div class="result-label">Nein</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Verdict (nur wenn geschlossen) -->
+    {% if proposal.status == 'closed' %}
+    <div class="verdict {% if results.passed %}verdict-passed{% else %}verdict-failed{% endif %}">
+        <div class="verdict-icon">{% if results.passed %}✅{% else %}❌{% endif %}</div>
+        <div>
+            <div class="verdict-title">{% if results.passed %}Antrag angenommen{% else %}Antrag abgelehnt{% endif %}</div>
+            <div class="verdict-sub">
+                Köpfe: {% if results.heads_passed %}✓ Mehrheit{% else %}✗ Keine Mehrheit{% endif %}
+                &nbsp;·&nbsp;
+                Quoten: {% if results.quota_passed %}✓ Mehrheit{% else %}✗ Keine Mehrheit{% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
