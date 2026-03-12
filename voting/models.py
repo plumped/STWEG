@@ -5,7 +5,6 @@ from decimal import Decimal
 
 
 class Community(models.Model):
-    """Eine STWEG-Gemeinschaft"""
     name = models.CharField(max_length=200)
     address = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -18,7 +17,6 @@ class Community(models.Model):
         return self.name
 
     def can_manage(self, user):
-        """Darf der User Einheiten und Einstellungen verwalten?"""
         return (
             self.units.filter(owner=user).exists()
             or self.created_by == user
@@ -31,7 +29,6 @@ class Community(models.Model):
 
 
 class Unit(models.Model):
-    """Eine Stockwerkeinheit mit Wertquote"""
     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='units')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='units')
     unit_number = models.CharField(max_length=20, verbose_name="Einheitsnummer")
@@ -52,33 +49,47 @@ class Unit(models.Model):
 
 
 class Proposal(models.Model):
-    """Ein Abstimmungsantrag"""
 
     class Status(models.TextChoices):
-        DRAFT = 'draft', 'Entwurf'
-        OPEN = 'open', 'Offen'
-        CLOSED = 'closed', 'Abgeschlossen'
+        DRAFT   = 'draft',   'Entwurf'
+        OPEN    = 'open',    'Offen'
+        CLOSED  = 'closed',  'Abgeschlossen'
 
     class MajorityType(models.TextChoices):
-        SIMPLE = 'simple', 'Einfaches Mehr (Köpfe)'
-        QUOTA = 'quota', 'Wertquoten-Mehrheit'
-        DOUBLE = 'double', 'Doppeltes Mehr (Köpfe + Wertquoten)'
+        SIMPLE    = 'simple',    'Einfaches Mehr (nur Köpfe)'
+        ABSOLUTE  = 'absolute',  'Absolutes Mehr (Köpfe + Wertquoten)'
+        QUALIFIED = 'qualified', 'Qualifiziertes Mehr (2/3 Köpfe + 2/3 Wertquoten)'
+        UNANIMOUS = 'unanimous', 'Einstimmigkeit (Enthaltung gilt als Nein)'
 
-    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='proposals')
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_proposals')
-    title = models.CharField(max_length=300, verbose_name="Titel")
+    MAJORITY_DESCRIPTIONS = {
+        'simple':    'Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen. Wertquoten sind nicht ausschlaggebend.',
+        'absolute':  'Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen UND nach Wertquoten. Gesetzlicher Standard (ZGB Art. 712m).',
+        'qualified': 'Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen UND nach Wertquoten. Für bauliche Veränderungen, Lifteinbau, grössere Investitionen.',
+        'unanimous': 'Alle abgegebenen Stimmen (inkl. Enthaltungen) müssen Ja sein. Für Reglementsänderungen und Zweckänderungen.',
+    }
+
+    MAJORITY_EXAMPLES = {
+        'simple':    'Genehmigung Jahresrechnung, Budget, Hausordnung',
+        'absolute':  'Wahl/Abberufung der Verwaltung, ordentliche Unterhaltsarbeiten',
+        'qualified': 'Fassadensanierung, neue Heizung, Lifteinbau, grössere Investitionen',
+        'unanimous': 'Reglementsänderung, Zweckänderung eines Gebäudeteils',
+    }
+
+    community   = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='proposals')
+    created_by  = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_proposals')
+    title       = models.CharField(max_length=300, verbose_name="Titel")
     description = models.TextField(verbose_name="Beschreibung")
     majority_type = models.CharField(
         max_length=10,
         choices=MajorityType.choices,
-        default=MajorityType.DOUBLE,
+        default=MajorityType.ABSOLUTE,
         verbose_name="Mehrheitsart"
     )
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    status     = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
     created_at = models.DateTimeField(auto_now_add=True)
-    opened_at = models.DateTimeField(null=True, blank=True)
-    closed_at = models.DateTimeField(null=True, blank=True)
-    deadline = models.DateTimeField(null=True, blank=True, verbose_name="Abstimmungsfrist")
+    opened_at  = models.DateTimeField(null=True, blank=True)
+    closed_at  = models.DateTimeField(null=True, blank=True)
+    deadline   = models.DateTimeField(null=True, blank=True, verbose_name="Abstimmungsfrist")
 
     def __str__(self):
         return self.title
@@ -109,40 +120,79 @@ class Proposal(models.Model):
 
     def get_results(self):
         votes = self.votes.select_related('unit')
-        yes_votes = votes.filter(choice=Vote.Choice.YES)
-        no_votes = votes.filter(choice=Vote.Choice.NO)
+        yes_votes  = votes.filter(choice=Vote.Choice.YES)
+        no_votes   = votes.filter(choice=Vote.Choice.NO)
+        abs_votes  = votes.filter(choice=Vote.Choice.ABSTAIN)
 
-        yes_count = yes_votes.count()
-        no_count = no_votes.count()
-        abstain_count = votes.filter(choice=Vote.Choice.ABSTAIN).count()
-        total_voted = votes.count()
+        yes_count     = yes_votes.count()
+        no_count      = no_votes.count()
+        abstain_count = abs_votes.count()
+        total_voted   = votes.count()
 
-        yes_quota = sum(v.unit.quota for v in yes_votes)
-        no_quota = sum(v.unit.quota for v in no_votes)
+        yes_quota   = sum(v.unit.quota for v in yes_votes)
+        no_quota    = sum(v.unit.quota for v in no_votes)
+        voted_quota = sum(v.unit.quota for v in votes)
 
-        heads_passed = yes_count > no_count
-        quota_passed = yes_quota > no_quota
+        # Basis für Kopf- und Quoten-Mehrheit: nur Ja+Nein (Enthaltungen neutral)
+        deciding_heads = yes_count + no_count
+        deciding_quota = yes_quota + no_quota
 
-        if self.majority_type == Proposal.MajorityType.SIMPLE:
-            passed = heads_passed
-        elif self.majority_type == Proposal.MajorityType.QUOTA:
-            passed = quota_passed
+        # Einfaches Mehr: Ja > Nein
+        heads_simple = yes_count > no_count
+        quota_simple = yes_quota > no_quota
+
+        # Absolutes Mehr: Ja > Nein (sowohl Köpfe als auch Quoten)
+        heads_absolute = heads_simple
+        quota_absolute = quota_simple
+
+        # Qualifiziertes Mehr: Ja >= 2/3 der Ja+Nein-Stimmen
+        TWO_THIRDS = Decimal('2') / Decimal('3')
+        if deciding_heads > 0:
+            heads_qualified = Decimal(yes_count) / Decimal(deciding_heads) >= TWO_THIRDS
         else:
-            passed = heads_passed and quota_passed
+            heads_qualified = False
+        if deciding_quota > 0:
+            quota_qualified = yes_quota / deciding_quota >= TWO_THIRDS
+        else:
+            quota_qualified = False
+
+        # Einstimmigkeit: alle Stimmen inkl. Enthaltungen müssen Ja sein
+        heads_unanimous = (total_voted > 0) and (yes_count == total_voted)
+
+        mt = self.majority_type
+        if mt == Proposal.MajorityType.SIMPLE:
+            passed   = heads_simple
+            criteria = {'Köpfe': heads_simple}
+        elif mt == Proposal.MajorityType.ABSOLUTE:
+            passed   = heads_absolute and quota_absolute
+            criteria = {'Köpfe': heads_absolute, 'Wertquoten': quota_absolute}
+        elif mt == Proposal.MajorityType.QUALIFIED:
+            passed   = heads_qualified and quota_qualified
+            criteria = {'Köpfe (≥ 2/3)': heads_qualified, 'Wertquoten (≥ 2/3)': quota_qualified}
+        else:  # UNANIMOUS
+            passed   = heads_unanimous
+            criteria = {'Einstimmig (inkl. Enthaltungen)': heads_unanimous}
 
         return {
-            'yes_count': yes_count,
-            'no_count': no_count,
+            'yes_count':     yes_count,
+            'no_count':      no_count,
             'abstain_count': abstain_count,
-            'total_voted': total_voted,
-            'total_units': self.total_units,
-            'yes_quota': yes_quota,
-            'no_quota': no_quota,
-            'total_quota': self.total_quota,
-            'heads_passed': heads_passed,
-            'quota_passed': quota_passed,
-            'passed': passed,
+            'total_voted':   total_voted,
+            'total_units':   self.total_units,
+            'yes_quota':     yes_quota,
+            'no_quota':      no_quota,
+            'voted_quota':   voted_quota,
+            'total_quota':   self.total_quota,
+            'criteria':      criteria,
+            'passed':        passed,
+            # legacy keys
+            'heads_passed':  heads_simple,
+            'quota_passed':  quota_absolute,
             'participation': round(total_voted / self.total_units * 100) if self.total_units else 0,
+            # threshold helpers for progress bars
+            'yes_pct_heads': round(yes_count / deciding_heads * 100) if deciding_heads else 0,
+            'yes_pct_quota': round(float(yes_quota / deciding_quota * 100)) if deciding_quota else 0,
+            'threshold_pct': 67 if mt == Proposal.MajorityType.QUALIFIED else 50,
         }
 
     class Meta:
@@ -152,18 +202,17 @@ class Proposal(models.Model):
 
 
 class Vote(models.Model):
-    """Eine einzelne Stimme"""
 
     class Choice(models.TextChoices):
-        YES = 'yes', 'Ja'
-        NO = 'no', 'Nein'
+        YES     = 'yes',     'Ja'
+        NO      = 'no',      'Nein'
         ABSTAIN = 'abstain', 'Enthaltung'
 
     proposal = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name='votes')
-    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='votes')
-    choice = models.CharField(max_length=10, choices=Choice.choices)
+    unit     = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='votes')
+    choice   = models.CharField(max_length=10, choices=Choice.choices)
     voted_at = models.DateTimeField(auto_now_add=True)
-    comment = models.TextField(blank=True, verbose_name="Kommentar (optional)")
+    comment  = models.TextField(blank=True, verbose_name="Kommentar (optional)")
 
     class Meta:
         unique_together = [('proposal', 'unit')]

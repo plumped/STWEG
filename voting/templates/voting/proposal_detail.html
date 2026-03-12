@@ -20,7 +20,9 @@
         {% else %}
             <span class="badge badge-closed">Abgeschlossen</span>
         {% endif %}
-        <span style="font-size:0.8rem;color:var(--text-muted);">{{ proposal.get_majority_type_display }}</span>
+        <span class="badge" style="background:var(--bg);border:1px solid var(--border);color:var(--text-muted);">
+            {{ proposal.get_majority_type_display }}
+        </span>
     </div>
     <h1>{{ proposal.title }}</h1>
     {% if proposal.deadline %}
@@ -32,8 +34,23 @@
 <div class="card">
     <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.75rem;">Antrag</div>
     <p style="white-space:pre-wrap;">{{ proposal.description }}</p>
+
+    <!-- Mehrheitsart Erläuterung -->
+    <div style="margin-top:1rem;padding:0.75rem 1rem;background:var(--bg);border-radius:8px;font-size:0.8rem;color:var(--text-muted);">
+        <strong style="color:var(--text);">{{ proposal.get_majority_type_display }}</strong><br>
+        {% if proposal.majority_type == 'simple' %}
+            Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen. Wertquoten nicht ausschlaggebend.
+        {% elif proposal.majority_type == 'absolute' %}
+            Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten. Gesetzlicher Standard gemäss ZGB Art. 712m.
+        {% elif proposal.majority_type == 'qualified' %}
+            Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten. Erforderlich für bauliche Veränderungen, Lifteinbau, grössere Investitionen.
+        {% elif proposal.majority_type == 'unanimous' %}
+            Alle abgegebenen Stimmen — <em>inklusive Enthaltungen</em> — müssen Ja sein. Für Reglementsänderungen und Zweckänderungen.
+        {% endif %}
+    </div>
+
     {% if proposal.created_by %}
-    <div style="margin-top:1rem;font-size:0.8rem;color:var(--text-muted);">
+    <div style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-muted);">
         Eingereicht von {{ proposal.created_by.get_full_name|default:proposal.created_by.username }}
         am {{ proposal.created_at|date:"d.m.Y" }}
     </div>
@@ -58,7 +75,7 @@
 </div>
 {% endif %}
 
-<!-- Abstimmen: eine Karte pro Einheit -->
+<!-- Abstimmen -->
 {% if proposal.status == 'open' and not proposal.deadline_passed %}
 {% for item in units_with_votes %}
 <div class="card mt-3">
@@ -80,6 +97,9 @@
         {% elif item.vote.choice == 'no' %}❌ Nein
         {% else %}⬜ Enthaltung{% endif %}
         </strong>
+        {% if proposal.majority_type == 'unanimous' and item.vote.choice == 'abstain' %}
+        <span style="color:var(--red);font-size:0.8rem;"> — zählt als Nein bei Einstimmigkeit</span>
+        {% endif %}
         {% if item.vote.comment %}
         <br><em style="font-size:0.8rem;margin-top:0.25rem;display:block;">„{{ item.vote.comment }}"</em>
         {% endif %}
@@ -99,7 +119,12 @@
             </div>
             <div class="vote-option">
                 <input type="radio" name="choice" id="abstain_{{ item.unit.id }}" value="abstain" required>
-                <label for="abstain_{{ item.unit.id }}"><span class="vote-emoji">⬜</span>Enthaltung</label>
+                <label for="abstain_{{ item.unit.id }}">
+                    <span class="vote-emoji">⬜</span>Enthaltung
+                    {% if proposal.majority_type == 'unanimous' %}
+                    <span style="font-size:0.7rem;display:block;color:var(--red);margin-top:0.1rem;">= Nein</span>
+                    {% endif %}
+                </label>
             </div>
         </div>
         <div class="form-group mt-2">
@@ -118,7 +143,7 @@
 <div class="card mt-3" style="text-align:center;padding:2rem;color:var(--text-muted);">
     <div style="font-size:1.5rem;margin-bottom:0.5rem;">⏱</div>
     <div style="font-weight:500;">Abstimmungsfrist abgelaufen</div>
-    <div style="font-size:0.875rem;margin-top:0.25rem;">Die Abstimmung wird beim nächsten Seitenaufruf automatisch geschlossen.</div>
+    <div style="font-size:0.875rem;margin-top:0.25rem;">Die Abstimmung wird automatisch geschlossen.</div>
 </div>
 {% endif %}
 
@@ -139,33 +164,61 @@
         <div class="progress-fill" style="width:{{ results.participation }}%"></div>
     </div>
 
-    <!-- Nach Köpfen -->
+    {% if proposal.majority_type == 'unanimous' %}
+    <!-- Einstimmigkeit: Enthaltungen = Nein -->
     <div style="margin-bottom:1.25rem;">
-        <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">Nach Köpfen</div>
+        <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">Stimmen (Enthaltung zählt als Nein)</div>
         <div class="results-grid">
             <div class="result-box">
                 <div class="result-number" style="color:var(--accent)">{{ results.yes_count }}</div>
-                <div class="result-label">Ja-Stimmen</div>
+                <div class="result-label">Ja</div>
+            </div>
+            <div class="result-box">
+                <div class="result-number" style="color:var(--red)">{{ results.no_count|add:results.abstain_count }}</div>
+                <div class="result-label">Nein + Enthaltungen</div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+
+    <!-- Nach Köpfen -->
+    <div style="margin-bottom:1.25rem;">
+        <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">
+            Nach Köpfen
+            {% if proposal.majority_type == 'qualified' %}<span style="font-size:0.75rem;font-weight:400;color:var(--text-muted);"> · Schwelle 2/3</span>{% endif %}
+        </div>
+        <div class="results-grid">
+            <div class="result-box">
+                <div class="result-number" style="color:var(--accent)">{{ results.yes_count }}</div>
+                <div class="result-label">Ja</div>
             </div>
             <div class="result-box">
                 <div class="result-number" style="color:var(--red)">{{ results.no_count }}</div>
-                <div class="result-label">Nein-Stimmen</div>
+                <div class="result-label">Nein</div>
             </div>
         </div>
         {% if results.yes_count or results.no_count %}
-        <div class="progress-bar mt-1">
-            {% with total=results.yes_count|add:results.no_count %}
-            {% if total > 0 %}
-            <div class="progress-fill" style="width:{% widthratio results.yes_count total 100 %}%"></div>
-            {% endif %}
-            {% endwith %}
+        <div style="position:relative;margin-top:0.6rem;">
+            <div class="progress-bar">
+                <div class="progress-fill" style="width:{{ results.yes_pct_heads }}%"></div>
+            </div>
+            <div style="position:absolute;top:-3px;left:{{ results.threshold_pct }}%;width:2px;height:14px;background:var(--text-muted);border-radius:1px;"></div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;display:flex;justify-content:space-between;">
+            <span>{{ results.yes_pct_heads }}% Ja-Anteil (Basis: Ja+Nein)</span>
+            <span>Schwelle: {{ results.threshold_pct }}%{% if results.abstain_count %} · {{ results.abstain_count }} Enthaltung{% if results.abstain_count != 1 %}en{% endif %} (neutral){% endif %}</span>
         </div>
         {% endif %}
     </div>
 
-    <!-- Nach Wertquoten -->
+    <!-- Nach Wertquoten (nicht bei einfachem Mehr) -->
+    {% if proposal.majority_type != 'simple' %}
     <div>
-        <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">Nach Wertquoten (‰)</div>
+        <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">
+            Nach Wertquoten (‰)
+            {% if proposal.majority_type == 'qualified' %}<span style="font-size:0.75rem;font-weight:400;color:var(--text-muted);"> · Schwelle 2/3</span>{% endif %}
+        </div>
         <div class="results-grid">
             <div class="result-box">
                 <div class="result-number" style="color:var(--accent)">{{ results.yes_quota }}</div>
@@ -176,28 +229,47 @@
                 <div class="result-label">Nein</div>
             </div>
         </div>
-        {% if results.abstain_count %}
-        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.5rem;">
-            {{ results.abstain_count }} Enthaltung{% if results.abstain_count != 1 %}en{% endif %}
+        {% if results.yes_quota or results.no_quota %}
+        <div style="position:relative;margin-top:0.6rem;">
+            <div class="progress-bar">
+                <div class="progress-fill" style="width:{{ results.yes_pct_quota }}%"></div>
+            </div>
+            <div style="position:absolute;top:-3px;left:{{ results.threshold_pct }}%;width:2px;height:14px;background:var(--text-muted);border-radius:1px;"></div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;display:flex;justify-content:space-between;">
+            <span>{{ results.yes_pct_quota }}% Ja-Anteil (Basis: Ja+Nein)</span>
+            <span>Schwelle: {{ results.threshold_pct }}%</span>
         </div>
         {% endif %}
     </div>
+    {% endif %}
 
-    <!-- Verdict (nur wenn geschlossen) -->
-    {% if proposal.status == 'closed' %}
-    <div class="verdict {% if results.passed %}verdict-passed{% else %}verdict-failed{% endif %}">
+    {% endif %}
+
+    <!-- Kriterien-Checkliste + Verdict -->
+    <div class="verdict {% if results.passed %}verdict-passed{% else %}verdict-failed{% endif %}" style="margin-top:1.5rem;">
         <div class="verdict-icon">{% if results.passed %}✅{% else %}❌{% endif %}</div>
-        <div>
+        <div style="flex:1;">
             <div class="verdict-title">{% if results.passed %}Antrag angenommen{% else %}Antrag abgelehnt{% endif %}</div>
-            <div class="verdict-sub">
-                Köpfe: {% if results.heads_passed %}✓ Mehrheit{% else %}✗ Keine Mehrheit{% endif %}
-                &nbsp;·&nbsp;
-                Quoten: {% if results.quota_passed %}✓ Mehrheit{% else %}✗ Keine Mehrheit{% endif %}
+            <div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.4rem;">
+                {% for criterion, ok in results.criteria.items %}
+                <span style="font-size:0.75rem;padding:0.2rem 0.65rem;border-radius:999px;
+                    {% if ok %}background:#B8DBBF;color:#1A4A2A;
+                    {% else %}background:#F5C6C3;color:#7A1A1A;{% endif %}">
+                    {% if ok %}✓{% else %}✗{% endif %} {{ criterion }}
+                </span>
+                {% endfor %}
             </div>
+            {% if proposal.status == 'closed' %}
+            <div class="verdict-sub" style="margin-top:0.5rem;">
+                Geschlossen am {{ proposal.closed_at|date:"d.m.Y, H:i" }}
+                · Anfechtungsfrist: 30 Tage (bis ca. {{ proposal.closed_at|date:"d.m.Y" }})
+            </div>
+            {% endif %}
         </div>
     </div>
-    {% endif %}
 </div>
+
 {% elif proposal.status == 'open' and not show_results %}
 <div class="card mt-3" style="padding:1.25rem;color:var(--text-muted);font-size:0.875rem;">
     🔒 Das Ergebnis wird nach Abschluss der Abstimmung veröffentlicht.

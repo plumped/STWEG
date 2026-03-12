@@ -2,16 +2,39 @@ from django import forms
 from django.contrib.auth.models import User
 from .models import Proposal, Vote, Community, Unit
 
+MAJORITY_CHOICES = [
+    ('simple',    'Einfaches Mehr (nur Köpfe) — Jahresrechnung, Budget, Hausordnung'),
+    ('absolute',  'Absolutes Mehr (Köpfe + Wertquoten) — Verwaltungswahl, Unterhalt ✦ Standard'),
+    ('qualified', 'Qualifiziertes Mehr (2/3 Köpfe + 2/3 Quoten) — Fassade, Heizung, Lift'),
+    ('unanimous', 'Einstimmigkeit — Reglementsänderung, Zweckänderung'),
+]
+
 
 class ProposalForm(forms.ModelForm):
+    majority_type = forms.ChoiceField(
+        choices=MAJORITY_CHOICES,
+        initial='absolute',
+        label='Mehrheitsart',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+
     class Meta:
         model = Proposal
         fields = ['title', 'description', 'majority_type', 'deadline']
         widgets = {
-            'title': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'z.B. Erneuerung Flachdach'}),
-            'description': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 5, 'placeholder': 'Beschreibe den Antrag detailliert...'}),
-            'majority_type': forms.Select(attrs={'class': 'form-select'}),
-            'deadline': forms.DateTimeInput(attrs={'class': 'form-input', 'type': 'datetime-local'}),
+            'title': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'z.B. Erneuerung Flachdach Hauptgebäude',
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-textarea',
+                'rows': 5,
+                'placeholder': 'Beschreibe den Antrag detailliert...',
+            }),
+            'deadline': forms.DateTimeInput(attrs={
+                'class': 'form-input',
+                'type': 'datetime-local',
+            }),
         }
 
 
@@ -81,6 +104,3 @@ class UnitForm(forms.ModelForm):
             'description': 'Beschreibung (optional)',
             'quota': 'Wertquote (‰)',
         }
-
-    def label_from_instance(self, obj):
-        return obj.get_full_name() or obj.username

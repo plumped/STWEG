@@ -19,27 +19,28 @@
         <div class="form-group">
             <label for="id_title">Titel *</label>
             <input type="text" name="title" id="id_title" class="form-input"
-                   placeholder="z.B. Erneuerung Flachdach Hauptgebäude" required>
+                   placeholder="z.B. Erneuerung Flachdach Hauptgebäude" required
+                   value="{{ form.title.value|default:'' }}">
         </div>
         <div class="form-group">
             <label for="id_description">Beschreibung *</label>
             <textarea name="description" id="id_description" class="form-textarea" rows="6"
-                      placeholder="Beschreibe den Antrag detailliert. Was soll beschlossen werden? Was sind die Kosten? Welche Alternativen gibt es?" required></textarea>
+                      placeholder="Beschreibe den Antrag detailliert. Was soll beschlossen werden? Was sind die Kosten?" required>{{ form.description.value|default:'' }}</textarea>
         </div>
         <div class="form-group">
             <label for="id_majority_type">Mehrheitsart *</label>
-            <select name="majority_type" id="id_majority_type" class="form-select">
-                <option value="double">Doppeltes Mehr (Köpfe + Wertquoten) — Standard</option>
-                <option value="simple">Einfaches Mehr (nur Köpfe)</option>
-                <option value="quota">Wertquoten-Mehrheit (nur Quoten)</option>
+            <select name="majority_type" id="id_majority_type" class="form-select" onchange="updateMajorityHint(this.value)">
+                <option value="simple"    {% if form.majority_type.value == 'simple' %}selected{% endif %}>Einfaches Mehr (nur Köpfe)</option>
+                <option value="absolute"  {% if not form.majority_type.value or form.majority_type.value == 'absolute' %}selected{% endif %}>Absolutes Mehr (Köpfe + Wertquoten) ✦ Standard</option>
+                <option value="qualified" {% if form.majority_type.value == 'qualified' %}selected{% endif %}>Qualifiziertes Mehr (2/3 Köpfe + 2/3 Wertquoten)</option>
+                <option value="unanimous" {% if form.majority_type.value == 'unanimous' %}selected{% endif %}>Einstimmigkeit (Enthaltung = Nein)</option>
             </select>
-            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.4rem;">
-                Gemäss ZGB Art. 712m ist das doppelte Mehr der gesetzliche Standard für wichtige Beschlüsse.
-            </div>
+            <div id="majority-hint" style="font-size:0.8rem;color:var(--text-muted);margin-top:0.4rem;padding:0.5rem 0.75rem;background:var(--bg);border-radius:6px;"></div>
         </div>
         <div class="form-group">
             <label for="id_deadline">Abstimmungsfrist (optional)</label>
-            <input type="datetime-local" name="deadline" id="id_deadline" class="form-input">
+            <input type="datetime-local" name="deadline" id="id_deadline" class="form-input"
+                   value="{{ form.deadline.value|default:'' }}">
         </div>
         <hr>
         <div class="flex gap-1">
@@ -51,4 +52,17 @@
         </p>
     </form>
 </div>
+
+<script>
+const hints = {
+    simple:    'Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen. Wertquoten nicht ausschlaggebend.<br><em>Typisch für:</em> Genehmigung Jahresrechnung, Budget, Hausordnung.',
+    absolute:  'Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten. Gesetzlicher Standard gemäss ZGB Art. 712m.<br><em>Typisch für:</em> Wahl/Abberufung der Verwaltung, ordentliche Unterhaltsarbeiten.',
+    qualified: 'Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten.<br><em>Typisch für:</em> Fassadensanierung, neue Heizung, Lifteinbau, grössere Investitionen.',
+    unanimous: 'Alle abgegebenen Stimmen <em>inklusive Enthaltungen</em> müssen Ja sein. Eine Enthaltung zählt als Nein.<br><em>Typisch für:</em> Reglementsänderung, Zweckänderung eines Gebäudeteils.',
+};
+function updateMajorityHint(val) {
+    document.getElementById('majority-hint').innerHTML = hints[val] || '';
+}
+updateMajorityHint(document.getElementById('id_majority_type').value || 'absolute');
+</script>
 {% endblock %}
