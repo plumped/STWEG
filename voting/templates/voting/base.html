@@ -212,6 +212,8 @@
 
         .message-success { background: var(--accent-light); color: var(--accent); }
         .message-error { background: var(--red-light); color: var(--red); }
+        .message-info { background: #EEF3FB; color: #1A4A8A; }
+        .message-warning { background: var(--amber-light); color: var(--amber); }
 
         /* Progress bar */
         .progress-bar {
@@ -338,7 +340,9 @@
         <div class="nav-links">
             {% if user.is_authenticated %}
                 <a href="{% url 'voting:dashboard' %}">Übersicht</a>
+                {% if user.is_staff %}
                 <a href="{% url 'admin:index' %}">Admin</a>
+                {% endif %}
                 <a href="{% url 'logout' %}">Abmelden</a>
             {% else %}
                 <a href="{% url 'login' %}">Anmelden</a>

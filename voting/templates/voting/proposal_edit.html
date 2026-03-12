@@ -1,0 +1,57 @@
+{% extends "voting/base.html" %}
+{% block title %}Antrag bearbeiten – {{ proposal.community.name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1.5rem;">
+    <a href="{% url 'voting:proposal_detail' proposal.pk %}" style="font-size:0.875rem;color:var(--text-muted);text-decoration:none;">
+        ← {{ proposal.title }}
+    </a>
+</div>
+
+<div class="page-header">
+    <h1>Antrag bearbeiten</h1>
+    <p>{{ proposal.community.name }} · Entwurf</p>
+</div>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="id_title">Titel *</label>
+            <input type="text" name="title" id="id_title" class="form-input"
+                   value="{{ form.title.value|default:'' }}" required>
+            {% if form.title.errors %}
+            <div style="color:var(--red);font-size:0.8rem;margin-top:0.25rem;">{{ form.title.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label for="id_description">Beschreibung *</label>
+            <textarea name="description" id="id_description" class="form-textarea" rows="6" required>{{ form.description.value|default:'' }}</textarea>
+            {% if form.description.errors %}
+            <div style="color:var(--red);font-size:0.8rem;margin-top:0.25rem;">{{ form.description.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label for="id_majority_type">Mehrheitsart *</label>
+            <select name="majority_type" id="id_majority_type" class="form-select">
+                <option value="double" {% if form.majority_type.value == 'double' %}selected{% endif %}>Doppeltes Mehr (Köpfe + Wertquoten) — Standard</option>
+                <option value="simple" {% if form.majority_type.value == 'simple' %}selected{% endif %}>Einfaches Mehr (nur Köpfe)</option>
+                <option value="quota"  {% if form.majority_type.value == 'quota'  %}selected{% endif %}>Wertquoten-Mehrheit (nur Quoten)</option>
+            </select>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.4rem;">
+                Gemäss ZGB Art. 712m ist das doppelte Mehr der gesetzliche Standard für wichtige Beschlüsse.
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="id_deadline">Abstimmungsfrist (optional)</label>
+            <input type="datetime-local" name="deadline" id="id_deadline" class="form-input"
+                   value="{{ form.deadline.value|default:'' }}">
+        </div>
+        <hr>
+        <div class="flex gap-1">
+            <button type="submit" class="btn btn-primary">Änderungen speichern</button>
+            <a href="{% url 'voting:proposal_detail' proposal.pk %}" class="btn btn-outline">Abbrechen</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

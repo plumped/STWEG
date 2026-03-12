@@ -12,6 +12,9 @@
     <div class="flex gap-1" style="align-items:center;margin-bottom:0.75rem;">
         {% if proposal.status == 'open' %}
             <span class="badge badge-open">Offen</span>
+            {% if proposal.deadline_passed %}
+            <span class="badge" style="background:var(--red-light);color:var(--red);">Frist abgelaufen</span>
+            {% endif %}
         {% elif proposal.status == 'draft' %}
             <span class="badge badge-draft">Entwurf</span>
         {% else %}
@@ -38,9 +41,10 @@
 </div>
 
 <!-- Admin-Aktionen -->
-{% if proposal.created_by == request.user %}
+{% if is_creator %}
 <div class="flex gap-1 mt-2">
     {% if proposal.status == 'draft' %}
+    <a href="{% url 'voting:proposal_edit' proposal.pk %}" class="btn btn-outline">✏ Bearbeiten</a>
     <form method="post" action="{% url 'voting:proposal_open' proposal.pk %}">
         {% csrf_token %}
         <button type="submit" class="btn btn-primary">🔓 Abstimmung öffnen</button>
@@ -55,7 +59,7 @@
 {% endif %}
 
 <!-- Abstimmen: eine Karte pro Einheit -->
-{% if proposal.status == 'open' %}
+{% if proposal.status == 'open' and not proposal.deadline_passed %}
 {% for item in units_with_votes %}
 <div class="card mt-3">
     <div class="flex-between" style="margin-bottom:0.75rem;">
@@ -109,14 +113,21 @@
     {% endif %}
 </div>
 {% endfor %}
+
+{% elif proposal.status == 'open' and proposal.deadline_passed %}
+<div class="card mt-3" style="text-align:center;padding:2rem;color:var(--text-muted);">
+    <div style="font-size:1.5rem;margin-bottom:0.5rem;">⏱</div>
+    <div style="font-weight:500;">Abstimmungsfrist abgelaufen</div>
+    <div style="font-size:0.875rem;margin-top:0.25rem;">Die Abstimmung wird beim nächsten Seitenaufruf automatisch geschlossen.</div>
+</div>
 {% endif %}
 
 <!-- Ergebnisse -->
-{% if results %}
+{% if show_results and results %}
 <div class="card mt-3">
     <div class="flex-between" style="margin-bottom:1rem;">
         <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);">
-            {% if proposal.status == 'closed' %}Endergebnis{% else %}Zwischenstand{% endif %}
+            {% if proposal.status == 'closed' %}Endergebnis{% else %}Zwischenstand (nur für dich sichtbar){% endif %}
         </div>
         <div style="font-size:0.8rem;color:var(--text-muted);">
             {{ results.total_voted }}/{{ results.total_units }} Stimmen ({{ results.participation }}%)
@@ -186,6 +197,10 @@
         </div>
     </div>
     {% endif %}
+</div>
+{% elif proposal.status == 'open' and not show_results %}
+<div class="card mt-3" style="padding:1.25rem;color:var(--text-muted);font-size:0.875rem;">
+    🔒 Das Ergebnis wird nach Abschluss der Abstimmung veröffentlicht.
 </div>
 {% endif %}
 

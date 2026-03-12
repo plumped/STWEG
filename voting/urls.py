@@ -15,6 +15,7 @@ urlpatterns = [
 
     # Anträge
     path('antrag/<int:pk>/', views.proposal_detail, name='proposal_detail'),
+    path('antrag/<int:pk>/bearbeiten/', views.proposal_edit, name='proposal_edit'),
     path('antrag/<int:pk>/oeffnen/', views.proposal_open, name='proposal_open'),
     path('antrag/<int:pk>/schliessen/', views.proposal_close, name='proposal_close'),
 ]

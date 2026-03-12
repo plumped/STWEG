@@ -9,9 +9,21 @@ class Community(models.Model):
     name = models.CharField(max_length=200)
     address = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='created_communities'
+    )
 
     def __str__(self):
         return self.name
+
+    def can_manage(self, user):
+        """Darf der User Einheiten und Einstellungen verwalten?"""
+        return (
+            self.units.filter(owner=user).exists()
+            or self.created_by == user
+            or user.is_staff
+        )
 
     class Meta:
         verbose_name = "Gemeinschaft"
@@ -80,6 +92,10 @@ class Proposal(models.Model):
         self.status = self.Status.CLOSED
         self.closed_at = timezone.now()
         self.save()
+
+    @property
+    def deadline_passed(self):
+        return self.deadline and timezone.now() > self.deadline
 
     @property
     def total_units(self):

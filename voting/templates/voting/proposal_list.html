@@ -19,10 +19,15 @@
                 <div class="flex gap-1" style="align-items:center;margin-bottom:0.4rem;">
                     {% if proposal.status == 'open' %}
                         <span class="badge badge-open">Offen</span>
-                        {% if proposal.id in voted_ids %}
-                        <span class="badge" style="background:#F0EDE8;color:var(--text-muted);">✓ Abgestimmt</span>
+                        {% if proposal.id in fully_voted_ids %}
+                            <span class="badge" style="background:#F0EDE8;color:var(--text-muted);">✓ Abgestimmt</span>
+                        {% elif proposal.id in voted_ids %}
+                            <span class="badge" style="background:var(--amber-light);color:var(--amber);">Teilweise abgestimmt</span>
                         {% else %}
-                        <span class="badge" style="background:var(--amber-light);color:var(--amber);">Ausstehend</span>
+                            <span class="badge" style="background:var(--amber-light);color:var(--amber);">Ausstehend</span>
+                        {% endif %}
+                        {% if proposal.deadline and proposal.deadline_passed %}
+                            <span class="badge" style="background:var(--red-light);color:var(--red);">Frist abgelaufen</span>
                         {% endif %}
                     {% elif proposal.status == 'draft' %}
                         <span class="badge badge-draft">Entwurf</span>
