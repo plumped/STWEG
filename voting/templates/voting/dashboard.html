@@ -1,4 +1,5 @@
 {% extends "voting/base.html" %}
+{% load voting_extras %}
 {% block title %}Dashboard – STWEG Portal{% endblock %}
 
 {% block content %}
@@ -7,6 +8,7 @@
         <h1>Guten Tag, {{ user.first_name|default:user.username }}</h1>
         <p>Deine laufenden Abstimmungen auf einen Blick</p>
     </div>
+    <a href="{% url 'voting:community_create' %}" class="btn btn-outline">+ Neue Gemeinschaft</a>
 </div>
 
 {% if open_proposals %}
@@ -15,15 +17,20 @@
 </h2>
 
 {% for proposal in open_proposals %}
+{% with voted=voted_counts|get_item:proposal.id total=unit_counts|get_item:proposal.id %}
 <a href="{% url 'voting:proposal_detail' proposal.pk %}" style="text-decoration:none;color:inherit;">
-    <div class="card" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border-color 0.15s;"
+         onmouseover="this.style.borderColor='var(--accent)'"
+         onmouseout="this.style.borderColor='var(--border)'">
         <div>
             <div class="flex gap-1" style="align-items:center;margin-bottom:0.4rem;">
                 <span class="badge badge-open">Offen</span>
-                {% if proposal.id in voted_proposal_ids %}
-                <span class="badge" style="background:#F0EDE8;color:var(--text-muted);">✓ Abgestimmt</span>
+                {% if voted == total %}
+                    <span class="badge" style="background:#F0EDE8;color:var(--text-muted);">✓ Vollständig abgestimmt</span>
+                {% elif voted > 0 %}
+                    <span class="badge" style="background:var(--amber-light);color:var(--amber);">{{ voted }}/{{ total }} abgestimmt</span>
                 {% else %}
-                <span class="badge" style="background:#FEF9EC;color:#B7791F;">Ausstehend</span>
+                    <span class="badge" style="background:var(--amber-light);color:var(--amber);">Ausstehend</span>
                 {% endif %}
             </div>
             <div class="card-title">{{ proposal.title }}</div>
@@ -34,6 +41,7 @@
         <span style="color:var(--text-muted);font-size:1.25rem;">›</span>
     </div>
 </a>
+{% endwith %}
 {% endfor %}
 
 {% else %}
@@ -56,6 +64,7 @@
         <div class="card-meta">{{ community.address }}</div>
     </div>
     <div class="flex gap-1">
+        <a href="{% url 'voting:unit_manage' community.id %}" class="btn btn-outline" style="font-size:0.8rem;">⚙ Einheiten</a>
         <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline">Alle Anträge</a>
         <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary">+ Neu</a>
     </div>

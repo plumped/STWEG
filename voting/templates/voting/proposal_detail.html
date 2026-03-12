@@ -54,46 +54,61 @@
 </div>
 {% endif %}
 
-<!-- Abstimmen -->
+<!-- Abstimmen: eine Karte pro Einheit -->
 {% if proposal.status == 'open' %}
+{% for item in units_with_votes %}
 <div class="card mt-3">
-    {% if existing_vote %}
-    <div style="font-size:0.875rem;color:var(--text-muted);text-align:center;padding:0.5rem 0;">
-        ✅ Du hast abgestimmt: <strong>
-        {% if existing_vote.choice == 'yes' %}Ja
-        {% elif existing_vote.choice == 'no' %}Nein
-        {% else %}Enthaltung{% endif %}
+    <div class="flex-between" style="margin-bottom:0.75rem;">
+        <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);">
+            Einheit {{ item.unit.unit_number }} · {{ item.unit.quota }}‰
+        </div>
+        {% if item.vote %}
+        <span class="badge badge-open">✓ Abgestimmt</span>
+        {% else %}
+        <span class="badge badge-draft">Ausstehend</span>
+        {% endif %}
+    </div>
+
+    {% if item.vote %}
+    <div style="font-size:0.875rem;color:var(--text-muted);padding:0.25rem 0;">
+        Stimme: <strong>
+        {% if item.vote.choice == 'yes' %}✅ Ja
+        {% elif item.vote.choice == 'no' %}❌ Nein
+        {% else %}⬜ Enthaltung{% endif %}
         </strong>
-        {% if existing_vote.comment %}<br><em style="font-size:0.8rem;">„{{ existing_vote.comment }}"</em>{% endif %}
+        {% if item.vote.comment %}
+        <br><em style="font-size:0.8rem;margin-top:0.25rem;display:block;">„{{ item.vote.comment }}"</em>
+        {% endif %}
     </div>
     {% else %}
-    <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:1rem;">
-        Deine Stimme · {{ user_unit.unit_number }} ({{ user_unit.quota }}‰)
-    </div>
     <form method="post">
         {% csrf_token %}
+        <input type="hidden" name="unit_id" value="{{ item.unit.id }}">
         <div class="vote-options">
             <div class="vote-option">
-                <input type="radio" name="choice" id="yes" value="yes" required>
-                <label for="yes"><span class="vote-emoji">✅</span>Ja</label>
+                <input type="radio" name="choice" id="yes_{{ item.unit.id }}" value="yes" required>
+                <label for="yes_{{ item.unit.id }}"><span class="vote-emoji">✅</span>Ja</label>
             </div>
             <div class="vote-option no">
-                <input type="radio" name="choice" id="no" value="no" required>
-                <label for="no"><span class="vote-emoji">❌</span>Nein</label>
+                <input type="radio" name="choice" id="no_{{ item.unit.id }}" value="no" required>
+                <label for="no_{{ item.unit.id }}"><span class="vote-emoji">❌</span>Nein</label>
             </div>
             <div class="vote-option">
-                <input type="radio" name="choice" id="abstain" value="abstain" required>
-                <label for="abstain"><span class="vote-emoji">⬜</span>Enthaltung</label>
+                <input type="radio" name="choice" id="abstain_{{ item.unit.id }}" value="abstain" required>
+                <label for="abstain_{{ item.unit.id }}"><span class="vote-emoji">⬜</span>Enthaltung</label>
             </div>
         </div>
         <div class="form-group mt-2">
-            <label for="comment">Kommentar (optional)</label>
-            <textarea name="comment" id="comment" class="form-textarea" rows="2" placeholder="Begründung..."></textarea>
+            <label for="comment_{{ item.unit.id }}">Kommentar (optional)</label>
+            <textarea name="comment" id="comment_{{ item.unit.id }}" class="form-textarea" rows="2" placeholder="Begründung..."></textarea>
         </div>
-        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Stimme abgeben</button>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">
+            Stimme für Einheit {{ item.unit.unit_number }} abgeben
+        </button>
     </form>
     {% endif %}
 </div>
+{% endfor %}
 {% endif %}
 
 <!-- Ergebnisse -->
@@ -101,7 +116,7 @@
 <div class="card mt-3">
     <div class="flex-between" style="margin-bottom:1rem;">
         <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);">
-            Zwischenstand / Ergebnis
+            {% if proposal.status == 'closed' %}Endergebnis{% else %}Zwischenstand{% endif %}
         </div>
         <div style="font-size:0.8rem;color:var(--text-muted);">
             {{ results.total_voted }}/{{ results.total_units }} Stimmen ({{ results.participation }}%)
@@ -150,6 +165,11 @@
                 <div class="result-label">Nein</div>
             </div>
         </div>
+        {% if results.abstain_count %}
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.5rem;">
+            {{ results.abstain_count }} Enthaltung{% if results.abstain_count != 1 %}en{% endif %}
+        </div>
+        {% endif %}
     </div>
 
     <!-- Verdict (nur wenn geschlossen) -->

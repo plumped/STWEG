@@ -1,0 +1,133 @@
+{% extends "voting/base.html" %}
+{% block title %}Einheiten – {{ community.name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1.5rem;">
+    <a href="{% url 'voting:proposal_list' community.id %}" style="font-size:0.875rem;color:var(--text-muted);text-decoration:none;">
+        ← {{ community.name }}
+    </a>
+</div>
+
+<div class="page-header flex-between">
+    <div>
+        <h1>Einheiten</h1>
+        <p>{{ community.name }} · {{ community.address }}</p>
+    </div>
+</div>
+
+<!-- Einheitenliste -->
+{% if units %}
+<div class="card" style="padding:0;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;">
+        <thead>
+            <tr style="background:var(--bg);border-bottom:1px solid var(--border);">
+                <th style="padding:0.75rem 1.25rem;text-align:left;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);">Einheit</th>
+                <th style="padding:0.75rem 1rem;text-align:left;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);">Beschreibung</th>
+                <th style="padding:0.75rem 1rem;text-align:left;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);">Eigentümer</th>
+                <th style="padding:0.75rem 1rem;text-align:right;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);">Wertquote (‰)</th>
+                <th style="padding:0.75rem 1rem;"></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for unit in units %}
+            <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:0.85rem 1.25rem;font-weight:600;">{{ unit.unit_number }}</td>
+                <td style="padding:0.85rem 1rem;color:var(--text-muted);font-size:0.875rem;">{{ unit.description|default:"–" }}</td>
+                <td style="padding:0.85rem 1rem;font-size:0.875rem;">
+                    {{ unit.owner.get_full_name|default:unit.owner.username }}
+                    <div style="font-size:0.75rem;color:var(--text-muted);">{{ unit.owner.username }}</div>
+                </td>
+                <td style="padding:0.85rem 1rem;text-align:right;font-variant-numeric:tabular-nums;">{{ unit.quota }}</td>
+                <td style="padding:0.85rem 1rem;text-align:right;">
+                    <form method="post" action="{% url 'voting:unit_delete' community.id unit.id %}"
+                          onsubmit="return confirm('Einheit {{ unit.unit_number }} wirklich löschen?')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger" style="padding:0.3rem 0.75rem;font-size:0.8rem;">Löschen</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr style="background:var(--bg);">
+                <td colspan="3" style="padding:0.75rem 1.25rem;font-size:0.8rem;color:var(--text-muted);">
+                    {{ units|length }} Einheit{% if units|length != 1 %}en{% endif %}
+                </td>
+                <td style="padding:0.75rem 1rem;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;">
+                    {{ total_quota }}
+                </td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+{% if total_quota != 1000 %}
+<div style="background:var(--amber-light);border:1px solid #F0D89A;border-radius:8px;padding:0.75rem 1rem;font-size:0.875rem;color:var(--amber);margin-bottom:1rem;">
+    ⚠️ Die Summe der Wertquoten beträgt {{ total_quota }}‰ (Soll: 1000‰)
+</div>
+{% endif %}
+
+{% else %}
+<div class="card" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
+    <div style="font-size:2rem;margin-bottom:0.5rem;">🏢</div>
+    <div style="font-weight:500;">Noch keine Einheiten erfasst</div>
+    <div style="font-size:0.875rem;margin-top:0.25rem;">Füge unten die erste Einheit hinzu.</div>
+</div>
+{% endif %}
+
+<!-- Neue Einheit -->
+<div class="card mt-3">
+    <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:1.25rem;">
+        Neue Einheit hinzufügen
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <div style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:1rem;margin-bottom:1rem;">
+            <div class="form-group" style="margin:0;">
+                <label for="id_unit_number">Einheit *</label>
+                <input type="text" name="unit_number" id="id_unit_number" class="form-input"
+                       placeholder="z.B. EG links" required value="{{ form.unit_number.value|default:'' }}">
+                {% if form.unit_number.errors %}
+                <div style="color:var(--red);font-size:0.8rem;margin-top:0.2rem;">{{ form.unit_number.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label for="id_description">Beschreibung</label>
+                <input type="text" name="description" id="id_description" class="form-input"
+                       placeholder="z.B. 3.5-Zimmer-Wohnung" value="{{ form.description.value|default:'' }}">
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label for="id_quota">Wertquote (‰) *</label>
+                <input type="number" name="quota" id="id_quota" class="form-input"
+                       placeholder="250.0" step="0.1" min="0.1" required value="{{ form.quota.value|default:'' }}">
+                {% if form.quota.errors %}
+                <div style="color:var(--red);font-size:0.8rem;margin-top:0.2rem;">{{ form.quota.errors.0 }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="id_owner">Eigentümer *</label>
+            <select name="owner" id="id_owner" class="form-select" required>
+                <option value="">— Benutzer wählen —</option>
+                {% for user in form.owner.field.queryset %}
+                <option value="{{ user.id }}"
+                    {% if form.owner.value == user.id|stringformat:"s" %}selected{% endif %}>
+                    {% if user.get_full_name %}{{ user.get_full_name }} ({{ user.username }}){% else %}{{ user.username }}{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+            {% if form.owner.errors %}
+            <div style="color:var(--red);font-size:0.8rem;margin-top:0.2rem;">{{ form.owner.errors.0 }}</div>
+            {% endif %}
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.4rem;">
+                Benutzer werden im <a href="{% url 'admin:auth_user_changelist' %}" style="color:var(--accent);">Admin-Bereich</a> verwaltet.
+            </div>
+        </div>
+        <div class="flex gap-1">
+            <button type="submit" class="btn btn-primary">Einheit hinzufügen</button>
+            <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline">Fertig</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
