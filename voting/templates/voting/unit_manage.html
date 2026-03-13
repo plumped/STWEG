@@ -9,7 +9,12 @@
         <h1>Einheiten</h1>
         <p>{{ community.name }} · {{ community.address }}</p>
     </div>
-    <a href="{% url 'voting:community_edit' community.id %}" class="btn btn-outline btn-sm">⚙ Einstellungen</a>
+    <div class="flex gap-1">
+        {% if is_admin %}
+        <a href="{% url 'voting:community_members' community.id %}" class="btn btn-outline btn-sm">👥 Rollen</a>
+        {% endif %}
+        <a href="{% url 'voting:community_edit' community.id %}" class="btn btn-outline btn-sm">⚙ Einstellungen</a>
+    </div>
 </div>
 
 {% if community.quorum %}
@@ -73,7 +78,7 @@
     <div class="empty-state">
         <span class="empty-state-icon">🏢</span>
         <div class="empty-state-title">Noch keine Einheiten erfasst</div>
-        <div class="empty-state-sub">Füge unten die erste Einheit hinzu.</div>
+        <div class="empty-state-sub">Füge unten die erste Einheit hinzu oder importiere eine CSV-Datei.</div>
     </div>
 </div>
 {% endif %}
@@ -88,9 +93,7 @@
                 <label for="id_unit_number">Einheit *</label>
                 <input type="text" name="unit_number" id="id_unit_number" class="form-input"
                        placeholder="z.B. EG links" required value="{{ form.unit_number.value|default:'' }}">
-                {% if form.unit_number.errors %}
-                <div class="form-error">{{ form.unit_number.errors.0 }}</div>
-                {% endif %}
+                {% if form.unit_number.errors %}<div class="form-error">{{ form.unit_number.errors.0 }}</div>{% endif %}
             </div>
             <div class="form-group" style="margin:0;">
                 <label for="id_description">Beschreibung</label>
@@ -101,9 +104,7 @@
                 <label for="id_quota">Wertquote (‰) *</label>
                 <input type="number" name="quota" id="id_quota" class="form-input"
                        placeholder="250.0" step="0.1" min="0.1" required value="{{ form.quota.value|default:'' }}">
-                {% if form.quota.errors %}
-                <div class="form-error">{{ form.quota.errors.0 }}</div>
-                {% endif %}
+                {% if form.quota.errors %}<div class="form-error">{{ form.quota.errors.0 }}</div>{% endif %}
             </div>
         </div>
         <div class="form-group">
@@ -111,15 +112,12 @@
             <select name="owner" id="id_owner" class="form-select" required>
                 <option value="">— Benutzer wählen —</option>
                 {% for u in form.owner.field.queryset %}
-                <option value="{{ u.id }}"
-                    {% if form.owner.value == u.id|stringformat:"s" %}selected{% endif %}>
+                <option value="{{ u.id }}"{% if form.owner.value == u.id|stringformat:"s" %} selected{% endif %}>
                     {% if u.get_full_name %}{{ u.get_full_name }} ({{ u.username }}){% else %}{{ u.username }}{% endif %}
                 </option>
                 {% endfor %}
             </select>
-            {% if form.owner.errors %}
-            <div class="form-error">{{ form.owner.errors.0 }}</div>
-            {% endif %}
+            {% if form.owner.errors %}<div class="form-error">{{ form.owner.errors.0 }}</div>{% endif %}
             <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.4rem;">
                 Benutzer werden im <a href="{% url 'admin:auth_user_changelist' %}" style="color:var(--accent);font-weight:500;">Admin-Bereich</a> verwaltet.
             </div>
@@ -130,4 +128,53 @@
         </div>
     </form>
 </div>
+
+<!-- CSV Import / Export -->
+{% if is_admin %}
+<div class="card mt-2" style="padding:1.75rem;">
+    <div class="section-label">Import / Export</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+
+        <!-- Import -->
+        <div>
+            <div style="font-weight:600;font-size:0.875rem;margin-bottom:0.5rem;">📥 CSV importieren</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.5;">
+                Spalten: <code>unit_number; description; quota; owner_username</code><br>
+                Bestehende Einheiten werden aktualisiert (anhand Einheitsnummer).
+            </div>
+            <form method="post" action="{% url 'voting:unit_import' community.id %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div style="display:flex;gap:0.75rem;align-items:end;">
+                    <div style="flex:1;">
+                        <input type="file" name="csv_file" class="form-input" style="font-size:0.85rem;" accept=".csv" required>
+                    </div>
+                    <button type="submit" class="btn btn-outline btn-sm" style="flex-shrink:0;">Importieren</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Export -->
+        <div>
+            <div style="font-weight:600;font-size:0.875rem;margin-bottom:0.5rem;">📤 CSV exportieren</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.5;">
+                Exportiert alle Einheiten als CSV-Datei. Kann als Vorlage für den Import verwendet werden.
+            </div>
+            <a href="{% url 'voting:unit_export' community.id %}" class="btn btn-outline btn-sm">Einheiten exportieren</a>
+        </div>
+    </div>
+</div>
+
+<!-- Danger zone -->
+<div class="card mt-2" style="padding:1.75rem;border-color:var(--red-border);">
+    <div class="section-label" style="color:var(--red);">Gefahrenzone</div>
+    <div class="flex-between items-center">
+        <div>
+            <div style="font-weight:600;font-size:0.875rem;">Gemeinschaft löschen</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">Löscht alle Einheiten, Anträge und Abstimmungsdaten dauerhaft.</div>
+        </div>
+        <a href="{% url 'voting:community_delete' community.id %}" class="btn btn-danger btn-sm">Löschen</a>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}

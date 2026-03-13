@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
-from .models import Proposal, Vote, Community, Unit, ProposalDocument, Proxy
+from .models import Proposal, Vote, Community, Unit, ProposalDocument, Proxy, CommunityMembership
 
 MAJORITY_CHOICES = [
     ('simple',    'Einfaches Mehr (nur Köpfe) — Jahresrechnung, Budget, Hausordnung'),
@@ -50,6 +50,33 @@ class VoteForm(forms.ModelForm):
                 'placeholder': 'Optionale Begründung...',
             }),
         }
+
+
+class ManualVoteForm(forms.Form):
+    """Form for admins to cast manual/postal votes on behalf of a unit owner."""
+    unit_id = forms.IntegerField(widget=forms.HiddenInput())
+    choice = forms.ChoiceField(
+        choices=Vote.Choice.choices,
+        label='Stimme',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    comment = forms.CharField(
+        required=False,
+        label='Kommentar (optional)',
+        widget=forms.Textarea(attrs={
+            'class': 'form-textarea',
+            'rows': 2,
+            'placeholder': 'Optionale Begründung...',
+        }),
+    )
+    manual_source = forms.CharField(
+        required=False,
+        label='Quellenangabe',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': "z.B. Briefpost vom 12.3.2026, E-Mail, Telefonisch",
+        }),
+    )
 
 
 class CommunityForm(forms.ModelForm):
@@ -151,3 +178,27 @@ class ProxyForm(forms.Form):
         }),
     )
     unit_id = forms.IntegerField(widget=forms.HiddenInput())
+
+
+class MembershipForm(forms.Form):
+    """Add a user to a community with a role."""
+    user = forms.ModelChoiceField(
+        queryset=User.objects.all().order_by('last_name', 'first_name', 'username'),
+        label='Person',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        empty_label='— Person auswählen —',
+    )
+    role = forms.ChoiceField(
+        choices=CommunityMembership.Role.choices,
+        label='Rolle',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+
+
+class UnitImportForm(forms.Form):
+    """CSV import for units."""
+    csv_file = forms.FileField(
+        label='CSV-Datei',
+        widget=forms.ClearableFileInput(attrs={'class': 'form-input', 'accept': '.csv'}),
+        help_text='Spalten: unit_number, description (optional), quota, owner_username',
+    )

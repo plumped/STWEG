@@ -22,10 +22,20 @@ class Community(models.Model):
         return self.name
 
     def can_manage(self, user):
+        """Read/participate access: unit owners, managers, board, staff."""
         return (
             self.units.filter(owner=user).exists()
             or self.created_by == user
             or user.is_staff
+            or self.memberships.filter(user=user).exists()
+        )
+
+    def is_admin(self, user):
+        """Full admin: reset votes, manage members, delete community etc."""
+        return (
+            self.created_by == user
+            or user.is_staff
+            or self.memberships.filter(user=user, role=CommunityMembership.Role.MANAGER).exists()
         )
 
     class Meta:
@@ -33,12 +43,38 @@ class Community(models.Model):
         verbose_name_plural = "Gemeinschaften"
 
 
+class CommunityMembership(models.Model):
+    """Roles for users who are not unit owners but manage the community."""
+
+    class Role(models.TextChoices):
+        MANAGER = 'manager', 'Verwalter'
+        BOARD   = 'board',   'Beirat'
+
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='memberships')
+    user      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='community_memberships')
+    role      = models.CharField(max_length=10, choices=Role.choices, default=Role.MANAGER)
+    added_at  = models.DateTimeField(auto_now_add=True)
+    added_by  = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='added_memberships'
+    )
+
+    class Meta:
+        unique_together = [('community', 'user')]
+        verbose_name = "Mitgliedschaft"
+        verbose_name_plural = "Mitgliedschaften"
+        ordering = ['role', 'user__last_name']
+
+    def __str__(self):
+        return f"{self.user} – {self.get_role_display()} @ {self.community}"
+
+
 class Unit(models.Model):
-    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='units')
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='units')
+    community   = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='units')
+    owner       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='units')
     unit_number = models.CharField(max_length=20, verbose_name="Einheitsnummer")
     description = models.CharField(max_length=200, blank=True)
-    quota = models.DecimalField(max_digits=6, decimal_places=1, verbose_name="Wertquote (‰)")
+    quota       = models.DecimalField(max_digits=6, decimal_places=1, verbose_name="Wertquote (‰)")
 
     def __str__(self):
         return f"{self.unit_number} – {self.owner.get_full_name() or self.owner.username}"
@@ -66,21 +102,12 @@ class Proposal(models.Model):
         QUALIFIED = 'qualified', 'Qualifiziertes Mehr (2/3 Köpfe + 2/3 Wertquoten)'
         UNANIMOUS = 'unanimous', 'Einstimmigkeit (Enthaltung gilt als Nein)'
 
-    MAJORITY_DESCRIPTIONS = {
-        'simple':    'Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen. Wertquoten sind nicht ausschlaggebend.',
-        'absolute':  'Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen UND nach Wertquoten. Gesetzlicher Standard (ZGB Art. 712m).',
-        'qualified': 'Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen UND nach Wertquoten. Für bauliche Veränderungen, Lifteinbau, grössere Investitionen.',
-        'unanimous': 'Alle abgegebenen Stimmen (inkl. Enthaltungen) müssen Ja sein. Für Reglementsänderungen und Zweckänderungen.',
-    }
-
-    community   = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='proposals')
-    created_by  = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_proposals')
-    title       = models.CharField(max_length=300, verbose_name="Titel")
-    description = models.TextField(verbose_name="Beschreibung")
+    community     = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='proposals')
+    created_by    = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_proposals')
+    title         = models.CharField(max_length=300, verbose_name="Titel")
+    description   = models.TextField(verbose_name="Beschreibung")
     majority_type = models.CharField(
-        max_length=10,
-        choices=MajorityType.choices,
-        default=MajorityType.ABSOLUTE,
+        max_length=10, choices=MajorityType.choices, default=MajorityType.ABSOLUTE,
         verbose_name="Mehrheitsart"
     )
     status     = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
@@ -132,19 +159,12 @@ class Proposal(models.Model):
         voted_quota = sum(v.unit.quota for v in votes)
         total_quota = self.total_quota
 
-        # Basis für Kopf- und Quoten-Mehrheit: nur Ja+Nein (Enthaltungen neutral)
         deciding_heads = yes_count + no_count
         deciding_quota = yes_quota + no_quota
 
-        # Einfaches Mehr: Ja > Nein
         heads_simple = yes_count > no_count
         quota_simple = yes_quota > no_quota
 
-        # Absolutes Mehr
-        heads_absolute = heads_simple
-        quota_absolute = quota_simple
-
-        # Qualifiziertes Mehr: Ja >= 2/3 der Ja+Nein-Stimmen
         TWO_THIRDS = Decimal('2') / Decimal('3')
         if deciding_heads > 0:
             heads_qualified = Decimal(yes_count) / Decimal(deciding_heads) >= TWO_THIRDS
@@ -155,28 +175,25 @@ class Proposal(models.Model):
         else:
             quota_qualified = False
 
-        # Einstimmigkeit: alle Stimmen inkl. Enthaltungen müssen Ja sein
         heads_unanimous = (total_voted > 0) and (yes_count == total_voted)
 
-        # Quorum-Prüfung
-        quorum = self.community.quorum
+        quorum     = self.community.quorum
         quorum_met = (not quorum) or (voted_quota >= quorum)
 
         mt = self.majority_type
         if mt == Proposal.MajorityType.SIMPLE:
             vote_passed = heads_simple
-            criteria = {'Köpfe': heads_simple}
+            criteria    = {'Köpfe': heads_simple}
         elif mt == Proposal.MajorityType.ABSOLUTE:
-            vote_passed = heads_absolute and quota_absolute
-            criteria = {'Köpfe': heads_absolute, 'Wertquoten': quota_absolute}
+            vote_passed = heads_simple and quota_simple
+            criteria    = {'Köpfe': heads_simple, 'Wertquoten': quota_simple}
         elif mt == Proposal.MajorityType.QUALIFIED:
             vote_passed = heads_qualified and quota_qualified
-            criteria = {'Köpfe (≥ 2/3)': heads_qualified, 'Wertquoten (≥ 2/3)': quota_qualified}
+            criteria    = {'Köpfe (≥ 2/3)': heads_qualified, 'Wertquoten (≥ 2/3)': quota_qualified}
         else:  # UNANIMOUS
             vote_passed = heads_unanimous
-            criteria = {'Einstimmig (inkl. Enthaltungen)': heads_unanimous}
+            criteria    = {'Einstimmig (inkl. Enthaltungen)': heads_unanimous}
 
-        # Quorum als zusätzliches Kriterium wenn konfiguriert
         if quorum:
             criteria[f'Quorum (≥ {quorum}‰)'] = quorum_met
 
@@ -196,12 +213,10 @@ class Proposal(models.Model):
             'passed':        passed,
             'quorum_met':    quorum_met,
             'quorum':        quorum,
-            # legacy keys
             'heads_passed':  heads_simple,
-            'quota_passed':  quota_absolute,
+            'quota_passed':  quota_simple,
             'participation': round(total_voted / self.total_units * 100) if self.total_units else 0,
             'participation_quota': round(float(voted_quota / total_quota * 100)) if total_quota else 0,
-            # threshold helpers for progress bars
             'yes_pct_heads': round(yes_count / deciding_heads * 100) if deciding_heads else 0,
             'yes_pct_quota': round(float(yes_quota / deciding_quota * 100)) if deciding_quota else 0,
             'threshold_pct': 67 if mt == Proposal.MajorityType.QUALIFIED else 50,
@@ -220,11 +235,24 @@ class Vote(models.Model):
         NO      = 'no',      'Nein'
         ABSTAIN = 'abstain', 'Enthaltung'
 
-    proposal = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name='votes')
-    unit     = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='votes')
-    choice   = models.CharField(max_length=10, choices=Choice.choices)
-    voted_at = models.DateTimeField(auto_now_add=True)
-    comment  = models.TextField(blank=True, verbose_name="Kommentar (optional)")
+    proposal  = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name='votes')
+    unit      = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='votes')
+    choice    = models.CharField(max_length=10, choices=Choice.choices)
+    voted_at  = models.DateTimeField(auto_now_add=True)
+    comment   = models.TextField(blank=True, verbose_name="Kommentar (optional)")
+
+    # Manual / postal vote tracking
+    cast_by       = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='cast_votes',
+        verbose_name="Erfasst durch"
+    )
+    is_manual     = models.BooleanField(default=False, verbose_name="Schriftliche Stimmabgabe")
+    manual_source = models.CharField(
+        max_length=200, blank=True,
+        verbose_name="Quellenangabe",
+        help_text="z.B. 'Briefpost vom 12.3.2026', 'E-Mail', 'Telefonisch bestätigt'"
+    )
 
     class Meta:
         unique_together = [('proposal', 'unit')]
@@ -236,7 +264,6 @@ class Vote(models.Model):
 
 
 class ProposalDocument(models.Model):
-    """Beilagendokument zu einem Antrag (Offerte, Plan, Budget, etc.)"""
     proposal    = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name='documents')
     name        = models.CharField(max_length=200, verbose_name="Bezeichnung")
     file        = models.FileField(upload_to='proposal_docs/', verbose_name="Datei")
@@ -256,7 +283,6 @@ class ProposalDocument(models.Model):
 
 
 class Proxy(models.Model):
-    """Vollmacht: Einheitsbesitzer delegiert Stimmrecht an eine andere Person"""
     proposal   = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name='proxies')
     unit       = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='proxies')
     delegate   = models.ForeignKey(

@@ -51,11 +51,9 @@ DATABASES = {
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Media files (uploaded documents)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Max upload size: 20 MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 
@@ -67,3 +65,21 @@ LANGUAGE_CODE = 'de-ch'
 TIME_ZONE = 'Europe/Zurich'
 USE_I18N = True
 USE_TZ = True
+
+# ── Email ─────────────────────────────────────────────────────────────────────
+# Development: emails are printed to the console.
+# For production, switch to SMTP:
+#
+#   EMAIL_BACKEND    = 'django.core.mail.backends.smtp.EmailBackend'
+#   EMAIL_HOST       = 'smtp.example.com'
+#   EMAIL_PORT       = 587
+#   EMAIL_USE_TLS    = True
+#   EMAIL_HOST_USER  = 'noreply@example.com'
+#   EMAIL_HOST_PASSWORD = 'secret'
+
+EMAIL_BACKEND    = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'STWEG Portal <noreply@stweg.local>'
+
+# ── Site URL (used in notification emails) ────────────────────────────────────
+# Change this in production to your actual domain.
+SITE_URL = 'http://localhost:8000'
