@@ -4,7 +4,7 @@ from . import views
 app_name = 'voting'
 
 urlpatterns = [
-    # Dashboard
+    # ── Dashboard ─────────────────────────────────────────────────────────
     path('', views.dashboard, name='dashboard'),
 
     # ── Gemeinschaften ────────────────────────────────────────────────────
@@ -33,6 +33,17 @@ urlpatterns = [
     path('community/<int:community_id>/einheiten/exportieren/',
          views.unit_export_csv, name='unit_export'),
 
+    # ── Einladungen (Invite System) ───────────────────────────────────────
+    # Admin: manage & create invite tokens
+    path('community/<int:community_id>/einladungen/',
+         views.invite_manage, name='invite_manage'),
+    # Admin: revoke a specific token
+    path('community/<int:community_id>/einladungen/<int:token_pk>/widerrufen/',
+         views.invite_revoke, name='invite_revoke'),
+    # Public: self-registration via token (NO login required)
+    path('einladen/<uuid:token>/',
+         views.invite_register, name='invite_register'),
+
     # ── Anträge ───────────────────────────────────────────────────────────
     path('antrag/<int:pk>/',
          views.proposal_detail, name='proposal_detail'),
@@ -42,7 +53,8 @@ urlpatterns = [
          views.proposal_open, name='proposal_open'),
     path('antrag/<int:pk>/schliessen/',
          views.proposal_close, name='proposal_close'),
-    path('antrag/<int:pk>/loeschen/', views.proposal_delete, name='proposal_delete'),
+    path('antrag/<int:pk>/loeschen/',
+         views.proposal_delete, name='proposal_delete'),
     path('antrag/<int:pk>/duplizieren/',
          views.proposal_duplicate, name='proposal_duplicate'),
     path('antrag/<int:pk>/protokoll/',

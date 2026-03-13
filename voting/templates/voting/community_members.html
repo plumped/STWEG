@@ -2,16 +2,17 @@
 {% block title %}Mitglieder – {{ community.name }}{% endblock %}
 
 {% block content %}
-<a href="{% url 'voting:unit_manage' community.id %}" class="back-link">{{ community.name }}</a>
+<a href="{% url 'voting:unit_manage' community.id %}" class="back-link">Einheiten</a>
 
 <div class="page-header flex-between">
     <div>
-        <h1>Rollen & Mitglieder</h1>
-        <p>{{ community.name }} · Verwalter und Beiräte</p>
+        <h1>Rollen &amp; Mitglieder</h1>
+        <p>{{ community.name }}</p>
     </div>
+    <a href="{% url 'voting:invite_manage' community.id %}" class="btn btn-primary btn-sm">✉ Einladungen</a>
 </div>
 
-<!-- Current members -->
+<!-- Existing memberships -->
 {% if memberships %}
 <div class="table-card">
     <table>
@@ -19,45 +20,47 @@
             <tr>
                 <th>Person</th>
                 <th>Rolle</th>
-                <th>Hinzugefügt am</th>
-                <th>Hinzugefügt durch</th>
+                <th>Hinzugefügt von</th>
+                <th>Datum</th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
-            <!-- Creator row (always shown) -->
+            <!-- Creator row (always first) -->
             {% if community.created_by %}
-            <tr style="background:var(--accent-light);">
+            <tr>
                 <td>
                     <strong>{{ community.created_by.get_full_name|default:community.created_by.username }}</strong>
                     <div style="font-size:0.75rem;color:var(--text-muted);">{{ community.created_by.username }}</div>
                 </td>
                 <td><span class="badge badge-open">Ersteller</span></td>
-                <td style="color:var(--text-muted);">–</td>
-                <td style="color:var(--text-muted);">–</td>
+                <td style="color:var(--text-muted);">—</td>
+                <td style="color:var(--text-muted);font-size:0.8rem;">{{ community.created_at|date:"d.m.Y" }}</td>
                 <td></td>
             </tr>
             {% endif %}
-            {% for m in memberships %}
+
+            {% for membership in memberships %}
             <tr>
                 <td>
-                    <strong>{{ m.user.get_full_name|default:m.user.username }}</strong>
-                    <div style="font-size:0.75rem;color:var(--text-muted);">{{ m.user.username }}
-                        {% if m.user.email %} · {{ m.user.email }}{% endif %}
-                    </div>
+                    <strong>{{ membership.user.get_full_name|default:membership.user.username }}</strong>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">{{ membership.user.username }}</div>
                 </td>
                 <td>
-                    {% if m.role == 'manager' %}
-                    <span class="badge badge-open">{{ m.get_role_display }}</span>
+                    {% if membership.role == 'manager' %}
+                        <span class="badge" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue);">Verwalter</span>
                     {% else %}
-                    <span class="badge badge-neutral">{{ m.get_role_display }}</span>
+                        <span class="badge badge-pending">Beirat</span>
                     {% endif %}
                 </td>
-                <td style="color:var(--text-muted);font-size:0.85rem;">{{ m.added_at|date:"d.m.Y" }}</td>
-                <td style="color:var(--text-muted);font-size:0.85rem;">{{ m.added_by.get_full_name|default:m.added_by.username|default:"–" }}</td>
+                <td style="color:var(--text-muted);font-size:0.85rem;">
+                    {{ membership.added_by.get_full_name|default:membership.added_by.username|default:"—" }}
+                </td>
+                <td style="color:var(--text-muted);font-size:0.8rem;">{{ membership.added_at|date:"d.m.Y" }}</td>
                 <td style="text-align:right;">
-                    <form method="post" action="{% url 'voting:community_member_remove' community.id m.pk %}"
-                          onsubmit="return confirm('{{ m.user.get_full_name|default:m.user.username }} wirklich entfernen?')">
+                    <form method="post"
+                          action="{% url 'voting:community_member_remove' community.id membership.pk %}"
+                          onsubmit="return confirm('{{ membership.user.get_full_name|default:membership.user.username }} aus der Gemeinschaft entfernen?')">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-danger btn-sm">Entfernen</button>
                     </form>
@@ -77,14 +80,14 @@
 </div>
 {% endif %}
 
-<!-- Add member -->
+<!-- Add member (Verwalter / Beirat) -->
 <div class="card mt-3" style="padding:1.75rem;">
-    <div class="section-label">Person hinzufügen</div>
+    <div class="section-label">Verwalter / Beirat hinzufügen</div>
     <form method="post">
         {% csrf_token %}
         <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:1rem;align-items:end;">
             <div class="form-group" style="margin:0;">
-                <label>Person</label>
+                <label>Person (muss bereits ein Konto haben)</label>
                 {{ form.user }}
             </div>
             <div class="form-group" style="margin:0;">
@@ -99,16 +102,24 @@
         <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;">
             <strong style="color:var(--text);">Verwalter</strong> — vollständiger Administratorzugang:
             Stimmen zurücksetzen, Briefwahlstimmen erfassen, Mitglieder verwalten, Gemeinschaft löschen.<br>
-            <strong style="color:var(--text);">Beirat</strong> — Lesezugang zu Ergebnissen und Protokollen, kann aber nicht abstimmen oder administrieren.
+            <strong style="color:var(--text);">Beirat</strong> — Lesezugang zu Ergebnissen und Protokollen,
+            kann aber nicht abstimmen oder administrieren.
         </div>
     </div>
 </div>
 
-<!-- Eigentümer (info) -->
+<!-- Eigentümer info -->
 <div class="card mt-2" style="padding:1.25rem;">
     <div style="font-size:0.82rem;color:var(--text-muted);">
-        <strong style="color:var(--text);">Eigentümer</strong> erhalten automatisch Zugang, wenn ihnen eine Einheit zugewiesen wird.
-        Sie werden unter <a href="{% url 'voting:unit_manage' community.id %}" style="color:var(--accent);font-weight:500;">Einheiten</a> verwaltet.
+        <strong style="color:var(--text);">Eigentümer</strong> erhalten Zugang, indem sie sich über
+        einen Einladungslink registrieren oder indem ihnen eine Einheit direkt zugewiesen wird.<br>
+        <a href="{% url 'voting:invite_manage' community.id %}" style="color:var(--accent);font-weight:500;">
+            → Einladungslinks verwalten
+        </a>
+        &nbsp;·&nbsp;
+        <a href="{% url 'voting:unit_manage' community.id %}" style="color:var(--accent);font-weight:500;">
+            → Einheiten verwalten
+        </a>
     </div>
 </div>
 {% endblock %}

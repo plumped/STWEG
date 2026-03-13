@@ -11,9 +11,10 @@
     </div>
     <div class="flex gap-1">
         {% if is_admin %}
+        <a href="{% url 'voting:invite_manage' community.id %}" class="btn btn-primary btn-sm">✉ Einladungen</a>
         <a href="{% url 'voting:community_members' community.id %}" class="btn btn-outline btn-sm">👥 Rollen</a>
-        {% endif %}
         <a href="{% url 'voting:community_edit' community.id %}" class="btn btn-outline btn-sm">⚙ Einstellungen</a>
+        {% endif %}
     </div>
 </div>
 
@@ -32,7 +33,7 @@
                 <th>Beschreibung</th>
                 <th>Eigentümer</th>
                 <th style="text-align:right;">Wertquote (‰)</th>
-                <th></th>
+                {% if is_admin %}<th></th>{% endif %}
             </tr>
         </thead>
         <tbody>
@@ -41,17 +42,32 @@
                 <td><strong>{{ unit.unit_number }}</strong></td>
                 <td style="color:var(--text-muted);">{{ unit.description|default:"–" }}</td>
                 <td>
-                    {{ unit.owner.get_full_name|default:unit.owner.username }}
-                    <div style="font-size:0.75rem;color:var(--text-muted);">{{ unit.owner.username }}</div>
+                    {% if unit.owner %}
+                        {{ unit.owner.get_full_name|default:unit.owner.username }}
+                        <div style="font-size:0.75rem;color:var(--text-muted);">{{ unit.owner.username }}</div>
+                    {% else %}
+                        <span class="badge badge-pending">⏳ Einladung ausstehend</span>
+                    {% endif %}
                 </td>
                 <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600;">{{ unit.quota }}</td>
+                {% if is_admin %}
                 <td style="text-align:right;">
-                    <form method="post" action="{% url 'voting:unit_delete' community.id unit.id %}"
+                    {% if not unit.owner %}
+                    <a href="{% url 'voting:invite_manage' community.id %}?unit={{ unit.id }}"
+                       class="btn btn-outline btn-sm"
+                       style="font-size:0.75rem;padding:0.25rem 0.6rem;margin-right:0.35rem;">
+                        ✉ Einladen
+                    </a>
+                    {% endif %}
+                    <form method="post"
+                          action="{% url 'voting:unit_delete' community.id unit.id %}"
+                          style="display:inline;"
                           onsubmit="return confirm('Einheit {{ unit.unit_number }} wirklich löschen?')">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
                     </form>
                 </td>
+                {% endif %}
             </tr>
         {% endfor %}
         </tbody>
@@ -61,7 +77,7 @@
                     {{ units|length }} Einheit{% if units|length != 1 %}en{% endif %}
                 </td>
                 <td style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums;">{{ total_quota }}</td>
-                <td></td>
+                {% if is_admin %}<td></td>{% endif %}
             </tr>
         </tfoot>
     </table>
@@ -83,45 +99,60 @@
 </div>
 {% endif %}
 
-<!-- Neue Einheit -->
+{% if is_admin %}
+<!-- ── Neue Einheit ──────────────────────────────────────────────────────── -->
 <div class="card mt-3" style="padding:1.75rem;">
     <div class="section-label">Neue Einheit hinzufügen</div>
     <form method="post">
         {% csrf_token %}
         <div style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:1rem;margin-bottom:1rem;">
             <div class="form-group" style="margin:0;">
-                <label for="id_unit_number">Einheit *</label>
+                <label for="id_unit_number">Einheitsnummer *</label>
                 <input type="text" name="unit_number" id="id_unit_number" class="form-input"
-                       placeholder="z.B. EG links" required value="{{ form.unit_number.value|default:'' }}">
-                {% if form.unit_number.errors %}<div class="form-error">{{ form.unit_number.errors.0 }}</div>{% endif %}
+                       placeholder="z.B. EG links" required
+                       value="{{ form.unit_number.value|default:'' }}">
+                {% if form.unit_number.errors %}
+                    <div class="form-error">{{ form.unit_number.errors.0 }}</div>
+                {% endif %}
             </div>
             <div class="form-group" style="margin:0;">
                 <label for="id_description">Beschreibung</label>
                 <input type="text" name="description" id="id_description" class="form-input"
-                       placeholder="z.B. 3.5-Zimmer-Wohnung" value="{{ form.description.value|default:'' }}">
+                       placeholder="z.B. 3.5-Zimmer-Wohnung (optional)"
+                       value="{{ form.description.value|default:'' }}">
             </div>
             <div class="form-group" style="margin:0;">
                 <label for="id_quota">Wertquote (‰) *</label>
                 <input type="number" name="quota" id="id_quota" class="form-input"
-                       placeholder="250.0" step="0.1" min="0.1" required value="{{ form.quota.value|default:'' }}">
-                {% if form.quota.errors %}<div class="form-error">{{ form.quota.errors.0 }}</div>{% endif %}
+                       placeholder="250.0" step="0.1" min="0.1" required
+                       value="{{ form.quota.value|default:'' }}">
+                {% if form.quota.errors %}
+                    <div class="form-error">{{ form.quota.errors.0 }}</div>
+                {% endif %}
             </div>
         </div>
+
         <div class="form-group">
-            <label for="id_owner">Eigentümer *</label>
-            <select name="owner" id="id_owner" class="form-select" required>
-                <option value="">— Benutzer wählen —</option>
+            <label for="id_owner">Eigentümer <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+            <select name="owner" id="id_owner" class="form-select">
+                <option value="">— noch kein Eigentümer (Einladung ausstehend) —</option>
                 {% for u in form.owner.field.queryset %}
-                <option value="{{ u.id }}"{% if form.owner.value == u.id|stringformat:"s" %} selected{% endif %}>
+                <option value="{{ u.id }}"
+                    {% if form.owner.value == u.id|stringformat:"s" %}selected{% endif %}>
                     {% if u.get_full_name %}{{ u.get_full_name }} ({{ u.username }}){% else %}{{ u.username }}{% endif %}
                 </option>
                 {% endfor %}
             </select>
-            {% if form.owner.errors %}<div class="form-error">{{ form.owner.errors.0 }}</div>{% endif %}
-            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.4rem;">
-                Benutzer werden im <a href="{% url 'admin:auth_user_changelist' %}" style="color:var(--accent);font-weight:500;">Admin-Bereich</a> verwaltet.
+            {% if form.owner.errors %}
+                <div class="form-error">{{ form.owner.errors.0 }}</div>
+            {% endif %}
+            <div class="help-text" style="margin-top:0.4rem;">
+                Leer lassen und danach unter
+                <a href="{% url 'voting:invite_manage' community.id %}" style="color:var(--accent);font-weight:500;">Einladungen</a>
+                einen Registrierungslink versenden.
             </div>
         </div>
+
         <div class="flex gap-1">
             <button type="submit" class="btn btn-primary">Einheit hinzufügen</button>
             <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline">Fertig</a>
@@ -129,31 +160,30 @@
     </form>
 </div>
 
-<!-- CSV Import / Export -->
-{% if is_admin %}
+<!-- ── CSV Import / Export ──────────────────────────────────────────────── -->
 <div class="card mt-2" style="padding:1.75rem;">
     <div class="section-label">Import / Export</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
 
-        <!-- Import -->
         <div>
             <div style="font-weight:600;font-size:0.875rem;margin-bottom:0.5rem;">📥 CSV importieren</div>
             <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.5;">
                 Spalten: <code>unit_number; description; quota; owner_username</code><br>
+                <code>owner_username</code> ist optional — Einheit wird ohne Eigentümer angelegt.<br>
                 Bestehende Einheiten werden aktualisiert (anhand Einheitsnummer).
             </div>
             <form method="post" action="{% url 'voting:unit_import' community.id %}" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div style="display:flex;gap:0.75rem;align-items:end;">
                     <div style="flex:1;">
-                        <input type="file" name="csv_file" class="form-input" style="font-size:0.85rem;" accept=".csv" required>
+                        <input type="file" name="csv_file" class="form-input"
+                               style="font-size:0.85rem;" accept=".csv" required>
                     </div>
                     <button type="submit" class="btn btn-outline btn-sm" style="flex-shrink:0;">Importieren</button>
                 </div>
             </form>
         </div>
 
-        <!-- Export -->
         <div>
             <div style="font-weight:600;font-size:0.875rem;margin-bottom:0.5rem;">📤 CSV exportieren</div>
             <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.5;">
@@ -164,13 +194,31 @@
     </div>
 </div>
 
-<!-- Danger zone -->
+<!-- ── Einladungen Schnellzugang ────────────────────────────────────────── -->
+<div class="card mt-2" style="padding:1.25rem;background:var(--accent-light);border-color:var(--accent-border);">
+    <div class="flex-between items-center">
+        <div>
+            <div style="font-weight:600;font-size:0.875rem;color:var(--accent);">✉ Eigentümer einladen</div>
+            <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.2rem;">
+                Erstelle Einladungslinks damit sich Eigentümer selbst registrieren können.
+                Jeder Link ist einmalig und auf diese Gemeinschaft beschränkt.
+            </div>
+        </div>
+        <a href="{% url 'voting:invite_manage' community.id %}" class="btn btn-primary btn-sm" style="flex-shrink:0;margin-left:1rem;">
+            Einladungen verwalten →
+        </a>
+    </div>
+</div>
+
+<!-- ── Danger zone ──────────────────────────────────────────────────────── -->
 <div class="card mt-2" style="padding:1.75rem;border-color:var(--red-border);">
     <div class="section-label" style="color:var(--red);">Gefahrenzone</div>
     <div class="flex-between items-center">
         <div>
             <div style="font-weight:600;font-size:0.875rem;">Gemeinschaft löschen</div>
-            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">Löscht alle Einheiten, Anträge und Abstimmungsdaten dauerhaft.</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">
+                Löscht alle Einheiten, Anträge und Abstimmungsdaten dauerhaft.
+            </div>
         </div>
         <a href="{% url 'voting:community_delete' community.id %}" class="btn btn-danger btn-sm">Löschen</a>
     </div>

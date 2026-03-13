@@ -1,17 +1,21 @@
 from django.contrib import admin
-from .models import Community, CommunityMembership, Unit, Proposal, Vote, ProposalDocument, Proxy
+
+from .models import (
+    Community, CommunityMembership, InviteToken,
+    Proposal, ProposalDocument, Proxy, Unit, Vote,
+)
 
 
 @admin.register(Community)
 class CommunityAdmin(admin.ModelAdmin):
-    list_display = ['name', 'address', 'quorum', 'created_by', 'created_at']
+    list_display  = ['name', 'address', 'quorum', 'created_by', 'created_at']
     search_fields = ['name', 'address']
 
 
 @admin.register(CommunityMembership)
 class CommunityMembershipAdmin(admin.ModelAdmin):
-    list_display = ['community', 'user', 'role', 'added_by', 'added_at']
-    list_filter  = ['community', 'role']
+    list_display  = ['community', 'user', 'role', 'added_by', 'added_at']
+    list_filter   = ['community', 'role']
     search_fields = ['user__username', 'user__last_name', 'community__name']
 
 
@@ -62,3 +66,18 @@ class ProposalDocumentAdmin(admin.ModelAdmin):
 class ProxyAdmin(admin.ModelAdmin):
     list_display = ['unit', 'proposal', 'delegate', 'granted_by', 'granted_at']
     list_filter  = ['proposal']
+
+
+@admin.register(InviteToken)
+class InviteTokenAdmin(admin.ModelAdmin):
+    list_display  = [
+        'community', 'role', 'unit', 'email',
+        'status_display', 'created_by', 'created_at', 'expires_at',
+    ]
+    list_filter   = ['community', 'role', 'is_active']
+    search_fields = ['email', 'community__name', 'used_by__username']
+    readonly_fields = ['token', 'created_at', 'used_at', 'used_by']
+
+    @admin.display(description='Status')
+    def status_display(self, obj):
+        return obj.status_display
