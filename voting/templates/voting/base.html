@@ -160,6 +160,32 @@
             background: var(--red-light);
         }
 
+        /* Logout button styled identically to the old nav-danger link */
+        .nav-logout-form {
+            display: inline-flex;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-logout-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: 'Figtree', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--red);
+            padding: 0.4rem 0.9rem;
+            border-radius: var(--r-sm);
+            transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+            line-height: inherit;
+        }
+
+        .nav-logout-btn:hover {
+            background: var(--red-light);
+        }
+
         /* ═══════════════════════════════════════════════════════
            MAIN LAYOUT
         ═══════════════════════════════════════════════════════ */
@@ -242,12 +268,16 @@
             font-weight: 600;
             font-size: 0.95rem;
             color: var(--text);
-            margin-bottom: 0.2rem;
+            margin-bottom: 0.35rem;
         }
 
         .card-meta {
             font-size: 0.8rem;
             color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
         }
 
         .card-link {
@@ -293,47 +323,15 @@
             white-space: nowrap;
         }
 
-        .badge-open {
-            background: var(--accent-light);
-            color: var(--accent);
-            border: 1px solid var(--accent-border);
-        }
-
-        .badge-draft {
-            background: var(--amber-light);
-            color: var(--amber);
-            border: 1px solid var(--amber-border);
-        }
-
-        .badge-closed {
-            background: var(--bg-subtle);
-            color: var(--text-muted);
-            border: 1px solid var(--border);
-        }
-
-        .badge-pending {
-            background: var(--amber-light);
-            color: var(--amber);
-            border: 1px solid var(--amber-border);
-        }
-
-        .badge-done {
-            background: var(--surface-alt);
-            color: var(--text-muted);
-            border: 1px solid var(--border);
-        }
-
-        .badge-danger {
-            background: var(--red-light);
-            color: var(--red);
-            border: 1px solid var(--red-border);
-        }
-
-        .badge-neutral {
-            background: var(--surface-alt);
-            color: var(--text-muted);
-            border: 1px solid var(--border);
-        }
+        .badge-open    { background: var(--accent-light); color: var(--accent);         border: 1px solid var(--accent-border); }
+        .badge-draft   { background: var(--amber-light);  color: var(--amber);           border: 1px solid var(--amber-border); }
+        .badge-closed  { background: var(--bg-subtle);    color: var(--text-muted);      border: 1px solid var(--border); }
+        .badge-pending { background: var(--amber-light);  color: var(--amber);           border: 1px solid var(--amber-border); }
+        .badge-done    { background: var(--surface-alt);  color: var(--text-muted);      border: 1px solid var(--border); }
+        .badge-danger  { background: var(--red-light);    color: var(--red);             border: 1px solid var(--red-border); }
+        .badge-neutral { background: var(--surface-alt);  color: var(--text-muted);      border: 1px solid var(--border); }
+        .badge-info    { background: var(--blue-light);   color: var(--blue);            border: 1px solid #C0D8F5; }
+        .badge-warning { background: var(--amber-light);  color: var(--amber);           border: 1px solid var(--amber-border); }
 
         /* ═══════════════════════════════════════════════════════
            BUTTONS
@@ -426,62 +424,40 @@
             border-radius: var(--r-md);
             font-family: 'Figtree', sans-serif;
             font-size: 0.9rem;
-            background: var(--surface);
             color: var(--text);
+            background: var(--surface);
             transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
             appearance: none;
-            -webkit-appearance: none;
-        }
-
-        .form-input:hover,
-        .form-textarea:hover,
-        .form-select:hover {
-            border-color: var(--border-strong);
         }
 
         .form-input:focus,
         .form-textarea:focus,
         .form-select:focus {
             outline: none;
-            border-color: var(--accent-mid);
-            box-shadow: 0 0 0 3px rgba(35,110,64,0.12);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(27,94,53,0.12);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+            line-height: 1.6;
         }
 
         .form-select {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%237C746A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237C746A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 0.85rem center;
-            padding-right: 2.5rem;
-            cursor: pointer;
-        }
-
-        .form-hint {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-top: 0.5rem;
-            padding: 0.6rem 0.85rem;
-            background: var(--surface-alt);
-            border-radius: var(--r-sm);
-            border-left: 3px solid var(--border-mid);
-            line-height: 1.5;
-        }
-
-        .form-error {
-            font-size: 0.8rem;
-            color: var(--red);
-            margin-top: 0.3rem;
+            padding-right: 2.25rem;
         }
 
         /* ═══════════════════════════════════════════════════════
-           MESSAGES / ALERTS
+           FLASH MESSAGES
         ═══════════════════════════════════════════════════════ */
-        .messages { margin-bottom: 1.75rem; }
+        .messages { margin-bottom: 1.5rem; }
 
         .message {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.6rem;
-            padding: 0.85rem 1.1rem;
+            padding: 0.8rem 1.1rem;
             border-radius: var(--r-md);
             font-size: 0.875rem;
             font-weight: 500;
@@ -489,29 +465,10 @@
             border: 1px solid transparent;
         }
 
-        .message-success {
-            background: var(--accent-light);
-            color: var(--accent);
-            border-color: var(--accent-border);
-        }
-
-        .message-error {
-            background: var(--red-light);
-            color: var(--red);
-            border-color: var(--red-border);
-        }
-
-        .message-info {
-            background: var(--blue-light);
-            color: var(--blue);
-            border-color: #B8D0F0;
-        }
-
-        .message-warning {
-            background: var(--amber-light);
-            color: var(--amber);
-            border-color: var(--amber-border);
-        }
+        .message-success { background: var(--accent-light); color: var(--accent);  border-color: var(--accent-border); }
+        .message-error   { background: var(--red-light);    color: var(--red);      border-color: var(--red-border); }
+        .message-warning { background: var(--amber-light);  color: var(--amber);    border-color: var(--amber-border); }
+        .message-info    { background: var(--blue-light);   color: var(--blue);     border-color: #B8D0F0; }
 
         /* ═══════════════════════════════════════════════════════
            PROGRESS BARS
@@ -698,15 +655,8 @@
             border-radius: var(--r-pill);
         }
 
-        .tag-ok {
-            background: rgba(27,94,53,0.15);
-            color: var(--accent);
-        }
-
-        .tag-fail {
-            background: rgba(181,48,42,0.12);
-            color: var(--red);
-        }
+        .tag-ok   { background: rgba(27,94,53,0.15);  color: var(--accent); }
+        .tag-fail { background: rgba(181,48,42,0.12); color: var(--red); }
 
         /* ═══════════════════════════════════════════════════════
            TABLES
@@ -750,7 +700,7 @@
         }
 
         /* ═══════════════════════════════════════════════════════
-           QUORUM / INFO BANNER
+           INFO BANNERS
         ═══════════════════════════════════════════════════════ */
         .info-banner {
             display: flex;
@@ -763,20 +713,13 @@
             margin-bottom: 1rem;
         }
 
-        .info-banner-warning {
-            background: var(--amber-light);
-            border: 1px solid var(--amber-border);
-            color: var(--amber);
-        }
-
-        .info-banner-neutral {
-            background: var(--surface-alt);
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-        }
+        .info-banner-success { background: var(--accent-light); border: 1px solid var(--accent-border); color: var(--accent); }
+        .info-banner-error   { background: var(--red-light);    border: 1px solid var(--red-border);    color: var(--red); }
+        .info-banner-warning { background: var(--amber-light);  border: 1px solid var(--amber-border);  color: var(--amber); }
+        .info-banner-neutral { background: var(--surface-alt);  border: 1px solid var(--border);        color: var(--text-muted); }
 
         /* ═══════════════════════════════════════════════════════
-           STAT / METRIC BOXES (Proposal detail info-grid)
+           STAT / METRIC BOXES
         ═══════════════════════════════════════════════════════ */
         .stat-grid {
             display: grid;
@@ -830,9 +773,7 @@
             margin-bottom: 0.4rem;
         }
 
-        .empty-state-sub {
-            font-size: 0.875rem;
-        }
+        .empty-state-sub { font-size: 0.875rem; }
 
         /* ═══════════════════════════════════════════════════════
            FLEX HELPERS
@@ -862,9 +803,7 @@
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        main > * {
-            animation: fadeUp 0.35s var(--ease) both;
-        }
+        main > * { animation: fadeUp 0.35s var(--ease) both; }
 
         main > *:nth-child(1) { animation-delay: 0ms; }
         main > *:nth-child(2) { animation-delay: 40ms; }
@@ -899,7 +838,11 @@
                 {% if user.is_staff %}
                     <a href="{% url 'admin:index' %}">Admin</a>
                 {% endif %}
-                <a href="{% url 'logout' %}" class="nav-danger">Abmelden</a>
+                {# FIX: Django 5+ benötigt POST für Logout — kein GET-Link mehr #}
+                <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
+                    {% csrf_token %}
+                    <button type="submit" class="nav-logout-btn">Abmelden</button>
+                </form>
             {% else %}
                 <a href="{% url 'login' %}">Anmelden</a>
             {% endif %}
