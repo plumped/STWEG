@@ -34,13 +34,13 @@ urlpatterns = [
          views.unit_export_csv, name='unit_export'),
 
     # ── Einladungen (Invite System) ───────────────────────────────────────
-    # Admin: manage & create invite tokens
     path('community/<int:community_id>/einladungen/',
          views.invite_manage, name='invite_manage'),
-    # Admin: revoke a specific token
     path('community/<int:community_id>/einladungen/<int:token_pk>/widerrufen/',
          views.invite_revoke, name='invite_revoke'),
-    # Public: self-registration via token (NO login required)
+    # NEU: Abgelaufenen/ungenutzten Token mit gleicher Konfiguration erneuern
+    path('community/<int:community_id>/einladungen/<int:token_pk>/erneuern/',
+         views.invite_renew, name='invite_renew'),
     path('einladen/<uuid:token>/',
          views.invite_register, name='invite_register'),
 
@@ -64,18 +64,18 @@ urlpatterns = [
     path('antrag/<int:pk>/erinnerung/',
          views.send_reminders_now, name='send_reminders_now'),
 
-    # ── Stimmen ───────────────────────────────────────────────────────────
-    path('antrag/<int:proposal_pk>/stimme/<int:vote_pk>/zuruecksetzen/',
-         views.vote_reset, name='vote_reset'),
-
     # ── Dokumente ─────────────────────────────────────────────────────────
-    path('antrag/<int:proposal_pk>/dokument/hochladen/',
+    path('antrag/<int:proposal_pk>/dokument/hinzufuegen/',
          views.proposal_document_add, name='document_add'),
     path('antrag/<int:proposal_pk>/dokument/<int:doc_pk>/loeschen/',
          views.proposal_document_delete, name='document_delete'),
 
+    # ── Stimmen ───────────────────────────────────────────────────────────
+    path('antrag/<int:proposal_pk>/stimme/<int:vote_pk>/zuruecksetzen/',
+         views.vote_reset, name='vote_reset'),
+
     # ── Vollmachten ───────────────────────────────────────────────────────
-    path('antrag/<int:proposal_pk>/vollmacht/erteilen/',
+    path('antrag/<int:proposal_pk>/vollmacht/',
          views.proxy_grant, name='proxy_grant'),
     path('antrag/<int:proposal_pk>/vollmacht/<int:proxy_pk>/widerrufen/',
          views.proxy_revoke, name='proxy_revoke'),

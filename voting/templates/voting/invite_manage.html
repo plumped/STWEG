@@ -2,32 +2,30 @@
 {% block title %}Einladungen – {{ community.name }}{% endblock %}
 
 {% block content %}
+
+<!-- Breadcrumb -->
+<nav class="breadcrumb">
+    <a href="{% url 'voting:dashboard' %}">Dashboard</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="{% url 'voting:proposal_list' community.id %}">{{ community.name }}</a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Einladungen</span>
+</nav>
+
 <div class="page-header flex-between">
     <div>
         <h1>Einladungen</h1>
         <p>{{ community.name }}</p>
     </div>
-    <a href="{% url 'voting:unit_manage' community.id %}" class="btn btn-outline">← Einheiten</a>
+    <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline btn-sm">← Zurück</a>
 </div>
 
-<!-- ── How it works ─────────────────────────────────────────────────────── -->
-<div class="card card--accent card--mb-lg">
-    <div class="invite-info-title">🔐 So funktioniert das Einladungssystem</div>
-    <div class="invite-info-body">
-        <strong>1.</strong> Erstelle einen Einladungslink für jeden neuen Eigentümer (oder Verwalter/Beirat).<br>
-        <strong>2.</strong> Weise optional direkt eine unbesetzte Einheit zu.<br>
-        <strong>3.</strong> Schicke den Link per E-Mail an die Person.<br>
-        <strong>4.</strong> Die Person registriert sich — sie erhält <em>ausschliesslich Zugang zu dieser Gemeinschaft</em>.<br>
-        <strong>5.</strong> Der Link ist einmalig verwendbar und wird danach automatisch ungültig.
-    </div>
-</div>
-
-<!-- ── Create new invite ─────────────────────────────────────────────────── -->
-<div class="card card--padded card--mb-lg">
+<!-- ── Neuen Token erstellen ──────────────────────────────────────────────── -->
+<div class="card">
     <div class="section-label">Neuen Einladungslink erstellen</div>
-    <form method="post">
+    <form method="post" action="">
         {% csrf_token %}
-        <div class="grid-2 mb-2">
+        <div class="grid-2 mb-md">
             <div class="form-group form-group--flush">
                 <label>{{ form.role.label }}</label>
                 {{ form.role }}
@@ -35,34 +33,49 @@
             <div class="form-group form-group--flush">
                 <label>{{ form.unit.label }}</label>
                 {{ form.unit }}
-                {% if form.unit.help_text %}
-                <div class="help-text">{{ form.unit.help_text }}</div>
-                {% endif %}
+                <span class="form-hint">Nur bei Rolle «Eigentümer» relevant</span>
             </div>
         </div>
-        <div class="grid-2 mb-2">
+        <div class="grid-2 mb-md">
             <div class="form-group form-group--flush">
                 <label>{{ form.email.label }}</label>
                 {{ form.email }}
+                <span class="form-hint">Wird im Registrierungsformular vorausgefüllt</span>
             </div>
             <div class="form-group form-group--flush">
                 <label>{{ form.expires_at.label }}</label>
                 {{ form.expires_at }}
+                <span class="form-hint">Leer = kein Ablaufdatum</span>
             </div>
         </div>
-        <button type="submit" class="btn btn-primary">+ Einladungslink erstellen</button>
+        <button type="submit" class="btn btn-primary">Einladungslink erstellen</button>
     </form>
 </div>
 
-<!-- ── Existing tokens ───────────────────────────────────────────────────── -->
-<div class="section-label">Bestehende Einladungen</div>
+<!-- ── Bestehende Token ───────────────────────────────────────────────────── -->
+<div class="flex-between items-center mb-sm mt-lg">
+    <div class="section-label" style="margin-bottom:0;">
+        Einladungen
+        <span class="badge badge-open ml-sm">{{ active_count }} aktiv</span>
+        {% if inactive_count %}
+        <span class="badge badge-closed ml-sm">{{ inactive_count }} inaktiv</span>
+        {% endif %}
+    </div>
+    <div>
+        {% if show_all %}
+        <a href="?" class="btn btn-outline btn-sm">Nur aktive anzeigen</a>
+        {% else %}
+        <a href="?show_all=1" class="btn btn-outline btn-sm">Alle anzeigen inkl. abgelaufen</a>
+        {% endif %}
+    </div>
+</div>
 
 {% if tokens %}
 <div class="table-card">
     <table>
         <thead>
             <tr>
-                <th>Link / Token</th>
+                <th>Einladungslink</th>
                 <th>Rolle</th>
                 <th>Einheit</th>
                 <th>E-Mail</th>
@@ -75,58 +88,136 @@
         <tbody>
         {% for token in tokens %}
         <tr>
+            <!-- Link / Copy Button -->
             <td>
-                {% if not token.used_by and not token.is_expired %}
-                <code>{{ request.scheme }}://{{ request.get_host }}{% url 'voting:invite_register' token.token %}</code>
+                {% if not token.used_by and not token.is_expired and token.is_active %}
+                {% with link_url=request.scheme|add:"://"|add:request.get_host|add:"/einladen/"|add:token.token|stringformat:"s"|add:"/" %}
+                <div class="flex items-center gap-sm">
+                    <code class="text-xs" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;"
+                          title="{{ link_url }}">
+                        …/{{ token.token|stringformat:"s"|slice:"-8:" }}
+                    </code>
+                    <button class="btn-copy"
+                            data-url="{{ link_url }}"
+                            onclick="copyInviteLink(this)"
+                            title="Link in Zwischenablage kopieren">
+                        📋 Kopieren
+                    </button>
+                </div>
+                {% endwith %}
                 {% else %}
                 <span class="text-muted text-xs">—</span>
                 {% endif %}
             </td>
+
+            <!-- Rolle -->
             <td>
                 {% if token.role == 'owner' %}
-                    <span class="badge badge-closed">Eigentümer</span>
+                    <span class="badge badge--owner">Eigentümer</span>
                 {% elif token.role == 'manager' %}
                     <span class="badge badge--manager">Verwalter</span>
                 {% else %}
                     <span class="badge badge-pending">Beirat</span>
                 {% endif %}
             </td>
+
             <td class="td-muted">{{ token.unit.unit_number|default:"—" }}</td>
             <td class="td-muted td-sm">{{ token.email|default:"—" }}</td>
             <td class="td-muted td-xs">{{ token.created_at|date:"d.m.Y" }}</td>
             <td class="td-muted td-xs">{{ token.expires_at|date:"d.m.Y"|default:"—" }}</td>
+
+            <!-- Status -->
             <td>
                 {% if token.used_by %}
                     <span class="badge badge-done">✓ Verwendet</span>
                     <div class="text-xs text-muted mt-xs">{{ token.used_by.get_full_name|default:token.used_by.username }}</div>
+                {% elif not token.is_active %}
+                    <span class="badge badge-closed">Widerrufen</span>
                 {% elif token.is_expired %}
                     <span class="badge badge-closed">Abgelaufen</span>
                 {% else %}
                     <span class="badge badge-open">Aktiv</span>
                 {% endif %}
             </td>
+
+            <!-- Aktionen -->
             <td class="td-right">
-                {% if not token.used_by %}
-                <form method="post" action="{% url 'voting:invite_revoke' community.id token.pk %}"
-                      onsubmit="return confirm('Einladungslink widerrufen?')">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger btn-sm">Widerrufen</button>
-                </form>
-                {% endif %}
+                <div class="flex gap-sm justify-end flex-wrap">
+                    {% if not token.used_by and token.is_active and not token.is_expired %}
+                    <!-- Widerrufen -->
+                    <form method="post"
+                          action="{% url 'voting:invite_revoke' community.id token.pk %}"
+                          onsubmit="return confirm('Einladungslink widerrufen?')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline btn-sm">Widerrufen</button>
+                    </form>
+                    {% endif %}
+
+                    {% if not token.used_by %}
+                    <!-- Erneuern (abgelaufen, widerrufen oder nie benutzt) -->
+                    <form method="post" action="{% url 'voting:invite_renew' community.id token.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline btn-sm" title="Neuen Link mit gleicher Konfiguration erstellen">
+                            🔄 Erneuern
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
             </td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
 </div>
+
 {% else %}
 <div class="card">
     <div class="empty-state">
-        <span class="empty-state-icon">✉</span>
-        <div class="empty-state-title">Noch keine Einladungen erstellt</div>
-        <div class="empty-state-sub">Erstelle oben den ersten Einladungslink.</div>
+        <span class="empty-state-icon">🔗</span>
+        <div class="empty-state-title">Keine Einladungen</div>
+        <div class="empty-state-sub">
+            {% if not show_all %}
+            Keine aktiven Einladungslinks.
+            <a href="?show_all=1" style="color:var(--accent);">Alle anzeigen</a>
+            {% else %}
+            Noch keine Einladungen erstellt.
+            {% endif %}
+        </div>
     </div>
 </div>
 {% endif %}
 
+<script>
+function copyInviteLink(btn) {
+    const url = btn.dataset.url;
+    if (!url) return;
+
+    navigator.clipboard.writeText(url).then(function () {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✓ Kopiert!';
+        btn.classList.add('copied');
+        setTimeout(function () {
+            btn.innerHTML = orig;
+            btn.classList.remove('copied');
+        }, 2500);
+    }).catch(function () {
+        /* Fallback für ältere Browser */
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.innerHTML = '✓ Kopiert!';
+        btn.classList.add('copied');
+        setTimeout(function () {
+            btn.innerHTML = '📋 Kopieren';
+            btn.classList.remove('copied');
+        }, 2500);
+    });
+}
+</script>
 {% endblock %}

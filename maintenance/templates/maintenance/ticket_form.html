@@ -2,97 +2,138 @@
 {% block title %}{% if is_edit %}Ticket bearbeiten{% else %}Mangel melden{% endif %} – {{ community.name }}{% endblock %}
 
 {% block content %}
-{% if is_edit %}
-<a href="{% url 'maintenance:ticket_detail' ticket.pk %}" class="back-link">{{ ticket.title }}</a>
-{% else %}
-<a href="{% url 'maintenance:ticket_list' community.id %}" class="back-link">{{ community.name }} – Mängel</a>
-{% endif %}
+
+<!-- Breadcrumb -->
+<nav class="breadcrumb">
+    <a href="{% url 'voting:dashboard' %}">Dashboard</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="{% url 'maintenance:ticket_list' community.id %}">{{ community.name }} – Mängel</a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">{% if is_edit %}Bearbeiten{% else %}Neuer Mangel{% endif %}</span>
+</nav>
 
 <div class="page-header">
-  <h1>{% if is_edit %}Ticket bearbeiten{% else %}Mangel melden{% endif %}</h1>
-  <p>{{ community.name }}</p>
+    <h1>{% if is_edit %}Ticket bearbeiten{% else %}Mangel melden{% endif %}</h1>
+    <p>{{ community.name }}</p>
 </div>
 
-<div class="card card--padded" style="max-width:640px;">
-  <form method="post">
-    {% csrf_token %}
+<div class="card" style="max-width: 600px;">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
 
-    <div class="form-group">
-      <label for="id_title">Titel *</label>
-      {{ form.title }}
-      {% if form.title.errors %}<div class="form-error">{{ form.title.errors.0 }}</div>{% endif %}
-    </div>
+        {% if form.non_field_errors %}
+        <div class="form-errors-banner mb-md">
+            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+        </div>
+        {% endif %}
 
-    <div class="form-group">
-      <label for="id_description">Beschreibung *</label>
-      {{ form.description }}
-      <div class="form-hint">Was ist genau das Problem? Wo befindet es sich? Je genauer, desto besser.</div>
-      {% if form.description.errors %}<div class="form-error">{{ form.description.errors.0 }}</div>{% endif %}
-    </div>
+        <!-- Titel -->
+        <div class="form-group">
+            <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+            {{ form.title }}
+            {% if form.title.errors %}
+                {% for e in form.title.errors %}
+                <span class="form-error">{{ e }}</span>
+                {% endfor %}
+            {% endif %}
+        </div>
 
-    <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-      <div class="form-group">
-        <label for="id_area">Bereich *</label>
-        {{ form.area }}
-        {% if form.area.errors %}<div class="form-error">{{ form.area.errors.0 }}</div>{% endif %}
-      </div>
-      <div class="form-group">
-        <label for="id_priority">Dringlichkeit *</label>
-        {{ form.priority }}
-        {% if form.priority.errors %}<div class="form-error">{{ form.priority.errors.0 }}</div>{% endif %}
-      </div>
-    </div>
+        <!-- Bereich -->
+        <div class="form-group">
+            <label for="{{ form.area.id_for_label }}">{{ form.area.label }}</label>
+            {{ form.area }}
+            {% if form.area.errors %}
+                {% for e in form.area.errors %}
+                <span class="form-error">{{ e }}</span>
+                {% endfor %}
+            {% endif %}
+        </div>
 
-    <div class="form-group">
-      <label for="id_scope">Art des Mangels *</label>
-      {{ form.scope }}
-      <div class="form-hint">Gemeinschaftlich = betrifft alle (Dach, Treppenhaus usw.) · Privat = nur deine Einheit</div>
-      {% if form.scope.errors %}<div class="form-error">{{ form.scope.errors.0 }}</div>{% endif %}
-    </div>
+        <!-- Sichtbarkeit (Scope) — mit erklärendem Hilfetext -->
+        {% if form.scope %}
+        <div class="form-group">
+            <label for="{{ form.scope.id_for_label }}">{{ form.scope.label }}</label>
+            {{ form.scope }}
+            <span class="form-hint">
+                <strong>Gemeinschaft:</strong> Alle Mitglieder der Gemeinschaft können dieses Ticket einsehen.<br>
+                <strong>Privat:</strong> Nur Sie und der Verwalter sehen dieses Ticket (z.B. bei Schäden in Ihrer Einheit).
+            </span>
+            {% if form.scope.errors %}
+                {% for e in form.scope.errors %}
+                <span class="form-error">{{ e }}</span>
+                {% endfor %}
+            {% endif %}
+        </div>
+        {% endif %}
 
-    <div class="form-group">
-      <label for="id_unit">{{ form.unit.label }}</label>
-      {{ form.unit }}
-      <div class="form-hint">Nur ausfüllen wenn es sich um einen privaten Einheitsmangel handelt.</div>
-      {% if form.unit.errors %}<div class="form-error">{{ form.unit.errors.0 }}</div>{% endif %}
-    </div>
+        <!-- Beschreibung -->
+        <div class="form-group">
+            <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+            {{ form.description }}
+            {% if form.description.errors %}
+                {% for e in form.description.errors %}
+                <span class="form-error">{{ e }}</span>
+                {% endfor %}
+            {% endif %}
+        </div>
 
-    <!-- Admin-only fields -->
-    {% if form.status %}
-    <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;">
-    <div class="section-label" style="margin-bottom:.75rem;">Verwaltung (nur für Verwalter)</div>
-    <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-      <div class="form-group">
-        <label for="id_status">Status</label>
-        {{ form.status }}
-      </div>
-      <div class="form-group">
-        <label for="id_offer_amount">Offertbetrag (CHF)</label>
-        {{ form.offer_amount }}
-      </div>
-    </div>
-    <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-      <div class="form-group">
-        <label for="id_assigned_to">Handwerker</label>
-        {{ form.assigned_to }}
-      </div>
-      <div class="form-group">
-        <label for="id_assignee_email">E-Mail Handwerker</label>
-        {{ form.assignee_email }}
-      </div>
-    </div>
-    {% endif %}
+        <!-- Unit (falls vorhanden) -->
+        {% if form.unit %}
+        <div class="form-group">
+            <label for="{{ form.unit.id_for_label }}">{{ form.unit.label }}</label>
+            {{ form.unit }}
+            <span class="form-hint">Betroffene Einheit (optional)</span>
+        </div>
+        {% endif %}
 
-    <div class="flex gap-1 mt-2">
-      <button type="submit" class="btn btn-primary">
-        {% if is_edit %}Änderungen speichern{% else %}Mangel melden{% endif %}
-      </button>
-      {% if is_edit %}
-      <a href="{% url 'maintenance:ticket_detail' ticket.pk %}" class="btn btn-outline">Abbrechen</a>
-      {% else %}
-      <a href="{% url 'maintenance:ticket_list' community.id %}" class="btn btn-outline">Abbrechen</a>
-      {% endif %}
-    </div>
-  </form>
+        <!-- Priorität / Dringend -->
+        {% if form.priority %}
+        <div class="form-group">
+            <label for="{{ form.priority.id_for_label }}">{{ form.priority.label }}</label>
+            {{ form.priority }}
+        </div>
+        {% endif %}
+
+        <!-- Admin-only Felder -->
+        {% if form.status %}
+        <div class="form-group">
+            <label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+            {{ form.status }}
+        </div>
+        {% endif %}
+
+        {% if form.assigned_to %}
+        <div class="form-group">
+            <label for="{{ form.assigned_to.id_for_label }}">{{ form.assigned_to.label }}</label>
+            {{ form.assigned_to }}
+            <span class="form-hint">Name der beauftragten Firma oder Person</span>
+        </div>
+        {% endif %}
+
+        {% if form.assignee_email %}
+        <div class="form-group">
+            <label for="{{ form.assignee_email.id_for_label }}">{{ form.assignee_email.label }}</label>
+            {{ form.assignee_email }}
+            <span class="form-hint">Optionale E-Mail für automatische Benachrichtigung</span>
+        </div>
+        {% endif %}
+
+        {% if form.offer_amount %}
+        <div class="form-group">
+            <label for="{{ form.offer_amount.id_for_label }}">{{ form.offer_amount.label }}</label>
+            {{ form.offer_amount }}
+            <span class="form-hint">CHF-Betrag aus der vorliegenden Offerte</span>
+        </div>
+        {% endif %}
+
+        <hr class="hr-subtle">
+
+        <div class="flex gap-sm">
+            <button type="submit" class="btn btn-primary">
+                {% if is_edit %}Änderungen speichern{% else %}Mangel melden{% endif %}
+            </button>
+            <a href="{% url 'maintenance:ticket_list' community.id %}" class="btn btn-outline">Abbrechen</a>
+        </div>
+    </form>
 </div>
 {% endblock %}

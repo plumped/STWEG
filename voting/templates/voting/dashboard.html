@@ -15,7 +15,7 @@
     {% endif %}
 </div>
 
-<!-- ── Ausstehende Anträge (nur für Verwalter sichtbar) ───────────────── -->
+<!-- ── Ausstehende Anträge (nur für Verwalter sichtbar) ──────────────────── -->
 {% if pending_drafts %}
 <div class="section-label">
     Ausstehende Anträge
@@ -45,7 +45,7 @@
 {% endfor %}
 {% endif %}
 
-<!-- ── Offene Abstimmungen ─────────────────────────────────────────────── -->
+<!-- ── Offene Abstimmungen ─────────────────────────────────────────────────── -->
 {% if open_proposals %}
 <div class="section-label {% if pending_drafts %}mt-lg{% endif %}">Offene Abstimmungen</div>
 
@@ -68,8 +68,18 @@
                 <div class="card-title">{{ proposal.title }}</div>
                 <div class="card-meta mt-xs">
                     {{ proposal.community.name }}
-                    {% if proposal.deadline %} · Frist: {{ proposal.deadline|date:"d.m.Y" }}{% endif %}
+                    {% if proposal.deadline %} · Frist: <strong>{{ proposal.deadline|date:"d.m.Y" }}</strong>{% endif %}
                 </div>
+                <!-- Fortschrittsbalken -->
+                {% if total > 0 %}
+                <div class="progress-bar mt-sm">
+                    {% with pct=voted|floatformat:0 %}
+                    <div class="progress-bar__fill {% if voted == total %}progress-bar__fill--complete{% elif voted > 0 %}progress-bar__fill--partial{% else %}progress-bar__fill--empty{% endif %}"
+                         style="width: {% if total > 0 %}{% widthratio voted total 100 %}{% else %}0{% endif %}%"></div>
+                    {% endwith %}
+                </div>
+                <div class="progress-label">{{ voted }} von {{ total }} Einheit{{ total|pluralize:"en" }} abgestimmt</div>
+                {% endif %}
             </div>
             <span class="chevron">›</span>
         </div>
@@ -80,17 +90,26 @@
 
 {% else %}
 {% if not pending_drafts %}
-<div class="card">
+<div class="card {% if pending_drafts %}mt-lg{% endif %}">
     <div class="empty-state">
         <span class="empty-state-icon">🗳</span>
         <div class="empty-state-title">Keine offenen Abstimmungen</div>
         <div class="empty-state-sub">Sobald eine Abstimmung geöffnet wird, erscheint sie hier.</div>
+        {% if communities %}
+        <div class="empty-state-action">
+            {% with community=communities|first %}
+            <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-outline btn-sm">
+                + Antrag einreichen
+            </a>
+            {% endwith %}
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endif %}
 {% endif %}
 
-<!-- ── Offene Mängel (nur für Verwalter sichtbar) ─────────────────────── -->
+<!-- ── Offene Mängel (nur für Verwalter sichtbar) ─────────────────────────── -->
 {% if open_tickets %}
 <div class="section-label mt-lg">
     Offene Mängel
@@ -111,7 +130,7 @@
                 </div>
                 <div class="card-title">{{ ticket.title }}</div>
                 <div class="card-meta mt-xs">
-                    Betrifft Gemeinschaft: {{ ticket.community.name }}
+                    {{ ticket.community.name }}
                     · {{ ticket.created_at|date:"d.m.Y" }}
                     {% if ticket.reported_by %} · gemeldet von {{ ticket.reported_by.get_full_name|default:ticket.reported_by.username }}{% endif %}
                 </div>
@@ -123,46 +142,43 @@
 {% endfor %}
 {% endif %}
 
-<!-- ── Gemeinschaften ──────────────────────────────────────────────────── -->
+<!-- ── Gemeinschaften ─────────────────────────────────────────────────────── -->
 {% if communities %}
-<div class="section-label mt-xl">Meine Gemeinschaften</div>
+<div class="section-label mt-lg">Meine Gemeinschaften</div>
 
 {% for community in communities %}
-{% with unassigned=unassigned_counts|get_item:community.id %}
-<div class="card card--compact card--mb-sm">
-    <div class="flex-between items-center">
-        <div class="flex-1">
-            <div class="flex items-center gap-sm flex-wrap mb-xs">
-                <span class="text-strong">{{ community.name }}</span>
-                {% if unassigned %}
-                <span class="badge badge-pending">
-                    ⏳ {{ unassigned }} unbesetzt{% if unassigned != 1 %}e Einheiten{% else %}e Einheit{% endif %}
-                </span>
-                {% endif %}
+<a href="{% url 'voting:proposal_list' community.id %}" class="card-link">
+    <div class="card card-interactive">
+        <div class="flex-between items-center">
+            <div class="flex-1">
+                <div class="flex items-center gap-xs mb-xs flex-wrap">
+                    {% if community.id in admin_community_ids %}
+                        <span class="badge badge--manager">Verwalter</span>
+                    {% else %}
+                        <span class="badge badge--owner">Eigentümer</span>
+                    {% endif %}
+                </div>
+                <div class="card-title">{{ community.name }}</div>
+                <div class="card-meta mt-xs">{{ community.address }}</div>
             </div>
-            <div class="card-meta">{{ community.address }}</div>
-        </div>
-        <div class="flex gap-1 flex-shrink-0 ml-md">
-            <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline btn-sm">Anträge</a>
-            <a href="{% url 'maintenance:ticket_list' community.id %}" class="btn btn-outline btn-sm">Mängelmanagement</a>
-            {% if community.id in admin_community_ids %}
-            <a href="{% url 'voting:unit_manage' community.id %}" class="btn btn-outline btn-sm">Einheiten</a>
-            {% endif %}
+            <span class="chevron">›</span>
         </div>
     </div>
-</div>
-{% endwith %}
+</a>
 {% endfor %}
 
 {% else %}
-<div class="card">
+<div class="card mt-lg">
     <div class="empty-state">
-        <span class="empty-state-icon">🏘</span>
+        <span class="empty-state-icon">🏢</span>
         <div class="empty-state-title">Noch keine Gemeinschaft</div>
-        <div class="empty-state-sub">Erstelle deine erste Gemeinschaft.</div>
-        <a href="{% url 'voting:community_create' %}" class="btn btn-primary empty-state-action">Gemeinschaft erstellen</a>
+        <div class="empty-state-sub">Erstellen Sie Ihre erste Stockwerkeigentümergemeinschaft.</div>
+        {% if user.is_staff %}
+        <div class="empty-state-action">
+            <a href="{% url 'voting:community_create' %}" class="btn btn-primary btn-sm">Gemeinschaft erstellen</a>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endif %}
-
 {% endblock %}

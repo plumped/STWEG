@@ -13,22 +13,72 @@
 </head>
 <body>
     <nav>
-        <a class="nav-brand" href="{% url 'voting:dashboard' %}">
-            <span class="nav-brand-logo">STWEG</span>
-            <span class="nav-brand-label">Abstimmungsportal</span>
-        </a>
-        <div class="nav-links">
+        <div class="nav-inner">
+            <a class="nav-brand" href="{% url 'voting:dashboard' %}">
+                <span class="nav-brand-logo">STWEG</span>
+                <span class="nav-brand-label">Abstimmungsportal</span>
+            </a>
+
             {% if user.is_authenticated %}
-                <a href="{% url 'voting:dashboard' %}">Übersicht</a>
+            <!-- Desktop nav links -->
+            <div class="nav-links nav-links--desktop">
+                <a href="{% url 'voting:dashboard' %}"
+                   class="{% if request.resolver_match.url_name == 'dashboard' %}nav-link--active{% endif %}">
+                    Übersicht
+                </a>
                 {% if user.is_staff %}
                     <a href="{% url 'admin:index' %}">Admin</a>
+                {% endif %}
+                {% if pending_count %}
+                    <span class="nav-badge" title="{{ pending_count }} Antrag/Anträge warten auf Freigabe">
+                        {{ pending_count }}
+                    </span>
                 {% endif %}
                 <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
                     {% csrf_token %}
                     <button type="submit" class="nav-logout-btn">Abmelden</button>
                 </form>
+            </div>
+
+            <!-- Mobile hamburger button -->
+            <button class="nav-hamburger" id="nav-hamburger" aria-label="Menü öffnen" aria-expanded="false">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+
+            <!-- Mobile overlay menu -->
+            <div class="nav-mobile-overlay" id="nav-mobile-overlay" aria-hidden="true">
+                <div class="nav-mobile-menu">
+                    <div class="nav-mobile-header">
+                        <span class="nav-brand-logo">STWEG</span>
+                        <button class="nav-mobile-close" id="nav-mobile-close" aria-label="Menü schliessen">✕</button>
+                    </div>
+                    <nav class="nav-mobile-links">
+                        <a href="{% url 'voting:dashboard' %}"
+                           class="nav-mobile-link {% if request.resolver_match.url_name == 'dashboard' %}nav-mobile-link--active{% endif %}">
+                            🗳 Übersicht
+                            {% if pending_count %}<span class="nav-badge">{{ pending_count }}</span>{% endif %}
+                        </a>
+                        {% if user.is_staff %}
+                        <a href="{% url 'admin:index' %}" class="nav-mobile-link">⚙ Admin</a>
+                        {% endif %}
+                        <form method="post" action="{% url 'logout' %}" style="margin-top:auto;">
+                            {% csrf_token %}
+                            <button type="submit" class="nav-mobile-link nav-mobile-logout">
+                                Abmelden
+                            </button>
+                        </form>
+                    </nav>
+                    <div class="nav-mobile-user">
+                        {{ user.get_full_name|default:user.username }}
+                    </div>
+                </div>
+            </div>
             {% else %}
-                <a href="{% url 'login' %}">Anmelden</a>
+                <div class="nav-links nav-links--desktop">
+                    <a href="{% url 'login' %}">Anmelden</a>
+                </div>
             {% endif %}
         </div>
     </nav>
@@ -44,5 +94,38 @@
 
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+    (function () {
+        const hamburger = document.getElementById('nav-hamburger');
+        const overlay   = document.getElementById('nav-mobile-overlay');
+        const closeBtn  = document.getElementById('nav-mobile-close');
+        if (!hamburger) return;
+
+        function openMenu() {
+            overlay.classList.add('open');
+            overlay.setAttribute('aria-hidden', 'false');
+            hamburger.setAttribute('aria-expanded', 'true');
+            hamburger.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeMenu() {
+            overlay.classList.remove('open');
+            overlay.setAttribute('aria-hidden', 'true');
+            hamburger.setAttribute('aria-expanded', 'false');
+            hamburger.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        hamburger.addEventListener('click', openMenu);
+        closeBtn.addEventListener('click', closeMenu);
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closeMenu();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeMenu();
+        });
+    })();
+    </script>
 </body>
 </html>

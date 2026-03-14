@@ -2,20 +2,29 @@
 {% block title %}{{ community.name }} – Anträge{% endblock %}
 
 {% block content %}
+
+<!-- Breadcrumb -->
+<nav class="breadcrumb">
+    <a href="{% url 'voting:dashboard' %}">Dashboard</a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">{{ community.name }}</span>
+</nav>
+
 <div class="page-header flex-between">
     <div>
-        <a href="{% url 'voting:dashboard' %}" class="back-link">Dashboard</a>
         <h1>{{ community.name }}</h1>
         <p>{{ community.address }}</p>
     </div>
-    <div class="flex gap-1">
+    <div class="flex gap-1 flex-wrap">
         {% if is_admin %}
         <a href="{% url 'voting:unit_manage' community.id %}" class="btn btn-outline btn-sm">Einheiten</a>
+        <a href="{% url 'voting:community_members' community.id %}" class="btn btn-outline btn-sm">Mitglieder</a>
         {% endif %}
         <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary">+ Antrag einreichen</a>
     </div>
 </div>
 
+<!-- Eigene Einheiten (für Eigentümer) -->
 {% if my_units and not is_admin %}
 <div class="card card--alt card--compact card--mb-lg">
     <div class="section-label mb-md">Meine Einheiten</div>
@@ -23,9 +32,7 @@
         {% for unit in my_units %}
         <div class="unit-chip">
             <span class="unit-chip__number">{{ unit.unit_number }}</span>
-            {% if unit.description %}
-            <span class="unit-chip__desc">{{ unit.description }}</span>
-            {% endif %}
+            {% if unit.description %}<span class="unit-chip__desc">{{ unit.description }}</span>{% endif %}
             <span class="unit-chip__quota">{{ unit.quota }}&#8240;</span>
         </div>
         {% endfor %}
@@ -33,6 +40,31 @@
 </div>
 {% endif %}
 
+<!-- Filter & Suche -->
+<form method="get" action="" id="filter-form">
+    <div class="filter-bar">
+        <a href="?{% if search_query %}q={{ search_query }}{% endif %}"
+           class="filter-pill {% if not status_filter %}active{% endif %}">Alle</a>
+        <a href="?status=open{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="filter-pill {% if status_filter == 'open' %}active{% endif %}">🟢 Offen</a>
+        <a href="?status=draft{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="filter-pill {% if status_filter == 'draft' %}active{% endif %}">📝 Entwürfe</a>
+        <a href="?status=closed{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="filter-pill {% if status_filter == 'closed' %}active{% endif %}">✓ Abgeschlossen</a>
+
+        <div class="search-box">
+            <input type="text" name="q" value="{{ search_query }}"
+                   class="search-input"
+                   placeholder="Antrag suchen …"
+                   {% if status_filter %}onchange="this.form.querySelector('[name=status]').value='{{ status_filter }}'"{% endif %}>
+            {% if status_filter %}
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+<!-- Antrags-Liste -->
 {% if proposals %}
 
 {% for proposal in proposals %}
@@ -50,14 +82,19 @@
                         {% endif %}
                     {% elif proposal.status == 'draft' %}
                         <span class="badge badge-draft">Entwurf</span>
+                        {% if not is_admin %}
+                            <span class="badge badge-pending">⏳ Wartet auf Freigabe</span>
+                        {% endif %}
                     {% else %}
                         <span class="badge badge-closed">Abgeschlossen</span>
                     {% endif %}
+                    <span class="badge badge-closed">{{ proposal.get_majority_type_display }}</span>
                 </div>
                 <div class="card-title">{{ proposal.title }}</div>
                 <div class="card-meta mt-xs">
-                    {% if proposal.deadline %}Frist: {{ proposal.deadline|date:"d.m.Y" }}{% endif %}
-                    {% if proposal.created_at %} · {{ proposal.created_at|date:"d.m.Y" }}{% endif %}
+                    {% if proposal.deadline %}Frist: {{ proposal.deadline|date:"d.m.Y" }} · {% endif %}
+                    {{ proposal.created_at|date:"d.m.Y" }}
+                    {% if is_admin and proposal.created_by %} · {{ proposal.created_by.get_full_name|default:proposal.created_by.username }}{% endif %}
                 </div>
             </div>
             <span class="chevron">›</span>
@@ -66,14 +103,77 @@
 </a>
 {% endfor %}
 
+<!-- Pagination -->
+{% if proposals.has_other_pages %}
+<div class="pagination">
+    {% if proposals.has_previous %}
+        <a href="?page={{ proposals.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">← Zurück</a>
+    {% else %}
+        <span class="disabled">← Zurück</span>
+    {% endif %}
+
+    {% for num in proposals.paginator.page_range %}
+        {% if proposals.number == num %}
+            <span class="current">{{ num }}</span>
+        {% elif num > proposals.number|add:'-3' and num < proposals.number|add:'3' %}
+            <a href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if proposals.has_next %}
+        <a href="?page={{ proposals.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">Weiter →</a>
+    {% else %}
+        <span class="disabled">Weiter →</span>
+    {% endif %}
+</div>
+{% endif %}
+
 {% else %}
 <div class="card">
     <div class="empty-state">
-        <span class="empty-state-icon">📋</span>
-        <div class="empty-state-title">Noch keine Anträge</div>
-        <div class="empty-state-sub">Erstelle den ersten Antrag für diese Gemeinschaft.</div>
+        {% if search_query %}
+            <span class="empty-state-icon">🔍</span>
+            <div class="empty-state-title">Keine Anträge gefunden</div>
+            <div class="empty-state-sub">Keine Ergebnisse für «{{ search_query }}».</div>
+            <div class="empty-state-action">
+                <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline btn-sm">Filter zurücksetzen</a>
+            </div>
+        {% elif status_filter == 'open' %}
+            <span class="empty-state-icon">🗳</span>
+            <div class="empty-state-title">Keine offenen Abstimmungen</div>
+            <div class="empty-state-sub">Aktuell laufen keine Abstimmungen.</div>
+        {% elif status_filter == 'draft' %}
+            <span class="empty-state-icon">📝</span>
+            <div class="empty-state-title">Keine Entwürfe</div>
+            <div class="empty-state-sub">Es gibt keine ausstehenden Antragsvorschläge.</div>
+        {% elif status_filter == 'closed' %}
+            <span class="empty-state-icon">✓</span>
+            <div class="empty-state-title">Noch keine abgeschlossenen Abstimmungen</div>
+            <div class="empty-state-sub">Hier erscheinen Abstimmungen nach ihrem Abschluss.</div>
+        {% else %}
+            <span class="empty-state-icon">📋</span>
+            <div class="empty-state-title">Noch keine Anträge</div>
+            <div class="empty-state-sub">Reichen Sie den ersten Antrag für diese Gemeinschaft ein.</div>
+            <div class="empty-state-action">
+                <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary btn-sm">+ Antrag einreichen</a>
+            </div>
+        {% endif %}
     </div>
 </div>
 {% endif %}
 
+<script>
+/* Live-Suche: Submit beim Tippen nach kurzer Pause */
+(function () {
+    const input = document.querySelector('.search-input');
+    if (!input) return;
+    let timer;
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+            document.getElementById('filter-form').submit();
+        }, 500);
+    });
+})();
+</script>
 {% endblock %}
