@@ -988,7 +988,7 @@ Place this at the root URL ("/") – replaces any existing home view.
       <li><a href="#features">Funktionen</a></li>
       <li><a href="#rechtssicherheit">Rechtssicherheit</a></li>
       <li><a href="#so-funktionierts">So funktioniert's</a></li>
-      <li><a href="{% url 'voting:login' %}" class="nav-cta">Anmelden</a></li>
+      <li><a href="{% url 'login' %}" class="nav-cta">Anmelden</a></li>
     </ul>
   </div>
 </nav>
@@ -1350,7 +1350,7 @@ Place this at the root URL ("/") – replaces any existing home view.
           </div>
           <button type="submit" class="form-submit">Jetzt registrieren</button>
           <div class="form-hint">
-            Bereits registriert? <a href="{% url 'voting:login' %}">Anmelden →</a>
+            Bereits registriert? <a href="{% url 'login' %}">Bereits registriert? Anmelden →</a>
           </div>
         </form>
       </div>
@@ -1366,7 +1366,7 @@ Place this at the root URL ("/") – replaces any existing home view.
       <div class="footer-tagline">Digitale Abstimmungen für Stockwerkeigentümergemeinschaften</div>
     </div>
     <ul class="footer-links">
-      <li><a href="{% url 'voting:login' %}">Anmelden</a></li>
+      <li><a href="{% url 'login' %}">Anmelden</a></li>
       <li><a href="#registrieren">Registrieren</a></li>
       <li><a href="#rechtssicherheit">ZGB-Grundlagen</a></li>
       <li><a href="{% url 'voting:dashboard' %}">Dashboard</a></li>

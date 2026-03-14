@@ -2,8 +2,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.models import User
 from django.shortcuts import redirect, render
-
-
+from django.contrib import messages
 
 def landing(request):
     """Public landing page at '/'. Redirects logged-in users to dashboard."""
@@ -62,4 +61,4 @@ def register(request):
             )
             return redirect('voting:community_create')
 
-    return redirect('voting:landing')
+    return redirect('base:landing')
