@@ -111,9 +111,22 @@
 
 <!-- ── Offene Mängel (nur für Verwalter sichtbar) ─────────────────────────── -->
 {% if open_tickets %}
-<div class="section-label mt-lg">
-    Offene Mängel
-    <span class="badge badge-pending ml-sm">{{ open_tickets|length }}</span>
+<div class="section-label mt-lg flex-between" style="align-items:center;">
+    <span>
+        Offene Mängel
+        <span class="badge badge-pending ml-sm">{{ open_tickets|length }}</span>
+    </span>
+    <span style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        {% for community in communities %}
+            {% if community.id in admin_community_ids %}
+            <a href="{% url 'maintenance:ticket_list' community.id %}"
+               class="btn btn-outline btn-sm"
+               style="font-size:.72rem;padding:.2rem .65rem;">
+                {{ community.name }} – Mängel →
+            </a>
+            {% endif %}
+        {% endfor %}
+    </span>
 </div>
 
 {% for ticket in open_tickets %}
@@ -147,24 +160,37 @@
 <div class="section-label mt-lg">Meine Gemeinschaften</div>
 
 {% for community in communities %}
-<a href="{% url 'voting:proposal_list' community.id %}" class="card-link">
-    <div class="card card-interactive">
-        <div class="flex-between items-center">
-            <div class="flex-1">
-                <div class="flex items-center gap-xs mb-xs flex-wrap">
+<div style="margin-bottom:1rem;">
+    <a href="{% url 'voting:proposal_list' community.id %}" class="card-link">
+        <div class="card card-interactive">
+            <div class="flex-between items-center">
+                <div class="flex-1">
+                    <div class="flex items-center gap-xs mb-xs flex-wrap">
+                        {% if community.id in admin_community_ids %}
+                            <span class="badge badge--manager">Verwalter</span>
+                        {% else %}
+                            <span class="badge badge--owner">Eigentümer</span>
+                        {% endif %}
+                    </div>
+                    <div class="card-title">{{ community.name }}</div>
+                    <div class="card-meta mt-xs">{{ community.address }}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;">
+                    <span class="chevron">›</span>
+                    {# NEU: Direktlink zur Mängel-Übersicht #}
                     {% if community.id in admin_community_ids %}
-                        <span class="badge badge--manager">Verwalter</span>
-                    {% else %}
-                        <span class="badge badge--owner">Eigentümer</span>
+                    <a href="{% url 'maintenance:ticket_list' community.id %}"
+                       class="btn btn-outline btn-sm"
+                       style="font-size:.7rem;padding:.15rem .55rem;white-space:nowrap;"
+                       onclick="event.stopPropagation();">
+                        🔧 Mängel
+                    </a>
                     {% endif %}
                 </div>
-                <div class="card-title">{{ community.name }}</div>
-                <div class="card-meta mt-xs">{{ community.address }}</div>
             </div>
-            <span class="chevron">›</span>
         </div>
-    </div>
-</a>
+    </a>
+</div>
 {% endfor %}
 
 {% else %}

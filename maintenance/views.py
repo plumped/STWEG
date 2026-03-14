@@ -155,7 +155,30 @@ def ticket_detail(request, pk):
             form = TicketStatusForm(request.POST, instance=ticket)
             if form.is_valid():
                 comment_text = form.cleaned_data.pop('comment', '')
-                new_status   = form.cleaned_data['status']
+                new_status = form.cleaned_data['status']
+
+                # ── NEU: Sperre wenn Antrag noch nicht angenommen ──────────
+                PROGRESS_STATUSES = {
+                    Ticket.Status.IN_PROGRESS,
+                    Ticket.Status.OFFER_RECEIVED,
+                    Ticket.Status.DONE,
+                    Ticket.Status.ARCHIVED,
+                }
+                if ticket.proposal and new_status in PROGRESS_STATUSES:
+                    proposal = ticket.proposal
+                    proposal_passed = (
+                            proposal.status == 'closed'
+                            and proposal.get_results().get('passed', False)
+                    )
+                    if not proposal_passed:
+                        messages.error(
+                            request,
+                            "⚠ Der verknüpfte Antrag muss zuerst angenommen und "
+                            "abgeschlossen sein, bevor der Status weitergesetzt werden kann."
+                        )
+                        return redirect('maintenance:ticket_detail', pk=pk)
+                # ── Ende Sperre ────────────────────────────────────────────
+
                 form.save()
 
                 if ticket.status == Ticket.Status.DONE and not ticket.resolved_at:
@@ -173,7 +196,6 @@ def ticket_detail(request, pk):
                 if old_status != new_status:
                     notify_ticket_status_changed(ticket, old_status)
 
-                # Notify assignee if newly assigned
                 prev_email = ticket.assignee_email
                 if form.cleaned_data.get('assignee_email') and form.cleaned_data['assignee_email'] != prev_email:
                     notify_assignee(ticket)
@@ -231,15 +253,20 @@ def ticket_detail(request, pk):
             messages.success(request, f"Anhang «{name}» gelöscht.")
             return redirect('maintenance:ticket_detail', pk=pk)
 
+    proposal_passed = False
+    if ticket.proposal and ticket.proposal.status == 'closed':
+        proposal_passed = ticket.proposal.get_results().get('passed', False)
+
     return render(request, 'maintenance/ticket_detail.html', {
-        'ticket':          ticket,
-        'community':       community,
-        'is_admin':        is_admin,
-        'updates':         updates,
-        'attachments':     attachments,
-        'status_form':     status_form,
-        'comment_form':    comment_form,
+        'community': community,
+        'ticket': ticket,
+        'updates': updates,
+        'attachments': attachments,
+        'status_form': status_form,
+        'comment_form': comment_form,
         'attachment_form': attachment_form,
+        'is_admin': is_admin,
+        'proposal_passed': proposal_passed,  # NEU
     })
 
 

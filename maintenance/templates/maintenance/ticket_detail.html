@@ -178,6 +178,32 @@
     {% if is_admin %}
     <div class="action-panel">
       <h3>Status &amp; Zuweisung</h3>
+        {% if ticket.proposal %}
+            {% with p=ticket.proposal %}
+            {% if p.status != 'closed' %}
+            {# Antrag noch offen/Entwurf → volle Sperre #}
+            <div style="background:#FFF8E7;border:1px solid #F5C842;border-radius:6px;
+                        padding:.6rem .75rem;font-size:.78rem;color:#7A5C00;margin-bottom:.75rem;">
+                ⏳ <strong>Antrag ausstehend:</strong>
+                Der verknüpfte Antrag
+                <a href="{% url 'voting:proposal_detail' p.pk %}" style="color:#7A5C00;font-weight:600;">
+                    «{{ p.title }}»
+                </a>
+                muss zuerst abgeschlossen und angenommen sein.
+            </div>
+            {% elif p.status == 'closed' %}
+                {# Template kann kein get_results() aufrufen – view muss proposal_passed liefern #}
+                {% if not proposal_passed %}
+                <div style="background:#FCECEA;border:1px solid #F0B8B5;border-radius:6px;
+                            padding:.6rem .75rem;font-size:.78rem;color:#8B1A1A;margin-bottom:.75rem;">
+                    ❌ <strong>Antrag abgelehnt:</strong>
+                    Der verknüpfte Antrag wurde nicht angenommen.
+                    Status kann nicht auf «In Bearbeitung» oder höher gesetzt werden.
+                </div>
+                {% endif %}
+            {% endif %}
+            {% endwith %}
+        {% endif %}
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="update_status">
