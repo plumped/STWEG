@@ -4,6 +4,9 @@
 {% block content %}
 <a href="{% url 'voting:proposal_list' proposal.community.id %}" class="back-link">{{ proposal.community.name }}</a>
 
+<!-- ═══════════════════════════════════════════════════════
+     PAGE HEADER
+═══════════════════════════════════════════════════════ -->
 <div class="page-header">
     <div class="flex items-center gap-xs" style="margin-bottom:0.8rem;flex-wrap:wrap;">
         {% if proposal.status == 'open' %}
@@ -25,7 +28,29 @@
     {% endif %}
 </div>
 
-<!-- Antragstext -->
+<!-- ═══════════════════════════════════════════════════════
+     FIX: UMLAUFBESCHLUSS-HINWEIS (ZGB Art. 712m Abs. 4)
+     Zeigt an, wie viele Eigentümer noch ausstehen.
+     Rechtsgültige Umlaufbeschlüsse erfordern i.d.R.
+     Beteiligung aller Eigentümer (Reglement massgebend).
+═══════════════════════════════════════════════════════ -->
+{% if proposal.status == 'open' or proposal.status == 'closed' %}
+<div class="info-banner {% if all_units_voted %}info-banner-success{% else %}info-banner-warning{% endif %}"
+     style="margin-bottom:1.25rem;">
+    {% if all_units_voted %}
+        ✅ Alle {{ total_units_count }} Eigentümer haben abgestimmt. Der Umlaufbeschluss ist abstimmungstechnisch vollständig.
+    {% else %}
+        ⚠ <strong>Umlaufverfahren:</strong>
+        Noch <strong>{{ missing_votes_count }}</strong> von {{ total_units_count }} Eigentümer{% if missing_votes_count != 1 %}n{% endif %} ausstehend.
+        Für rechtssichere Umlaufbeschlüsse müssen in der Regel alle Eigentümer abgestimmt haben
+        (ZGB Art. 712m Abs. 4 / Reglement prüfen).
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════
+     ANTRAGSTEXT
+═══════════════════════════════════════════════════════ -->
 <div class="card">
     <div class="section-label">Antrag</div>
     <p style="white-space:pre-wrap;font-size:0.9rem;line-height:1.7;">{{ proposal.description }}</p>
@@ -33,43 +58,47 @@
     <div class="card-inset" style="margin-top:1.25rem;">
         <div style="font-weight:600;font-size:0.85rem;margin-bottom:0.3rem;">{{ proposal.get_majority_type_display }}</div>
         <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.5;">
-            {% if proposal.majority_type == 'simple' %}Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen. Wertquoten nicht ausschlaggebend.
-            {% elif proposal.majority_type == 'absolute' %}Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten. Gesetzlicher Standard gemäss ZGB Art. 712m.
-            {% elif proposal.majority_type == 'qualified' %}Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten.
-            {% elif proposal.majority_type == 'unanimous' %}Alle abgegebenen Stimmen — <em>inklusive Enthaltungen</em> — müssen Ja sein.
+            {# FIX: Korrekte Beschreibungen nach ZGB #}
+            {% if proposal.majority_type == 'simple' %}
+                Mehr Ja- als Nein-Stimmen nach Köpfen. Enthaltungen bleiben neutral. Wertquoten spielen keine Rolle.
+                <strong style="color:var(--amber);">Nur zulässig wenn Reglement es vorsieht.</strong>
+            {% elif proposal.majority_type == 'absolute' %}
+                Mehr Ja- als Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten. Enthaltungen bleiben neutral.
+                <strong>Gesetzlicher Standard gemäss ZGB Art. 712m Abs. 1.</strong>
+            {% elif proposal.majority_type == 'qualified' %}
+                Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten. Enthaltungen bleiben neutral.
+                <strong>ZGB Art. 712g Abs. 2 — für grössere bauliche Massnahmen.</strong>
+            {% elif proposal.majority_type == 'unanimous' %}
+                <strong style="color:var(--red);">Alle Eigentümer der Gemeinschaft müssen Ja stimmen</strong> —
+                nicht nur die abgestimmten. Eine Enthaltung, ein Nein oder eine fehlende Stimmabgabe
+                gilt als fehlende Zustimmung (ZGB Art. 648).
             {% endif %}
         </div>
     </div>
-
-    {% if proposal.created_by %}
-    <div style="margin-top:0.875rem;font-size:0.8rem;color:var(--text-muted);">
-        Eingereicht von {{ proposal.created_by.get_full_name|default:proposal.created_by.username }}
-        am {{ proposal.created_at|date:"d.m.Y" }}
-    </div>
-    {% endif %}
 </div>
 
-<!-- Beilagen -->
+<!-- ═══════════════════════════════════════════════════════
+     BEILAGEN / DOKUMENTE
+═══════════════════════════════════════════════════════ -->
 <div class="card mt-2">
-    <div class="flex-between items-center" style="margin-bottom:0.875rem;">
-        <div class="section-label" style="margin:0;">📎 Beilagen</div>
-        <span style="font-size:0.75rem;color:var(--text-muted);">{{ documents|length }} Dokument{% if documents|length != 1 %}e{% endif %}</span>
-    </div>
-
+    <div class="section-label">Beilagen</div>
     {% if documents %}
     <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;">
         {% for doc in documents %}
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.7rem 0.9rem;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-md);font-size:0.875rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0.9rem;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-md);">
             <div>
-                <a href="{{ doc.file.url }}" target="_blank" style="color:var(--accent);font-weight:600;text-decoration:none;">📄 {{ doc.name }}</a>
-                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.1rem;">
-                    {{ doc.uploaded_at|date:"d.m.Y" }}{% if doc.uploaded_by %} · {{ doc.uploaded_by.get_full_name|default:doc.uploaded_by.username }}{% endif %}
+                <a href="{{ doc.file.url }}" target="_blank" style="font-weight:500;font-size:0.875rem;color:var(--accent);">
+                    📎 {{ doc.name }}
+                </a>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.15rem;">
+                    Hochgeladen von {{ doc.uploaded_by.get_full_name|default:doc.uploaded_by.username }}
+                    am {{ doc.uploaded_at|date:"d.m.Y" }}
                 </div>
             </div>
             {% if is_creator or is_community_admin %}
             <form method="post" action="{% url 'voting:document_delete' proposal.pk doc.pk %}"
                   onsubmit="return confirm('Dokument «{{ doc.name }}» wirklich löschen?')">
-                {% csrf_token %}<button type="submit" class="btn btn-danger btn-sm">✕</button>
+                {% csrf_token %}<button type="submit" class="btn btn-outline btn-sm">✕</button>
             </form>
             {% endif %}
         </div>
@@ -97,7 +126,9 @@
     {% endif %}
 </div>
 
-<!-- Aktionen -->
+<!-- ═══════════════════════════════════════════════════════
+     AKTIONS-BUTTONS
+═══════════════════════════════════════════════════════ -->
 <div class="flex gap-1 mt-2" style="flex-wrap:wrap;">
     {% if is_creator or is_community_admin %}
         {% if proposal.status == 'draft' %}
@@ -160,38 +191,36 @@
             <tr>
                 <td><strong>{{ item.unit.unit_number }}</strong></td>
                 <td>
+                    {% if item.unit.owner %}
                     {{ item.unit.owner.get_full_name|default:item.unit.owner.username }}
                     {% if item.unit.owner.email %}
                     <div style="font-size:0.75rem;color:var(--text-muted);">{{ item.unit.owner.email }}</div>
+                    {% endif %}
+                    {% else %}
+                    <span style="color:var(--text-muted);font-style:italic;">unbesetzt</span>
                     {% endif %}
                 </td>
                 <td>{{ item.unit.quota }}‰</td>
                 <td>
                     {% if item.vote %}
-                        <span style="font-size:0.82rem;font-weight:600;
-                            {% if item.vote.choice == 'yes' %}color:var(--accent);
-                            {% elif item.vote.choice == 'no' %}color:var(--red);
-                            {% else %}color:var(--text-muted);{% endif %}">
-                            {% if item.vote.choice == 'yes' %}✓ Ja
-                            {% elif item.vote.choice == 'no' %}✗ Nein
-                            {% else %}– Enthaltung{% endif %}
+                        <span style="font-size:0.8rem;">
+                            {% if item.vote.choice == 'yes' %}<span style="color:var(--accent);font-weight:600;">✓ Ja</span>
+                            {% elif item.vote.choice == 'no' %}<span style="color:var(--red);font-weight:600;">✗ Nein</span>
+                            {% else %}<span style="color:var(--text-muted);">– Enthaltung</span>{% endif %}
                         </span>
                         {% if item.vote.is_manual %}
-                        <span class="badge badge-pending" style="font-size:0.65rem;margin-left:0.25rem;">Briefwahl</span>
+                        <span class="badge badge-warning" style="font-size:0.65rem;margin-left:0.3rem;">Briefwahl</span>
                         {% endif %}
-                        {% if item.vote.cast_by and item.vote.cast_by != item.unit.owner %}
-                        <div style="font-size:0.72rem;color:var(--text-muted);">
-                            Erfasst von {{ item.vote.cast_by.get_full_name|default:item.vote.cast_by.username }}
-                        </div>
-                        {% endif %}
+                        <div style="font-size:0.72rem;color:var(--text-muted);">{{ item.vote.voted_at|date:"d.m.Y, H:i" }}</div>
                     {% else %}
-                        <span class="badge badge-draft">Ausstehend</span>
+                        <span style="font-size:0.8rem;color:var(--text-muted);">Ausstehend</span>
                     {% endif %}
                 </td>
                 <td style="text-align:right;">
                     {% if item.vote %}
                     <form method="post" action="{% url 'voting:vote_reset' proposal.pk item.vote.pk %}"
-                          onsubmit="return confirm('Stimme für Einheit {{ item.unit.unit_number }} zurücksetzen? Der Eigentümer kann dann erneut abstimmen.')">
+                          style="display:inline;"
+                          onsubmit="return confirm('Stimme von Einheit {{ item.unit.unit_number }} zurücksetzen? Der Eigentümer kann dann erneut abstimmen.')">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-danger btn-sm">↩ Reset</button>
                     </form>
@@ -225,17 +254,15 @@
                             <div>
                                 <label style="font-size:0.78rem;">Quellenangabe</label>
                                 <input type="text" name="manual_source" class="form-input" style="font-size:0.85rem;"
-                                       placeholder="z.B. Briefpost 12.3.2026">
+                                       placeholder="z.B. Briefpost 12.3.2026, E-Mail">
                             </div>
                             <div>
                                 <label style="font-size:0.78rem;">Kommentar</label>
                                 <input type="text" name="comment" class="form-input" style="font-size:0.85rem;"
-                                       placeholder="Optional...">
+                                       placeholder="Optional">
                             </div>
-                            <div style="display:flex;gap:0.5rem;align-self:end;">
+                            <div>
                                 <button type="submit" class="btn btn-primary btn-sm">Erfassen</button>
-                                <button type="button" class="btn btn-outline btn-sm"
-                                        onclick="toggleManualVote('manual_{{ item.unit.id }}')">Abbrechen</button>
                             </div>
                         </div>
                     </form>
@@ -250,64 +277,72 @@
 {% endif %}
 
 <!-- ═══════════════════════════════════════════════════════
-     ABSTIMMEN (eigene Einheiten)
+     ABSTIMMUNG (Eigentümer-Sicht)
 ═══════════════════════════════════════════════════════ -->
-{% if proposal.status == 'open' and not proposal.deadline_passed %}
+{% if units_with_votes and proposal.status == 'open' and not proposal.deadline_passed %}
+
+{# FIX: Einstimmigkeits-Warnung — erklärt dass ALLE Eigentümer Ja stimmen müssen #}
+{% if proposal.majority_type == 'unanimous' %}
+<div class="info-banner info-banner-warning" style="margin-bottom:1rem;">
+    ⚠ <strong>Einstimmigkeit erforderlich:</strong>
+    Für diesen Antrag müssen <em>alle {{ total_units_count }} Eigentümer</em> Ja stimmen.
+    Eine Enthaltung oder ein Nein gilt als fehlende Zustimmung. Auch fehlende Stimmabgaben
+    (Nicht-Teilnahme) bewirken, dass der Antrag <em>nicht</em> angenommen wird (ZGB Art. 648).
+</div>
+{% endif %}
+
 {% for item in units_with_votes %}
-<div class="card mt-3">
+<div class="card mt-2">
     <div class="flex-between items-center" style="margin-bottom:1rem;">
         <div>
-            <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.3rem;">
-                {% if item.is_proxy %}<span style="color:var(--amber);">Vollmacht ·</span> {% endif %}
-                Einheit {{ item.unit.unit_number }} · {{ item.unit.quota }}‰
+            <div style="font-weight:600;">
+                Einheit {{ item.unit.unit_number }}
                 {% if item.is_proxy %}
-                <span style="font-weight:400;text-transform:none;letter-spacing:0;"> von {{ item.unit.owner.get_full_name|default:item.unit.owner.username }}</span>
+                <span class="badge badge-info" style="font-size:0.68rem;margin-left:0.4rem;">Vollmacht</span>
                 {% endif %}
             </div>
-            {% if item.unit.description %}
-            <div style="font-size:0.82rem;color:var(--text-muted);">{{ item.unit.description }}</div>
-            {% endif %}
+            <div style="font-size:0.8rem;color:var(--text-muted);">
+                {{ item.unit.quota }}‰
+                {% if item.unit.description %} · {{ item.unit.description }}{% endif %}
+                {% if item.is_proxy and item.proxy_info %}
+                 · Vollmacht von {{ item.proxy_info.granted_by.get_full_name|default:item.proxy_info.granted_by.username }}
+                {% endif %}
+            </div>
         </div>
         {% if item.vote %}
-        <span class="badge badge-open">✓ Abgestimmt</span>
-        {% elif item.granted_proxy %}
-        <span class="badge badge-pending">Vollmacht erteilt</span>
-        {% else %}
-        <span class="badge badge-draft">Ausstehend</span>
+        <div style="text-align:right;">
+            <div style="font-size:0.85rem;font-weight:600;">
+                {% if item.vote.choice == 'yes' %}<span style="color:var(--accent);">✓ Ja</span>
+                {% elif item.vote.choice == 'no' %}<span style="color:var(--red);">✗ Nein</span>
+                {% else %}<span style="color:var(--text-muted);">– Enthaltung</span>{% endif %}
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">{{ item.vote.voted_at|date:"d.m.Y, H:i" }}</div>
+        </div>
         {% endif %}
     </div>
 
     {% if item.vote %}
-    <div style="padding:0.875rem 1rem;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-md);font-size:0.875rem;">
-        Stimme: <strong>
-        {% if item.vote.choice == 'yes' %}✅ Ja
-        {% elif item.vote.choice == 'no' %}❌ Nein
-        {% else %}⬜ Enthaltung{% endif %}
-        </strong>
-        {% if item.vote.is_manual %}
-        <span class="badge badge-pending" style="margin-left:0.5rem;font-size:0.7rem;">Briefwahl</span>
-        {% endif %}
-        {% if proposal.majority_type == 'unanimous' and item.vote.choice == 'abstain' %}
-        <span style="color:var(--red);font-size:0.8rem;"> — zählt als Nein bei Einstimmigkeit</span>
-        {% endif %}
-        {% if item.vote.comment %}
-        <div style="font-size:0.82rem;font-style:italic;color:var(--text-muted);margin-top:0.4rem;">&ldquo;{{ item.vote.comment }}&rdquo;</div>
-        {% endif %}
+    {# Bereits abgestimmt #}
+    <div class="card-inset" style="font-size:0.85rem;color:var(--text-muted);">
+        ✓ Stimme abgegeben
+        {% if item.vote.comment %} · <em>«{{ item.vote.comment }}»</em>{% endif %}
     </div>
 
+    {# Vollmacht anzeigen falls erteilt #}
     {% elif item.granted_proxy %}
-    <div style="padding:0.875rem 1rem;background:var(--amber-light);border:1px solid var(--amber-border);border-radius:var(--r-md);font-size:0.875rem;margin-bottom:0.875rem;">
-        <strong>Vollmacht erteilt</strong> an
+    <div class="info-banner info-banner-warning" style="margin-bottom:0.875rem;">
+        Vollmacht erteilt an
         <strong>{{ item.granted_proxy.delegate.get_full_name|default:item.granted_proxy.delegate.username }}</strong>
-        {% if item.granted_proxy.note %} · <em>{{ item.granted_proxy.note }}</em>{% endif %}
-        <div style="font-size:0.78rem;color:var(--amber);margin-top:0.25rem;">Diese Person kann die Stimme für dich abgeben.</div>
+        {% if item.granted_proxy.note %} ({{ item.granted_proxy.note }}){% endif %}
+        <form method="post" action="{% url 'voting:proxy_revoke' proposal.pk item.granted_proxy.pk %}"
+              style="display:inline;margin-left:0.75rem;"
+              onsubmit="return confirm('Vollmacht wirklich widerrufen?')">
+            {% csrf_token %}<button type="submit" class="btn btn-outline btn-sm">Vollmacht widerrufen</button>
+        </form>
     </div>
-    <form method="post" action="{% url 'voting:proxy_revoke' proposal.pk item.granted_proxy.pk %}"
-          onsubmit="return confirm('Vollmacht für Einheit {{ item.unit.unit_number }} widerrufen?')">
-        {% csrf_token %}<button type="submit" class="btn btn-outline btn-sm">Vollmacht widerrufen</button>
-    </form>
 
     {% else %}
+    {# Abstimmungsformular #}
     <form method="post" class="vote-form">
         {% csrf_token %}
         <input type="hidden" name="action" value="vote">
@@ -325,13 +360,17 @@
                 <input type="radio" name="choice" id="abstain_{{ item.unit.id }}" value="abstain" required>
                 <label for="abstain_{{ item.unit.id }}">
                     <span class="vote-emoji">⬜</span>Enthaltung
-                    {% if proposal.majority_type == 'unanimous' %}<span style="font-size:0.7rem;display:block;color:var(--red);margin-top:0.2rem;">= Nein</span>{% endif %}
+                    {# FIX: Korrekter Hinweis — Enthaltung ist nicht = Nein, aber zählt als fehlende Zustimmung #}
+                    {% if proposal.majority_type == 'unanimous' %}
+                    <span style="font-size:0.7rem;display:block;color:var(--red);margin-top:0.2rem;">= fehlende Zustimmung</span>
+                    {% endif %}
                 </label>
             </div>
         </div>
         <div class="form-group mt-2">
             <label for="comment_{{ item.unit.id }}">Kommentar (optional)</label>
-            <textarea name="comment" id="comment_{{ item.unit.id }}" class="form-textarea" rows="2" placeholder="Begründung..."></textarea>
+            <textarea name="comment" id="comment_{{ item.unit.id }}" class="form-textarea" rows="2"
+                      placeholder="Begründung (wird im Protokoll gespeichert)..."></textarea>
         </div>
         <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
             <button type="submit" class="btn btn-primary vote-submit-btn" style="flex:1;min-width:200px;"
@@ -339,7 +378,8 @@
                 Stimme für Einheit {{ item.unit.unit_number }} abgeben
             </button>
             {% if item.is_own %}
-            <button type="button" class="btn btn-outline btn-sm" onclick="toggleProxy('proxy_{{ item.unit.id }}')">Vollmacht erteilen</button>
+            <button type="button" class="btn btn-outline btn-sm"
+                    onclick="toggleProxy('proxy_{{ item.unit.id }}')">Vollmacht erteilen</button>
             {% endif %}
         </div>
         <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.6rem;">
@@ -347,6 +387,7 @@
         </div>
     </form>
 
+    {# Vollmacht-Panel #}
     {% if item.is_own %}
     <div id="proxy_{{ item.unit.id }}" style="display:none;margin-top:1.25rem;padding:1.25rem;background:var(--surface-alt);border-radius:var(--r-md);border:1px solid var(--border);">
         <div class="section-label">Vollmacht für Einheit {{ item.unit.unit_number }}</div>
@@ -359,21 +400,28 @@
                     <select name="delegate" class="form-select" style="font-size:0.875rem;" required>
                         <option value="">— Person auswählen —</option>
                         {% for u in proxy_form.delegate.field.queryset %}
-                        <option value="{{ u.id }}">{% if u.get_full_name %}{{ u.get_full_name }} ({{ u.username }}){% else %}{{ u.username }}{% endif %}</option>
+                        <option value="{{ u.id }}">
+                            {% if u.get_full_name %}{{ u.get_full_name }} ({{ u.username }})
+                            {% else %}{{ u.username }}{% endif %}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
                 <div>
                     <label style="font-size:0.8rem;">Bemerkung (optional)</label>
-                    <input type="text" name="note" class="form-input" style="font-size:0.875rem;" placeholder="z.B. Ferienabwesenheit">
+                    <input type="text" name="note" class="form-input" style="font-size:0.875rem;"
+                           placeholder="z.B. Ferienabwesenheit">
                 </div>
             </div>
             <div class="flex gap-1">
                 <button type="submit" class="btn btn-primary btn-sm">Vollmacht erteilen</button>
-                <button type="button" class="btn btn-outline btn-sm" onclick="toggleProxy('proxy_{{ item.unit.id }}')">Abbrechen</button>
+                <button type="button" class="btn btn-outline btn-sm"
+                        onclick="toggleProxy('proxy_{{ item.unit.id }}')">Abbrechen</button>
             </div>
             <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.6rem;">
-                Die bevollmächtigte Person kann die Stimme für diese Einheit abgeben. Du kannst die Vollmacht widerrufen, solange noch nicht abgestimmt wurde.
+                Die bevollmächtigte Person kann die Stimme für diese Einheit abgeben.
+                Du kannst die Vollmacht widerrufen, solange noch nicht abgestimmt wurde.
+                <strong>Ketten-Vollmachten (Weiterdelegation) sind nicht zulässig.</strong>
             </div>
         </form>
     </div>
@@ -404,19 +452,26 @@
         <div style="font-size:0.8rem;color:var(--text-muted);">{{ results.total_voted }}/{{ results.total_units }} Stimmen</div>
     </div>
 
+    {# Beteiligungsbalken #}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
         <div>
             <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600;margin-bottom:0.4rem;">Beteiligung · Köpfe</div>
             <div class="progress-bar"><div class="progress-fill" style="width:{{ results.participation }}%"></div></div>
-            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;">{{ results.total_voted }}/{{ results.total_units }} ({{ results.participation }}%)</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;">
+                {{ results.total_voted }}/{{ results.total_units }} ({{ results.participation }}%)
+            </div>
         </div>
         <div>
             <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600;margin-bottom:0.4rem;">Beteiligung · Wertquoten</div>
             <div class="progress-bar"><div class="progress-fill" style="width:{{ results.participation_quota }}%"></div></div>
-            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;">{{ results.voted_quota }}‰ / {{ results.total_quota }}‰ ({{ results.participation_quota }}%)</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;">
+                {{ results.voted_quota }}‰ / {{ results.total_quota }}‰ ({{ results.participation_quota }}%)
+                <em style="font-size:0.7rem;">(inkl. Enthaltungen)</em>
+            </div>
         </div>
     </div>
 
+    {# FIX: Quorum — nutzt results.quorum_met (war vorher kaputt) #}
     {% if results.quorum %}
     <div style="padding:0.65rem 0.9rem;border-radius:var(--r-md);font-size:0.82rem;font-weight:500;margin-bottom:1.25rem;
         {% if results.quorum_met %}background:var(--accent-light);color:var(--accent);border:1px solid var(--accent-border);
@@ -428,13 +483,30 @@
     </div>
     {% endif %}
 
+    {# Stimmzählung — unterschiedliche Darstellung je Mehrheitsart #}
     {% if proposal.majority_type == 'unanimous' %}
-    <div class="section-label">Stimmen (Enthaltung zählt als Nein)</div>
+    <div class="section-label">Stimmen (alle Eigentümer müssen Ja stimmen)</div>
     <div class="results-grid" style="margin-bottom:1.5rem;">
-        <div class="result-box"><div class="result-number" style="color:var(--accent);">{{ results.yes_count }}</div><div class="result-label">Ja</div></div>
-        <div class="result-box"><div class="result-number" style="color:var(--red);">{{ results.no_count|add:results.abstain_count }}</div><div class="result-label">Nein + Enthaltungen</div></div>
+        <div class="result-box">
+            <div class="result-number" style="color:var(--accent);">{{ results.yes_count }}</div>
+            <div class="result-label">Ja</div>
+        </div>
+        <div class="result-box">
+            <div class="result-number" style="color:var(--red);">{{ results.no_count }}</div>
+            <div class="result-label">Nein</div>
+        </div>
+        <div class="result-box">
+            <div class="result-number" style="color:var(--amber);">{{ results.abstain_count }}</div>
+            <div class="result-label">Enthaltung</div>
+        </div>
+        <div class="result-box">
+            <div class="result-number" style="color:var(--text-muted);">{{ results.total_units|add:"-"|add:results.total_voted }}</div>
+            <div class="result-label">Nicht abgestimmt</div>
+        </div>
     </div>
+
     {% else %}
+    {# Köpfe-Darstellung #}
     <div style="margin-bottom:1.5rem;">
         <div class="section-label">Nach Köpfen{% if proposal.majority_type == 'qualified' %} · Schwelle 2/3{% endif %}</div>
         <div class="results-grid">
@@ -453,6 +525,7 @@
         {% endif %}
     </div>
 
+    {# Wertquoten-Darstellung (nicht bei einfachem Mehr) #}
     {% if proposal.majority_type != 'simple' %}
     <div style="margin-bottom:1.5rem;">
         <div class="section-label">Nach Wertquoten (‰){% if proposal.majority_type == 'qualified' %} · Schwelle 2/3{% endif %}</div>
@@ -470,19 +543,29 @@
             <span>Schwelle: {{ results.threshold_pct }}%</span>
         </div>
         {% endif %}
+        {% if results.abstain_quota %}
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">
+            Enthaltungen: {{ results.abstain_quota }}‰ (zählen zur Beteiligung, nicht zur Abstimmung)
+        </div>
+        {% endif %}
     </div>
     {% endif %}
     {% endif %}
 
+    {# FIX: Verdict mit criteria-Tags aus results.criteria + konkreter Anfechtungsfrist #}
     <div class="verdict {% if results.passed %}verdict-passed{% else %}verdict-failed{% endif %}">
         <div class="verdict-icon">{% if results.passed %}✅{% else %}❌{% endif %}</div>
         <div style="flex:1;">
             <div class="verdict-title">{% if results.passed %}Antrag angenommen{% else %}Antrag abgelehnt{% endif %}</div>
+            {% if results.criteria %}
             <div class="criteria-tags">
                 {% for criterion, ok in results.criteria.items %}
-                <span class="tag {% if ok %}tag-ok{% else %}tag-fail{% endif %}">{% if ok %}✓{% else %}✗{% endif %} {{ criterion }}</span>
+                <span class="tag {% if ok %}tag-ok{% else %}tag-fail{% endif %}">
+                    {% if ok %}✓{% else %}✗{% endif %} {{ criterion }}
+                </span>
                 {% endfor %}
             </div>
+            {% endif %}
             {% if proposal.status == 'closed' %}
             <div class="verdict-sub" style="margin-top:0.5rem;">
                 Geschlossen am {{ proposal.closed_at|date:"d.m.Y, H:i" }}
@@ -491,6 +574,16 @@
             {% endif %}
         </div>
     </div>
+
+    {# FIX: Zusätzlicher Hinweis bei nicht bestandener Einstimmigkeit #}
+    {% if proposal.majority_type == 'unanimous' and not results.passed %}
+    <div class="info-banner info-banner-warning" style="margin-top:1rem;font-size:0.82rem;">
+        ⚠ <strong>Einstimmigkeit nicht erreicht:</strong>
+        Es müssen <em>alle {{ results.total_units }} Eigentümer</em> Ja stimmen.
+        Abgestimmt haben {{ results.total_voted }} von {{ results.total_units }}.
+        Fehlende Stimmabgaben gelten als fehlende Zustimmung (ZGB Art. 648).
+    </div>
+    {% endif %}
 </div>
 
 {% elif proposal.status == 'open' and not show_results %}
@@ -517,7 +610,7 @@ document.querySelectorAll('.vote-submit-btn').forEach(function(btn) {
         const msg = 'Stimme für Einheit ' + this.getAttribute('data-unit') +
                     ' mit «' + (labels[selected.value] || selected.value) + '» abgeben?\n\n' +
                     '⚠️ Die Stimme ist endgültig und kann nicht geändert werden.';
-        if (!confirm(msg)) e.preventDefault();
+        if (!confirm(msg)) { e.preventDefault(); }
     });
 });
 </script>

@@ -17,11 +17,13 @@
             <input type="text" name="title" id="id_title" class="form-input"
                    placeholder="z.B. Erneuerung Flachdach Hauptgebäude" required
                    value="{{ form.title.value|default:'' }}">
+            {% if form.title.errors %}<div class="form-error">{{ form.title.errors.0 }}</div>{% endif %}
         </div>
         <div class="form-group">
             <label for="id_description">Beschreibung *</label>
             <textarea name="description" id="id_description" class="form-textarea" rows="6"
                       placeholder="Beschreibe den Antrag detailliert. Was soll beschlossen werden? Was sind die Kosten?" required>{{ form.description.value|default:'' }}</textarea>
+            {% if form.description.errors %}<div class="form-error">{{ form.description.errors.0 }}</div>{% endif %}
         </div>
         <div class="form-group">
             <label for="id_majority_type">Mehrheitsart *</label>
@@ -29,14 +31,17 @@
                 <option value="simple"    {% if form.majority_type.value == 'simple' %}selected{% endif %}>Einfaches Mehr (nur Köpfe)</option>
                 <option value="absolute"  {% if not form.majority_type.value or form.majority_type.value == 'absolute' %}selected{% endif %}>Absolutes Mehr (Köpfe + Wertquoten) ✦ Standard</option>
                 <option value="qualified" {% if form.majority_type.value == 'qualified' %}selected{% endif %}>Qualifiziertes Mehr (2/3 Köpfe + 2/3 Wertquoten)</option>
-                <option value="unanimous" {% if form.majority_type.value == 'unanimous' %}selected{% endif %}>Einstimmigkeit (Enthaltung = Nein)</option>
+                <option value="unanimous" {% if form.majority_type.value == 'unanimous' %}selected{% endif %}>Einstimmigkeit (alle Eigentümer)</option>
             </select>
             <div id="majority-hint" class="form-hint"></div>
+            {% if form.majority_type.errors %}<div class="form-error">{{ form.majority_type.errors.0 }}</div>{% endif %}
         </div>
         <div class="form-group">
             <label for="id_deadline">Abstimmungsfrist (optional)</label>
             <input type="datetime-local" name="deadline" id="id_deadline" class="form-input"
                    value="{{ form.deadline.value|default:'' }}">
+            <div class="form-hint">Leer lassen für unbegrenzte Frist. Die Abstimmung wird nach Ablauf automatisch geschlossen.</div>
+            {% if form.deadline.errors %}<div class="form-error">{{ form.deadline.errors.0 }}</div>{% endif %}
         </div>
         <hr>
         <div class="flex gap-1">
@@ -50,14 +55,43 @@
 </div>
 
 <script>
+// FIX: Korrekte rechtliche Hinweise nach ZGB
 const hints = {
-    simple:    'Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen. Wertquoten nicht ausschlaggebend.<br><em>Typisch für:</em> Genehmigung Jahresrechnung, Budget, Hausordnung.',
-    absolute:  'Mehr als die Hälfte der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten. Gesetzlicher Standard gemäss ZGB Art. 712m.<br><em>Typisch für:</em> Wahl/Abberufung der Verwaltung, ordentliche Unterhaltsarbeiten.',
-    qualified: 'Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten.<br><em>Typisch für:</em> Fassadensanierung, neue Heizung, Lifteinbau, grössere Investitionen.',
-    unanimous: 'Alle abgegebenen Stimmen <em>inklusive Enthaltungen</em> müssen Ja sein. Eine Enthaltung zählt als Nein.<br><em>Typisch für:</em> Reglementsänderung, Zweckänderung eines Gebäudeteils.',
+    simple: `
+        <strong>Einfaches Mehr — nur Köpfe (ohne Wertquoten)</strong><br>
+        Mehr Ja- als Nein-Stimmen nach Personen. Enthaltungen bleiben neutral.
+        Wertquoten spielen keine Rolle.<br>
+        <span style="color:var(--red);font-weight:600;">⚠ Nur zulässig wenn Reglement es ausdrücklich vorsieht.</span><br>
+        <em>Typisch für:</em> Verfahrensfragen, Wahlmodus.`,
+
+    absolute: `
+        <strong>Absolutes Mehr — Köpfe + Wertquoten (ZGB Art. 712m Abs. 1)</strong><br>
+        Mehr Ja- als Nein-Stimmen nach Personen <em>und</em> nach Wertquoten.
+        Enthaltungen bleiben neutral — sie zählen weder als Ja noch als Nein.<br>
+        <span style="color:var(--accent);font-weight:600;">✦ Gesetzlicher Standard für die meisten Beschlüsse.</span><br>
+        <em>Typisch für:</em> Wahl/Abberufung der Verwaltung, Genehmigung Jahresrechnung &amp; Budget,
+        ordentliche Unterhaltsarbeiten, Hausordnung.`,
+
+    qualified: `
+        <strong>Qualifiziertes Mehr — 2/3 Köpfe + 2/3 Wertquoten (ZGB Art. 712g Abs. 2)</strong><br>
+        Mindestens 2/3 der Ja+Nein-Stimmen müssen Ja sein — sowohl nach Personen als auch nach Wertquoten.
+        Enthaltungen bleiben neutral.<br>
+        <em>Typisch für:</em> Fassadensanierung, neue Heizung, Lifteinbau, grössere Investitionen
+        die alle Einheiten betreffen.`,
+
+    unanimous: `
+        <strong>Einstimmigkeit — alle Eigentümer müssen Ja stimmen (ZGB Art. 648)</strong><br>
+        <span style="color:var(--red);font-weight:600;">
+        Alle Eigentümer der Gemeinschaft müssen Ja stimmen — nicht nur die abgestimmten.</span>
+        Eine Enthaltung, ein Nein oder eine fehlende Stimmabgabe gilt als fehlende Zustimmung.<br>
+        <em>Typisch für:</em> Änderung des Begründungsakts (Reglement), Zweckänderung eines Gebäudeteils,
+        Aufhebung der Stockwerkeigentümergemeinschaft.`,
 };
+
 function updateMajorityHint(val) {
-    document.getElementById('majority-hint').innerHTML = hints[val] || '';
+    const el = document.getElementById('majority-hint');
+    el.innerHTML = hints[val] || '';
+    el.style.display = hints[val] ? 'block' : 'none';
 }
 updateMajorityHint(document.getElementById('id_majority_type').value || 'absolute');
 </script>

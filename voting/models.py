@@ -60,6 +60,10 @@ class Community(models.Model):
             ).exists()
         )
 
+    @property
+    def total_quota(self):
+        return self.units.aggregate(s=models.Sum('quota'))['s'] or Decimal('0')
+
     class Meta:
         verbose_name        = "Gemeinschaft"
         verbose_name_plural = "Gemeinschaften"
@@ -140,7 +144,7 @@ class Proposal(models.Model):
         SIMPLE    = 'simple',    'Einfaches Mehr (nur Köpfe)'
         ABSOLUTE  = 'absolute',  'Absolutes Mehr (Köpfe + Wertquoten)'
         QUALIFIED = 'qualified', 'Qualifiziertes Mehr (2/3 Köpfe + 2/3 Wertquoten)'
-        UNANIMOUS = 'unanimous', 'Einstimmigkeit (Enthaltung gilt als Nein)'
+        UNANIMOUS = 'unanimous', 'Einstimmigkeit (alle Eigentümer müssen Ja stimmen)'
 
     community     = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='proposals')
     created_by    = models.ForeignKey(
@@ -167,7 +171,7 @@ class Proposal(models.Model):
         self.save()
 
     def close(self):
-        self.status   = self.Status.CLOSED
+        self.status    = self.Status.CLOSED
         self.closed_at = timezone.now()
         self.save()
 
@@ -185,6 +189,34 @@ class Proposal(models.Model):
             total=models.Sum('quota')
         )['total'] or Decimal('0')
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # get_results()
+    #
+    # Rechtliche Grundlagen (ZGB Stockwerkeigentum):
+    #
+    # QUORUM:
+    #   Enthaltungen zählen als Beteiligung — nur abwesende / nicht abstimmende
+    #   Eigentümer fehlen dem Quorum. (Quorum = Beschlussfähigkeit, nicht
+    #   Zustimmungsquorum.)
+    #
+    # EINFACHES MEHR (simple):
+    #   Mehr Ja- als Nein-Stimmen nach Köpfen. Enthaltungen bleiben neutral.
+    #   Nur für Ordnungsgeschäfte, sofern Reglement es vorsieht.
+    #
+    # ABSOLUTES MEHR (absolute) — gesetzlicher Standard ZGB Art. 712m Abs. 1:
+    #   Mehr Ja- als Nein-Stimmen nach Köpfen UND nach Wertquoten.
+    #   Enthaltungen bleiben neutral (zählen nicht für Ja oder Nein).
+    #
+    # QUALIFIZIERTES MEHR (qualified) — ZGB Art. 712g Abs. 2:
+    #   Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen UND nach Wertquoten.
+    #   Enthaltungen bleiben neutral.
+    #
+    # EINSTIMMIGKEIT (unanimous) — ZGB Art. 648 / Art. 712g Abs. 3:
+    #   ALLE Eigentümer der Gemeinschaft müssen Ja stimmen. Eine Enthaltung,
+    #   ein Nein oder eine fehlende Stimmabgabe gilt als fehlende Zustimmung.
+    #   (Nicht nur abgegebene Stimmen — alle Eigentümer sind massgebend.)
+    # ─────────────────────────────────────────────────────────────────────────
+
     def get_results(self):
         votes         = self.votes.select_related('unit')
         yes_votes     = votes.filter(choice=Vote.Choice.YES)
@@ -195,42 +227,117 @@ class Proposal(models.Model):
         no_count      = no_votes.count()
         abstain_count = abstain_votes.count()
         total_units   = self.community.units.count()
+        total_voted   = yes_count + no_count + abstain_count
 
-        yes_quota   = yes_votes.aggregate(s=models.Sum('unit__quota'))['s'] or Decimal('0')
-        no_quota    = no_votes.aggregate(s=models.Sum('unit__quota'))['s'] or Decimal('0')
-        total_quota = self.community.units.aggregate(s=models.Sum('quota'))['s'] or Decimal('0')
+        yes_quota     = yes_votes.aggregate(s=models.Sum('unit__quota'))['s']     or Decimal('0')
+        no_quota      = no_votes.aggregate(s=models.Sum('unit__quota'))['s']      or Decimal('0')
+        abstain_quota = abstain_votes.aggregate(s=models.Sum('unit__quota'))['s'] or Decimal('0')
+        total_quota   = self.community.units.aggregate(s=models.Sum('quota'))['s'] or Decimal('0')
 
-        voted_quota      = yes_quota + no_quota
+        # FIX: Enthaltungen zählen für das Quorum (Anwesenheit), aber nicht
+        #      für die Ja/Nein-Auswertung.
+        voted_quota      = yes_quota + no_quota + abstain_quota
         quorum_threshold = self.community.quorum
         quorum_ok        = (quorum_threshold == 0) or (voted_quota >= quorum_threshold)
 
-        passed = False
+        # Beteiligungsquoten für Fortschrittsbalken
+        if total_units:
+            participation = round(float(Decimal(total_voted) / Decimal(total_units) * 100), 1)
+        else:
+            participation = 0.0
+        if total_quota:
+            participation_quota = round(float(voted_quota) / float(total_quota) * 100, 1)
+        else:
+            participation_quota = 0.0
+
+        passed   = False
+        criteria = {}
+        mt       = self.majority_type
+
         if quorum_ok:
-            mt = self.majority_type
             if mt == self.MajorityType.SIMPLE:
-                passed = yes_count > no_count
+                head_ok  = yes_count > no_count
+                criteria = {'Mehr Ja- als Nein-Stimmen (Köpfe)': head_ok}
+                passed   = head_ok
+
             elif mt == self.MajorityType.ABSOLUTE:
-                passed = (yes_count > no_count) and (yes_quota > no_quota)
+                head_ok  = yes_count > no_count
+                quota_ok = yes_quota > no_quota
+                criteria = {
+                    'Mehr Ja- als Nein-Stimmen (Köpfe)':    head_ok,
+                    'Mehr Ja- als Nein-Wertquoten':          quota_ok,
+                }
+                passed = head_ok and quota_ok
+
             elif mt == self.MajorityType.QUALIFIED:
                 total_heads = yes_count + no_count
-                head_ok     = (yes_count / total_heads >= 2 / 3) if total_heads else False
+                head_ok     = (
+                    Decimal(yes_count) / Decimal(total_heads) >= Decimal('2') / Decimal('3')
+                ) if total_heads else False
                 quota_denom = yes_quota + no_quota
-                quota_ok    = (yes_quota / quota_denom >= Decimal('2') / Decimal('3')) if quota_denom else False
+                quota_ok    = (
+                    yes_quota / quota_denom >= Decimal('2') / Decimal('3')
+                ) if quota_denom else False
+                criteria = {
+                    '≥ 2/3 Ja-Stimmen nach Köpfen':       head_ok,
+                    '≥ 2/3 Ja-Stimmen nach Wertquoten':   quota_ok,
+                }
                 passed = head_ok and quota_ok
+
             elif mt == self.MajorityType.UNANIMOUS:
-                passed = (no_count == 0 and abstain_count == 0 and yes_count > 0)
+                # FIX: Alle Eigentümer müssen Ja stimmen — fehlende Stimmabgabe
+                #      gilt als fehlende Zustimmung (ZGB Art. 648).
+                all_voted = (total_voted == total_units)
+                no_nays   = (no_count == 0 and abstain_count == 0)
+                has_votes = (yes_count > 0)
+                criteria  = {
+                    'Alle Eigentümer haben abgestimmt':       all_voted,
+                    'Keine Nein- oder Enthaltungsstimmen':    no_nays,
+                }
+                passed = all_voted and no_nays and has_votes
+        else:
+            criteria = {'Quorum erreicht': False}
+
+        # Prozentwerte für Fortschrittsbalken im Detail-Template
+        head_denom  = yes_count + no_count
+        quota_denom_display = yes_quota + no_quota
+
+        yes_pct_heads = round(yes_count / head_denom * 100, 1) if head_denom else 0
+        yes_pct_quota = round(float(yes_quota / quota_denom_display * 100), 1) if quota_denom_display else 0
+
+        # Schwellen-Marker auf dem Balken (50% oder 66.7%)
+        if mt == self.MajorityType.QUALIFIED:
+            threshold_pct = 66.7
+        else:
+            threshold_pct = 50.0
 
         return {
-            'yes_count':     yes_count,
-            'no_count':      no_count,
-            'abstain_count': abstain_count,
-            'total_units':   total_units,
-            'yes_quota':     yes_quota,
-            'no_quota':      no_quota,
-            'total_quota':   total_quota,
-            'voted_quota':   voted_quota,
-            'quorum_ok':     quorum_ok,
-            'passed':        passed,
+            # Stimm-Zählungen
+            'yes_count':           yes_count,
+            'no_count':            no_count,
+            'abstain_count':       abstain_count,
+            'total_units':         total_units,
+            'total_voted':         total_voted,
+            # Wertquoten
+            'yes_quota':           yes_quota,
+            'no_quota':            no_quota,
+            'abstain_quota':       abstain_quota,
+            'total_quota':         total_quota,
+            'voted_quota':         voted_quota,
+            # Quorum
+            'quorum':              float(quorum_threshold),
+            'quorum_ok':           quorum_ok,
+            'quorum_met':          quorum_ok,    # Template-Alias
+            # Beteiligung (für Fortschrittsbalken)
+            'participation':       participation,
+            'participation_quota': participation_quota,
+            # Balken-Prozentwerte
+            'yes_pct_heads':       yes_pct_heads,
+            'yes_pct_quota':       yes_pct_quota,
+            'threshold_pct':       threshold_pct,
+            # Ergebnis
+            'passed':              passed,
+            'criteria':            criteria,
         }
 
     class Meta:
@@ -292,6 +399,14 @@ class ProposalDocument(models.Model):
 # ── Proxy ─────────────────────────────────────────────────────────────────────
 
 class Proxy(models.Model):
+    """
+    Vollmacht: Einheit-Eigentümer bevollmächtigt eine andere Person,
+    für seine Einheit abzustimmen.
+
+    Ketten-Vollmachten (A→B→C) sind systemseitig verhindert, weil
+    nur der Unit-Eigentümer (Unit.owner == request.user) eine Vollmacht
+    für seine Einheit erteilen kann — nicht der Bevollmächtigte selbst.
+    """
     proposal   = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name='proxies')
     unit       = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='proxies')
     delegate   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proxy_delegations')
@@ -322,7 +437,7 @@ class InviteToken(models.Model):
         2. Admin copies the link and sends it to the future owner / manager.
         3. Recipient opens /einladen/<token>/ → registers an account.
         4. After registration the token is consumed:
-             - role OWNER  → Unit.owner is set to the new user
+             - role OWNER   → Unit.owner is set to the new user
              - role MANAGER/BOARD → CommunityMembership is created
         5. Token is marked used_at=now, used_by=user, is_active stays True
            (keep for audit trail).

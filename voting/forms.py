@@ -1,28 +1,70 @@
+from decimal import Decimal
+
 from django import forms
 from django.contrib.auth.models import User
-from django.core.exceptions import ValidationError
 
 from .models import (
     Community, CommunityMembership, InviteToken, Proposal,
-    ProposalDocument, Proxy, Unit, Vote,
+    ProposalDocument, Unit, Vote,
 )
-
-MAJORITY_CHOICES = [
-    ('simple',    'Einfaches Mehr (nur Köpfe) — Jahresrechnung, Budget, Hausordnung'),
-    ('absolute',  'Absolutes Mehr (Köpfe + Wertquoten) — Verwaltungswahl, Unterhalt ✦ Standard'),
-    ('qualified', 'Qualifiziertes Mehr (2/3 Köpfe + 2/3 Quoten) — Fassade, Heizung, Lift'),
-    ('unanimous', 'Einstimmigkeit — Reglementsänderung, Zweckänderung'),
-]
 
 
 # ── Proposal ──────────────────────────────────────────────────────────────────
 
+# FIX: Korrekte Verwendungshinweise nach ZGB
+# - Einfaches Mehr: NUR für Ordnungsgeschäfte, wenn Reglement es vorsieht
+# - Absolutes Mehr: Gesetzlicher Standard (ZGB Art. 712m Abs. 1)
+# - Qualifiziertes Mehr: Grössere bauliche Massnahmen (ZGB Art. 712g Abs. 2)
+# - Einstimmigkeit: Zweckänderung, Aufhebung STWEG (ZGB Art. 648 / 712g Abs. 3)
+MAJORITY_TYPE_CHOICES = [
+    ('simple',    'Einfaches Mehr (nur Köpfe)'),
+    ('absolute',  'Absolutes Mehr (Köpfe + Wertquoten)  ✦ Standard ZGB Art. 712m'),
+    ('qualified', 'Qualifiziertes Mehr (2/3 Köpfe + 2/3 Wertquoten)'),
+    ('unanimous', 'Einstimmigkeit (alle Eigentümer müssen Ja stimmen)'),
+]
+
+MAJORITY_TYPE_HINTS = {
+    'simple': (
+        'Mehr Ja- als Nein-Stimmen nach Köpfen. Enthaltungen bleiben neutral. '
+        'Wertquoten spielen keine Rolle. '
+        '<strong>Nur zulässig wenn Reglement es ausdrücklich vorsieht.</strong> '
+        '<em>Typisch für:</em> Verfahrensfragen, Wahlmodus.'
+    ),
+    'absolute': (
+        'Mehr Ja- als Nein-Stimmen nach Köpfen <em>und</em> nach Wertquoten. '
+        'Enthaltungen bleiben neutral und wirken weder als Ja noch als Nein. '
+        '<strong>Gesetzlicher Standard gemäss ZGB Art. 712m Abs. 1.</strong> '
+        '<em>Typisch für:</em> Wahl/Abberufung der Verwaltung, Genehmigung '
+        'Jahresrechnung & Budget, ordentliche Unterhaltsarbeiten, Hausordnung.'
+    ),
+    'qualified': (
+        'Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen '
+        '<em>und</em> nach Wertquoten müssen Ja sein. '
+        'Enthaltungen bleiben neutral. '
+        '<strong>ZGB Art. 712g Abs. 2 — für grössere bauliche Massnahmen.</strong> '
+        '<em>Typisch für:</em> Fassadensanierung, neue Heizung, Lifteinbau, '
+        'grössere Investitionen die alle betreffen.'
+    ),
+    'unanimous': (
+        '<strong>Alle Eigentümer der Gemeinschaft müssen Ja stimmen.</strong> '
+        'Eine Enthaltung, ein Nein oder eine fehlende Stimmabgabe gilt als '
+        'fehlende Zustimmung — nicht nur abgegebene Stimmen zählen. '
+        '<strong>ZGB Art. 648 / Art. 712g Abs. 3.</strong> '
+        '<em>Typisch für:</em> Änderung des Begründungsakts (Reglement), '
+        'Zweckänderung eines Gebäudeteils, Aufhebung der Stockwerkeigentümergemeinschaft.'
+    ),
+}
+
+
 class ProposalForm(forms.ModelForm):
     majority_type = forms.ChoiceField(
-        choices=MAJORITY_CHOICES,
+        choices=MAJORITY_TYPE_CHOICES,
         initial='absolute',
         label='Mehrheitsart',
-        widget=forms.Select(attrs={'class': 'form-select'}),
+        widget=forms.Select(attrs={
+            'class': 'form-select',
+            'onchange': 'updateMajorityHint(this.value)',
+        }),
     )
 
     class Meta:
@@ -35,13 +77,31 @@ class ProposalForm(forms.ModelForm):
             }),
             'description': forms.Textarea(attrs={
                 'class': 'form-textarea',
-                'rows': 5,
-                'placeholder': 'Beschreibe den Antrag detailliert...',
+                'rows': 6,
+                'placeholder': (
+                    'Beschreibe den Antrag detailliert.\n'
+                    'Was soll beschlossen werden?\n'
+                    'Was sind die Kosten? Gibt es Alternativen?'
+                ),
             }),
-            'deadline': forms.DateTimeInput(attrs={
-                'class': 'form-input',
-                'type': 'datetime-local',
-            }),
+            'deadline': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={
+                    'class': 'form-input',
+                    'type': 'datetime-local',
+                },
+            ),
+        }
+        labels = {
+            'title':       'Titel',
+            'description': 'Beschreibung',
+            'deadline':    'Abstimmungsfrist (optional)',
+        }
+        help_texts = {
+            'deadline': (
+                'Leer lassen für unbegrenzte Frist. Nach Ablauf der Frist wird die '
+                'Abstimmung automatisch geschlossen.'
+            ),
         }
 
 
@@ -56,8 +116,12 @@ class VoteForm(forms.ModelForm):
             'comment': forms.Textarea(attrs={
                 'class': 'form-textarea',
                 'rows': 2,
-                'placeholder': 'Optionale Begründung...',
+                'placeholder': 'Optionale Begründung (wird im Protokoll gespeichert)...',
             }),
+        }
+        labels = {
+            'choice':  'Stimme',
+            'comment': 'Kommentar (optional)',
         }
 
 
@@ -81,12 +145,17 @@ class ManualVoteForm(forms.Form):
     )
     manual_source = forms.CharField(
         required=False,
-        label='Quellenangabe',
+        label='Quellenangabe (Pflicht bei schriftlicher Stimmabgabe)',
         widget=forms.TextInput(attrs={
             'class': 'form-input',
-            'placeholder': "z.B. Briefpost vom 12.3.2026, E-Mail, Telefonisch",
+            'placeholder': "z.B. Briefpost vom 12.3.2026, E-Mail, Telefonisch bestätigt",
         }),
     )
+
+    def clean(self):
+        cleaned = super().clean()
+        # Quellenangabe ist bei manueller Erfassung sinnvoll für Revisionszwecke
+        return cleaned
 
 
 # ── Community ─────────────────────────────────────────────────────────────────
@@ -120,8 +189,9 @@ class CommunityForm(forms.ModelForm):
         }
         help_texts = {
             'quorum': (
-                'Mindest-Beteiligung nach Wertquoten für gültige Abstimmungen '
-                '(0 = kein Quorum). Häufig 500‰ (die Hälfte).'
+                'Mindest-Beteiligung nach Wertquoten für gültige Beschlüsse '
+                '(0 = kein Quorum). Enthaltungen zählen zur Beteiligung. '
+                'Häufig 500‰ (die Hälfte aller Wertquoten).'
             ),
         }
 
@@ -165,6 +235,12 @@ class UnitForm(forms.ModelForm):
             'unit_number': 'Einheitsnummer',
             'description': 'Beschreibung (optional)',
             'quota':       'Wertquote (‰)',
+        }
+        help_texts = {
+            'quota': (
+                'Wertquote dieser Einheit in Promille (‰). '
+                'Die Summe aller Wertquoten muss 1000‰ ergeben.'
+            ),
         }
 
 
@@ -281,10 +357,13 @@ class InviteTokenForm(forms.ModelForm):
                 'class': 'form-input',
                 'placeholder': 'muster@beispiel.ch (optional)',
             }),
-            'expires_at': forms.DateTimeInput(attrs={
-                'class': 'form-input',
-                'type': 'datetime-local',
-            }),
+            'expires_at': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={
+                    'class': 'form-input',
+                    'type': 'datetime-local',
+                },
+            ),
         }
         labels = {
             'role':       'Rolle',
@@ -312,58 +391,54 @@ class InviteTokenForm(forms.ModelForm):
 
 class InviteRegistrationForm(forms.Form):
     """
-    Registration form presented to a new user who arrived via an InviteToken
-    link.  No existing login required.
+    Registration form presented to a new user who arrived via an InviteToken link.
     """
-    first_name = forms.CharField(
-        max_length=150, label='Vorname',
-        widget=forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'given-name'}),
-    )
-    last_name = forms.CharField(
-        max_length=150, label='Nachname',
-        widget=forms.TextInput(attrs={'class': 'form-input', 'autocomplete': 'family-name'}),
+    username = forms.CharField(
+        label='Benutzername',
+        max_length=150,
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'autofocus': True,
+            'autocomplete': 'username',
+        }),
     )
     email = forms.EmailField(
         label='E-Mail-Adresse',
-        widget=forms.EmailInput(attrs={'class': 'form-input', 'autocomplete': 'email'}),
-    )
-    username = forms.CharField(
-        max_length=150, label='Benutzername',
-        widget=forms.TextInput(attrs={
+        required=False,
+        widget=forms.EmailInput(attrs={
             'class': 'form-input',
-            'autocomplete': 'username',
-            'placeholder': 'Nur Buchstaben, Ziffern und @/./+/-/_',
+            'autocomplete': 'email',
         }),
-        help_text='Wird zum Einloggen verwendet.',
+    )
+    first_name = forms.CharField(
+        label='Vorname',
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input'}),
+    )
+    last_name = forms.CharField(
+        label='Nachname',
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input'}),
     )
     password1 = forms.CharField(
         label='Passwort',
-        widget=forms.PasswordInput(attrs={'class': 'form-input', 'autocomplete': 'new-password'}),
-        min_length=8,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-input',
+            'autocomplete': 'new-password',
+        }),
     )
     password2 = forms.CharField(
         label='Passwort bestätigen',
-        widget=forms.PasswordInput(attrs={'class': 'form-input', 'autocomplete': 'new-password'}),
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-input',
+            'autocomplete': 'new-password',
+        }),
     )
-
-    def clean_username(self):
-        from django.contrib.auth.models import User
-        username = self.cleaned_data['username'].strip()
-        if User.objects.filter(username=username).exists():
-            raise ValidationError('Dieser Benutzername ist bereits vergeben.')
-        return username
-
-    def clean_email(self):
-        from django.contrib.auth.models import User
-        email = self.cleaned_data['email'].strip().lower()
-        if User.objects.filter(email__iexact=email).exists():
-            raise ValidationError('Diese E-Mail-Adresse ist bereits registriert.')
-        return email
 
     def clean(self):
         cleaned = super().clean()
-        p1 = cleaned.get('password1')
-        p2 = cleaned.get('password2')
-        if p1 and p2 and p1 != p2:
-            self.add_error('password2', 'Die Passwörter stimmen nicht überein.')
+        pw1 = cleaned.get('password1')
+        pw2 = cleaned.get('password2')
+        if pw1 and pw2 and pw1 != pw2:
+            raise forms.ValidationError("Die Passwörter stimmen nicht überein.")
         return cleaned

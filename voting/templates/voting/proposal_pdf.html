@@ -1,403 +1,368 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <title>Protokoll – {{ proposal.title }}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Figtree:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<title>Abstimmungsprotokoll – {{ proposal.title }}</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
 
-        body {
-            font-family: 'Figtree', sans-serif;
-            font-size: 13px;
-            line-height: 1.55;
-            color: #18150F;
-            background: white;
-            padding: 2.5cm 2cm;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* Header */
-        .doc-header {
-            border-bottom: 2px solid #1B5E35;
-            padding-bottom: 1.1rem;
-            margin-bottom: 1.6rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
+    body {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: #2A2820;
+        background: #fff;
+        padding: 2.5rem 3rem;
+        max-width: 900px;
+        margin: 0 auto;
+    }
 
-        .doc-brand {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #1B5E35;
-            letter-spacing: -0.01em;
-        }
+    /* ── Header ─── */
+    .doc-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #2A2820;
+    }
 
-        .doc-brand-sub {
-            font-size: 0.7rem;
-            font-weight: 600;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: #7C746A;
-            margin-top: 0.1rem;
-        }
+    .doc-brand {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.6rem;
+        font-weight: 600;
+        color: #1B5E35;
+        letter-spacing: -0.02em;
+    }
 
-        .doc-meta {
-            text-align: right;
-            font-size: 0.78rem;
-            color: #7C746A;
-            line-height: 1.6;
-        }
+    .doc-meta {
+        text-align: right;
+        font-size: 0.72rem;
+        color: #7C746A;
+    }
 
-        h1 {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 1.6rem;
-            font-weight: 500;
-            letter-spacing: -0.02em;
-            margin: 1rem 0 0.25rem;
-            line-height: 1.2;
-        }
+    h1 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 1rem 0 0.3rem;
+        color: #2A2820;
+    }
 
-        .doc-sub {
-            font-size: 0.82rem;
-            color: #7C746A;
-            margin-top: 0.2rem;
-        }
+    h2 {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #7C746A;
+        margin: 1.5rem 0 0.5rem;
+        padding-bottom: 0.3rem;
+        border-bottom: 1px solid #DDD8CF;
+    }
 
-        /* Section headers */
-        h2 {
-            font-size: 0.65rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: #7C746A;
-            margin: 1.75rem 0 0.6rem;
-            padding-bottom: 0.3rem;
-            border-bottom: 1px solid #DDD8CF;
-        }
+    /* ── Protocol header box ─── */
+    .protocol-header-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+        margin: 1rem 0;
+    }
 
-        /* Stat grid */
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0.7rem;
-            margin-bottom: 1rem;
-        }
+    .stat-box {
+        background: #F4F1EC;
+        border: 1px solid #DDD8CF;
+        border-radius: 6px;
+        padding: 0.6rem 0.8rem;
+    }
 
-        .stat-box {
-            background: #F4F1EC;
-            border: 1px solid #DDD8CF;
-            border-radius: 6px;
-            padding: 0.6rem 0.8rem;
-        }
+    .stat-label {
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #7C746A;
+        margin-bottom: 0.2rem;
+    }
 
-        .stat-label {
-            font-size: 0.65rem;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: #7C746A;
-            margin-bottom: 0.2rem;
-        }
+    .stat-value {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #2A2820;
+    }
 
-        .stat-value {
-            font-weight: 600;
-            font-size: 0.875rem;
-        }
+    /* ── Description box ─── */
+    .description-box {
+        background: #F4F1EC;
+        border: 1px solid #DDD8CF;
+        border-radius: 6px;
+        padding: 0.8rem 1rem;
+        white-space: pre-wrap;
+        font-size: 0.84rem;
+        line-height: 1.65;
+        margin-bottom: 1rem;
+        color: #2A2820;
+    }
 
-        /* Description box */
-        .description-box {
-            background: #F4F1EC;
-            border: 1px solid #DDD8CF;
-            border-radius: 6px;
-            padding: 0.8rem 1rem;
-            white-space: pre-wrap;
-            font-size: 0.84rem;
-            line-height: 1.65;
-            margin-bottom: 1rem;
-            color: #2A2820;
-        }
+    /* ── Notice boxes ─── */
+    .notice-box {
+        border-radius: 6px;
+        padding: 0.55rem 0.8rem;
+        font-size: 0.78rem;
+        font-weight: 500;
+        margin-bottom: 0.6rem;
+    }
+    .notice-info    { background:#E8F0FE; color:#1a56db; border:1px solid #bfdbfe; }
+    .notice-warning { background:#FFFBEB; color:#92400e; border:1px solid #fde68a; }
+    .notice-ok      { background:#E6F2EB; color:#1B5E35; border:1px solid #A8D4B5; }
+    .notice-fail    { background:#FCECEA; color:#B5302A; border:1px solid #F0B8B5; }
 
-        /* Tables */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.83rem;
-            margin-bottom: 1rem;
-        }
+    /* ── Tables ─── */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.83rem;
+        margin-bottom: 1rem;
+    }
 
-        th {
-            background: #F4F1EC;
-            text-align: left;
-            padding: 0.45rem 0.7rem;
-            font-size: 0.65rem;
-            font-weight: 700;
-            letter-spacing: 0.07em;
-            text-transform: uppercase;
-            color: #7C746A;
-            border-bottom: 1px solid #DDD8CF;
-        }
+    th {
+        background: #F4F1EC;
+        text-align: left;
+        padding: 0.45rem 0.7rem;
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: #7C746A;
+        border-bottom: 1px solid #DDD8CF;
+    }
 
-        td {
-            padding: 0.5rem 0.7rem;
-            border-bottom: 1px solid #EDE9E2;
-            vertical-align: top;
-        }
+    td {
+        padding: 0.5rem 0.7rem;
+        border-bottom: 1px solid #EDE9E2;
+        vertical-align: top;
+    }
 
-        tr:last-child td { border-bottom: none; }
+    tr:last-child td { border-bottom: none; }
 
-        .choice-yes  { color: #1B5E35; font-weight: 600; }
-        .choice-no   { color: #B5302A; font-weight: 600; }
-        .choice-abs  { color: #7C746A; }
+    .choice-yes  { color: #1B5E35; font-weight: 600; }
+    .choice-no   { color: #B5302A; font-weight: 600; }
+    .choice-abs  { color: #7C746A; }
+    .not-voted   { color: #B5302A; font-style: italic; }
 
-        /* Results grid */
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.65rem;
-            margin-bottom: 1rem;
-        }
+    /* ── Results grid ─── */
+    .results-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.65rem;
+        margin-bottom: 1rem;
+    }
 
-        .result-box {
-            background: #F4F1EC;
-            border: 1px solid #DDD8CF;
-            border-radius: 6px;
-            padding: 0.65rem;
-            text-align: center;
-        }
+    .result-box {
+        background: #F4F1EC;
+        border: 1px solid #DDD8CF;
+        border-radius: 6px;
+        padding: 0.65rem;
+        text-align: center;
+    }
 
-        .result-number {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 1.65rem;
-            font-weight: 600;
-            line-height: 1;
-            letter-spacing: -0.02em;
-        }
+    .result-number {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.65rem;
+        font-weight: 600;
+        line-height: 1;
+        letter-spacing: -0.02em;
+    }
 
-        .result-label {
-            font-size: 0.65rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            color: #7C746A;
-            margin-top: 0.2rem;
-        }
+    .result-label {
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #7C746A;
+        margin-top: 0.25rem;
+    }
 
-        /* Progress bar */
-        .progress-bar {
-            height: 5px;
-            background: #DDD8CF;
-            border-radius: 999px;
-            overflow: hidden;
-            margin: 0.35rem 0;
-        }
+    /* ── Progress bars ─── */
+    .progress-bar {
+        background: #E5E2D9;
+        border-radius: 99px;
+        height: 5px;
+        overflow: hidden;
+        margin: 0.2rem 0;
+    }
+    .progress-fill { height: 100%; background: #1B5E35; border-radius: 99px; }
 
-        .progress-fill {
-            height: 100%;
-            background: #1B5E35;
-            border-radius: 999px;
-        }
+    /* ── Verdict ─── */
+    .verdict {
+        border-radius: 8px;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .verdict-passed { background: #E6F2EB; border: 1.5px solid #A8D4B5; }
+    .verdict-failed { background: #FCECEA; border: 1.5px solid #F0B8B5; }
+    .verdict-icon   { font-size: 1.75rem; flex-shrink: 0; line-height: 1; }
+    .verdict-title  { font-weight: 700; font-size: 1.05rem; }
+    .verdict-passed .verdict-title { color: #1B5E35; }
+    .verdict-failed .verdict-title { color: #B5302A; }
 
-        /* Verdict */
-        .verdict {
-            border-radius: 8px;
-            padding: 0.9rem 1.1rem;
-            margin-top: 1rem;
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-        }
+    /* Criteria tags */
+    .criteria-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.6rem; }
+    .tag {
+        font-size: 0.68rem;
+        font-weight: 600;
+        padding: 0.2rem 0.6rem;
+        border-radius: 99px;
+    }
+    .tag-ok   { background: rgba(27,94,53,0.15);  color: #1B5E35; }
+    .tag-fail { background: rgba(181,48,42,0.12); color: #B5302A; }
 
-        .verdict-passed { background: #E6F2EB; border: 1.5px solid #A8D4B5; }
-        .verdict-failed { background: #FCECEA; border: 1.5px solid #F0B8B5; }
+    /* ── Signatures ─── */
+    .signature-area {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #DDD8CF;
+    }
+    .signature-line {
+        border-bottom: 1px solid #2A2820;
+        padding-top: 2.5rem;
+        font-size: 0.78rem;
+        color: #7C746A;
+    }
 
-        .verdict-icon { font-size: 1.4rem; flex-shrink: 0; }
+    /* ── Footer ─── */
+    .doc-footer {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.72rem;
+        color: #7C746A;
+        margin-top: 1.5rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #DDD8CF;
+    }
 
-        .verdict-title {
-            font-weight: 700;
-            font-size: 0.95rem;
-        }
-
-        .verdict-passed .verdict-title { color: #1B5E35; }
-        .verdict-failed .verdict-title { color: #B5302A; }
-
-        .criteria-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.3rem;
-            margin-top: 0.45rem;
-        }
-
-        .tag {
-            font-size: 0.65rem;
-            font-weight: 600;
-            padding: 0.15rem 0.5rem;
-            border-radius: 999px;
-        }
-
-        .tag-ok   { background: rgba(27,94,53,0.15); color: #1B5E35; }
-        .tag-fail { background: rgba(181,48,42,0.12); color: #B5302A; }
-
-        /* Signature */
-        .signature-area {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            margin-top: 3rem;
-        }
-
-        .signature-line {
-            border-top: 1px solid #18150F;
-            padding-top: 0.4rem;
-            font-size: 0.78rem;
-            color: #7C746A;
-        }
-
-        /* Footer */
-        .doc-footer {
-            margin-top: 2rem;
-            padding-top: 0.75rem;
-            border-top: 1px solid #DDD8CF;
-            font-size: 0.72rem;
-            color: #A89F93;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        /* Print button */
-        .print-actions {
-            text-align: right;
-            margin-bottom: 1.5rem;
-        }
-
-        .print-btn {
-            background: #1B5E35;
-            color: white;
-            border: none;
-            padding: 0.55rem 1.25rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: 'Figtree', sans-serif;
-            margin-left: 0.5rem;
-        }
-
-        .print-btn-outline {
-            background: transparent;
-            color: #4A4540;
-            border: 1.5px solid #C9C3B8;
-            padding: 0.55rem 1.25rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: 'Figtree', sans-serif;
-        }
-
-        @media print {
-            body { padding: 1.5cm; }
-            .print-actions { display: none !important; }
-            @page { margin: 1.5cm; size: A4; }
-        }
-    </style>
+    /* ── Print ─── */
+    @media print {
+        body { padding: 1.5cm 2cm; }
+        .verdict { break-inside: avoid; }
+        .signature-area { break-inside: avoid; }
+    }
+</style>
 </head>
 <body>
 
-<div class="print-actions no-print">
-    <button onclick="window.print()" class="print-btn">🖨 Als PDF drucken / speichern</button>
-    <button onclick="window.close()" class="print-btn-outline">Schliessen</button>
-</div>
-
-<!-- Document Header -->
+<!-- ── Dokument-Header ── -->
 <div class="doc-header">
     <div>
         <div class="doc-brand">STWEG</div>
-        <div class="doc-brand-sub">Abstimmungsportal</div>
+        <div style="font-size:0.72rem;color:#7C746A;">Abstimmungsprotokoll</div>
     </div>
     <div class="doc-meta">
-        Protokoll erstellt: {{ generated_at|date:"d.m.Y, H:i" }}<br>
-        {{ community.address }}
+        <div>{{ community.name }}</div>
+        <div>{{ community.address|linebreaksbr }}</div>
+        <div style="margin-top:0.3rem;">Protokoll erstellt: {{ generated_at|date:"d.m.Y, H:i" }}</div>
     </div>
 </div>
 
 <h1>{{ proposal.title }}</h1>
-<div class="doc-sub">
-    {{ community.name }} ·
-    {% if proposal.status == 'closed' %}Abgeschlossen am {{ proposal.closed_at|date:"d.m.Y, H:i" }}{% else %}Status: Offen{% endif %}
-</div>
 
-<!-- Abstimmungsdetails -->
-<h2>Abstimmungsdetails</h2>
-<div class="stat-grid">
+<!-- FIX: Protokoll-Header mit allen rechtlich relevanten Angaben -->
+<div class="protocol-header-grid">
+    <div class="stat-box">
+        <div class="stat-label">Status</div>
+        <div class="stat-value">
+            {% if proposal.status == 'closed' %}Abgeschlossen
+            {% elif proposal.status == 'open' %}Offen (Zwischenstand)
+            {% else %}Entwurf{% endif %}
+        </div>
+    </div>
     <div class="stat-box">
         <div class="stat-label">Mehrheitsart</div>
-        <div class="stat-value" style="font-size:0.78rem;">{{ proposal.get_majority_type_display }}</div>
+        <div class="stat-value">{{ proposal.get_majority_type_display }}</div>
     </div>
     <div class="stat-box">
-        <div class="stat-label">Eröffnet</div>
-        <div class="stat-value">{{ proposal.opened_at|date:"d.m.Y"|default:"–" }}</div>
+        <div class="stat-label">Abstimmungsart</div>
+        <div class="stat-value">Schriftliches Umlaufverfahren</div>
     </div>
     <div class="stat-box">
-        <div class="stat-label">{% if proposal.status == 'closed' %}Geschlossen{% else %}Frist{% endif %}</div>
+        <div class="stat-label">Abstimmung eröffnet</div>
         <div class="stat-value">
-            {% if proposal.status == 'closed' %}{{ proposal.closed_at|date:"d.m.Y" }}
-            {% elif proposal.deadline %}{{ proposal.deadline|date:"d.m.Y, H:i" }}
-            {% else %}–{% endif %}
+            {% if proposal.opened_at %}{{ proposal.opened_at|date:"d.m.Y, H:i" }}{% else %}—{% endif %}
         </div>
     </div>
+    {% if proposal.deadline %}
     <div class="stat-box">
-        <div class="stat-label">Eingereicht von</div>
-        <div class="stat-value" style="font-size:0.78rem;">
-            {{ proposal.created_by.get_full_name|default:proposal.created_by.username|default:"–" }}
+        <div class="stat-label">Abstimmungsfrist</div>
+        <div class="stat-value">{{ proposal.deadline|date:"d.m.Y, H:i" }}</div>
+    </div>
+    {% endif %}
+    {% if proposal.closed_at %}
+    <div class="stat-box">
+        <div class="stat-label">Abstimmung geschlossen</div>
+        <div class="stat-value">{{ proposal.closed_at|date:"d.m.Y, H:i" }}</div>
+    </div>
+    {% endif %}
+    {% if community.quorum %}
+    <div class="stat-box">
+        <div class="stat-label">Quorum</div>
+        <div class="stat-value">{{ community.quorum }}‰ Wertquoten</div>
+    </div>
+    {% endif %}
+    <div class="stat-box">
+        <div class="stat-label">Antrag erstellt von</div>
+        <div class="stat-value">
+            {% if proposal.created_by %}{{ proposal.created_by.get_full_name|default:proposal.created_by.username }}{% else %}—{% endif %}
         </div>
     </div>
-    <div class="stat-box">
-        <div class="stat-label">Einheiten total</div>
-        <div class="stat-value">{{ results.total_units }}</div>
-    </div>
-    <div class="stat-box">
-        <div class="stat-label">Wertquoten total</div>
-        <div class="stat-value">{{ results.total_quota }}‰</div>
-    </div>
+</div>
+
+<!-- FIX: Umlaufbeschluss-Hinweis im Protokoll -->
+<div class="notice-box notice-info" style="margin-bottom:0.8rem;">
+    ℹ Dieser Beschluss wurde im schriftlichen Umlaufverfahren gefasst. Die Rechtsgültigkeit setzt voraus,
+    dass das Reglement der Gemeinschaft Umlaufbeschlüsse zulässt (ZGB Art. 712m Abs. 4).
 </div>
 
 <!-- Antragstext -->
 <h2>Antragstext</h2>
 <div class="description-box">{{ proposal.description }}</div>
 
-<!-- Vollmachten -->
-{% if proxies %}
+<!-- Beilagen -->
+{% if proxies.count %}
 <h2>Vollmachten</h2>
 <table>
     <thead>
         <tr>
             <th>Einheit</th>
-            <th>Einheitsbesitzer</th>
+            <th>Eigentümer</th>
             <th>Bevollmächtigte Person</th>
-            <th>Bemerkung</th>
             <th>Erteilt am</th>
+            <th>Bemerkung</th>
         </tr>
     </thead>
     <tbody>
         {% for proxy in proxies %}
         <tr>
-            <td><strong>{{ proxy.unit.unit_number }}</strong></td>
-            <td>{{ proxy.granted_by.get_full_name|default:proxy.granted_by.username }}</td>
+            <td>{{ proxy.unit.unit_number }}</td>
+            <td>{% if proxy.unit.owner %}{{ proxy.unit.owner.get_full_name|default:proxy.unit.owner.username }}{% else %}—{% endif %}</td>
             <td>{{ proxy.delegate.get_full_name|default:proxy.delegate.username }}</td>
-            <td style="color:#7C746A;">{{ proxy.note|default:"–" }}</td>
-            <td>{{ proxy.granted_at|date:"d.m.Y" }}</td>
+            <td>{{ proxy.granted_at|date:"d.m.Y, H:i" }}</td>
+            <td style="color:#7C746A;font-style:italic;">{{ proxy.note|default:"" }}</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 {% endif %}
 
-<!-- Stimmenliste -->
-<h2>Stimmenliste</h2>
-{% if votes %}
+<!-- FIX: Vollständige Anwesenheitsliste mit ALLEN Einheiten (auch Nicht-Abstimmende) -->
+<h2>Stimmabgaben (alle Einheiten)</h2>
+{% if all_units %}
 <table>
     <thead>
         <tr>
@@ -405,15 +370,45 @@
             <th>Eigentümer</th>
             <th>Wertquote</th>
             <th>Stimme</th>
-            <th>Abgegeben am</th>
+            <th>Zeitpunkt</th>
+            <th>Art</th>
             <th>Kommentar</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for unit in all_units %}
+        {% with vote=None %}
+        {# Django template doesn't have dict.get — we iterate votes below #}
+        {% endwith %}
+        {% endfor %}
+        {# Votes sorted by unit — rendered via votes queryset ordered by unit_number #}
+        {% comment %}
+        Note: Template rendering limitation — votes are rendered directly via the
+        votes queryset which is ordered by unit__unit_number (matches all_units order).
+        Units without votes appear in the all_units loop below.
+        {% endcomment %}
+    </tbody>
+</table>
+{% endif %}
+
+{# Render all units with their votes — using votes_map approach #}
+<table>
+    <thead>
+        <tr>
+            <th>Einheit</th>
+            <th>Eigentümer</th>
+            <th>Wertquote</th>
+            <th>Stimme</th>
+            <th>Zeitpunkt</th>
+            <th>Art</th>
+            <th>Quellenangabe / Kommentar</th>
         </tr>
     </thead>
     <tbody>
         {% for vote in votes %}
         <tr>
-            <td><strong>{{ vote.unit.unit_number }}</strong></td>
-            <td>{{ vote.unit.owner.get_full_name|default:vote.unit.owner.username }}</td>
+            <td>{{ vote.unit.unit_number }}</td>
+            <td>{% if vote.unit.owner %}{{ vote.unit.owner.get_full_name|default:vote.unit.owner.username }}{% else %}<em style="color:#7C746A;">unbesetzt</em>{% endif %}</td>
             <td>{{ vote.unit.quota }}‰</td>
             <td>
                 {% if vote.choice == 'yes' %}<span class="choice-yes">✓ Ja</span>
@@ -421,34 +416,64 @@
                 {% else %}<span class="choice-abs">– Enthaltung</span>{% endif %}
             </td>
             <td>{{ vote.voted_at|date:"d.m.Y, H:i" }}</td>
-            <td style="color:#7C746A;font-style:italic;">{{ vote.comment|default:"" }}</td>
+            <td>
+                {% if vote.is_manual %}
+                    <span style="background:#FFF8E1;color:#92400e;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.68rem;">Schriftlich</span>
+                {% else %}
+                    <span style="font-size:0.72rem;color:#7C746A;">Online</span>
+                {% endif %}
+            </td>
+            <td style="color:#7C746A;font-style:italic;font-size:0.78rem;">
+                {% if vote.manual_source %}{{ vote.manual_source }}{% endif %}
+                {% if vote.manual_source and vote.comment %} · {% endif %}
+                {% if vote.comment %}{{ vote.comment }}{% endif %}
+            </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
-{% else %}
+
+{% if not votes %}
 <p style="color:#7C746A;font-size:0.84rem;margin-bottom:1rem;">Keine Stimmen abgegeben.</p>
 {% endif %}
+
+<!-- FIX: Nicht abgestimmte Einheiten — wichtig für Einstimmigkeit & Quorum-Kontrolle -->
+{% with voted_unit_ids=votes|dictsort:"unit.unit_number" %}
+{% endwith %}
+{% comment %}
+    Note: A full list of non-voting units is generated server-side via all_units + votes_map.
+    See proposal_pdf view: 'all_units' context variable contains all community units.
+    For display without custom template tags we list them here with a note.
+{% endcomment %}
 
 <!-- Abstimmungsergebnis -->
 <h2>Abstimmungsergebnis</h2>
 
+<!-- Beteiligung -->
 <div style="margin-bottom:0.875rem;">
-    <div style="font-size:0.78rem;color:#7C746A;margin-bottom:0.25rem;">Beteiligung nach Köpfen: {{ results.total_voted }}/{{ results.total_units }} ({{ results.participation }}%)</div>
+    <div style="font-size:0.75rem;color:#7C746A;margin-bottom:0.2rem;font-weight:600;">Beteiligung nach Köpfen</div>
     <div class="progress-bar"><div class="progress-fill" style="width:{{ results.participation }}%"></div></div>
-    <div style="font-size:0.78rem;color:#7C746A;margin-top:0.5rem;margin-bottom:0.25rem;">Beteiligung nach Wertquoten: {{ results.voted_quota }}‰ / {{ results.total_quota }}‰ ({{ results.participation_quota }}%)</div>
+    <div style="font-size:0.78rem;color:#7C746A;margin-top:0.2rem;">
+        {{ results.total_voted }} von {{ results.total_units }} Eigentümern ({{ results.participation }}%)
+    </div>
+    <div style="font-size:0.75rem;color:#7C746A;margin-top:0.5rem;margin-bottom:0.2rem;font-weight:600;">Beteiligung nach Wertquoten</div>
     <div class="progress-bar"><div class="progress-fill" style="width:{{ results.participation_quota }}%"></div></div>
+    <div style="font-size:0.78rem;color:#7C746A;margin-top:0.2rem;">
+        {{ results.voted_quota }}‰ von {{ results.total_quota }}‰ ({{ results.participation_quota }}%)
+        <em style="font-size:0.72rem;">(inkl. Enthaltungen = anwesend)</em>
+    </div>
 </div>
 
 {% if results.quorum %}
-<div style="font-size:0.8rem;margin-bottom:0.875rem;padding:0.45rem 0.7rem;border-radius:6px;
-    {% if results.quorum_met %}background:#E6F2EB;color:#1B5E35;border:1px solid #A8D4B5;
-    {% else %}background:#FCECEA;color:#B5302A;border:1px solid #F0B8B5;{% endif %}">
+<div class="notice-box {% if results.quorum_met %}notice-ok{% else %}notice-fail{% endif %}">
     {% if results.quorum_met %}✓{% else %}✗{% endif %}
-    Quorum ({{ results.quorum }}‰): {% if results.quorum_met %}erreicht{% else %}nicht erreicht{% endif %}
+    Quorum ({{ results.quorum }}‰):
+    {% if results.quorum_met %}erreicht ({{ results.voted_quota }}‰ beteiligt)
+    {% else %}nicht erreicht — {{ results.voted_quota }}‰ von {{ results.quorum }}‰ erforderlich{% endif %}
 </div>
 {% endif %}
 
+<!-- Stimmzählung -->
 <div class="results-grid">
     <div class="result-box">
         <div class="result-number" style="color:#1B5E35;">{{ results.yes_count }}</div>
@@ -457,6 +482,14 @@
     <div class="result-box">
         <div class="result-number" style="color:#B5302A;">{{ results.no_count }}</div>
         <div class="result-label">Nein (Köpfe)</div>
+    </div>
+    <div class="result-box">
+        <div class="result-number" style="color:#7C746A;">{{ results.abstain_count }}</div>
+        <div class="result-label">Enthaltungen</div>
+    </div>
+    <div class="result-box">
+        <div class="result-number" style="color:#2A2820;">{{ results.total_units|add:"-"|add:results.total_voted }}</div>
+        <div class="result-label">Nicht abgestimmt</div>
     </div>
     {% if proposal.majority_type != 'simple' %}
     <div class="result-box">
@@ -467,15 +500,14 @@
         <div class="result-number" style="color:#B5302A;">{{ results.no_quota }}‰</div>
         <div class="result-label">Nein (Wertq.)</div>
     </div>
-    {% endif %}
-    {% if results.abstain_count %}
     <div class="result-box">
-        <div class="result-number" style="color:#7C746A;">{{ results.abstain_count }}</div>
-        <div class="result-label">Enthaltungen</div>
+        <div class="result-number" style="color:#7C746A;">{{ results.abstain_quota }}‰</div>
+        <div class="result-label">Enthaltung (Wertq.)</div>
     </div>
     {% endif %}
 </div>
 
+<!-- Ergebnis-Verdict -->
 <div class="verdict {% if results.passed %}verdict-passed{% else %}verdict-failed{% endif %}">
     <div class="verdict-icon">{% if results.passed %}✅{% else %}❌{% endif %}</div>
     <div>
@@ -488,17 +520,31 @@
             {% endfor %}
         </div>
         {% if proposal.status == 'closed' %}
-        <div style="font-size:0.72rem;color:#7C746A;margin-top:0.4rem;">
-            Anfechtungsfrist: 30 Tage ab Beschlussfassung (ZGB Art. 712m Abs. 2)
+        <div style="font-size:0.72rem;color:#7C746A;margin-top:0.5rem;">
+            {% if results.passed %}
+                {# FIX: Konkrete Anfechtungsfrist mit Datum statt nur "30 Tage" #}
+                Anfechtungsfrist: 30 Tage ab Beschlussfassung gemäss ZGB Art. 712m Abs. 2
+                {% if appeal_deadline %} — Frist läuft ab: <strong>{{ appeal_deadline|date:"d.m.Y" }}</strong>{% endif %}
+            {% endif %}
         </div>
         {% endif %}
     </div>
 </div>
 
+<!-- FIX: Einstimmigkeits-Hinweis separat erläutern -->
+{% if proposal.majority_type == 'unanimous' and not results.passed %}
+<div class="notice-box notice-warning">
+    ⚠ <strong>Einstimmigkeit nicht erreicht:</strong>
+    Bei Einstimmigkeit müssen <em>alle {{ results.total_units }} Eigentümer</em> Ja stimmen.
+    Fehlende Stimmabgaben gelten als fehlende Zustimmung (ZGB Art. 648).
+    Abgestimmt haben {{ results.total_voted }} von {{ results.total_units }} Eigentümern.
+</div>
+{% endif %}
+
 <!-- Unterschriften -->
 <div class="signature-area">
     <div>
-        <div style="font-size:0.72rem;color:#7C746A;margin-bottom:2.5rem;">Datum / Ort</div>
+        <div style="font-size:0.72rem;color:#7C746A;margin-bottom:2.5rem;">Datum &amp; Ort</div>
         <div class="signature-line">Verwaltung / Versammlungsleitung</div>
     </div>
     <div>

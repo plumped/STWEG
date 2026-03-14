@@ -62,24 +62,11 @@ def dashboard(request):
         ).count()
         unit_counts[proposal.id] = len(all_ids)
 
-    # Count unassigned units per community (for admin hint badge)
-    unassigned_counts = {
-        c.id: c.units.filter(owner__isnull=True).count()
-        for c in communities
-    }
-
-    # Which communities is the current user admin of (for button visibility)
-    admin_community_ids = {
-        c.id for c in communities if c.is_admin(request.user)
-    }
-
     return render(request, 'voting/dashboard.html', {
-        'communities':        communities,
-        'open_proposals':     open_proposals,
-        'voted_counts':       voted_counts,
-        'unit_counts':        unit_counts,
-        'unassigned_counts':  unassigned_counts,
-        'admin_community_ids': admin_community_ids,
+        'communities':   communities,
+        'open_proposals': open_proposals,
+        'voted_counts':  voted_counts,
+        'unit_counts':   unit_counts,
     })
 
 
@@ -188,6 +175,15 @@ def proposal_detail(request, pk):
             for v in proposal.votes.select_related('unit', 'cast_by', 'unit__owner')
         }
 
+    # ── Umlaufbeschluss-Status ────────────────────────────────────────────────
+    # Zeige Hinweis, wenn noch nicht alle Einheiten abgestimmt haben.
+    # Umlaufbeschlüsse sind nur rechtsgültig, wenn das Reglement sie erlaubt
+    # und alle Eigentümer Gelegenheit hatten abzustimmen (ZGB Art. 712m Abs. 4).
+    total_units_count  = community.units.count()
+    voted_units_count  = proposal.votes.count() if proposal.status != Proposal.Status.DRAFT else 0
+    all_units_voted    = (voted_units_count == total_units_count and total_units_count > 0)
+    missing_votes_count = total_units_count - voted_units_count
+
     # ── POST ──────────────────────────────────────────────────────────────────
     if request.method == 'POST' and proposal.status == Proposal.Status.OPEN:
         action = request.POST.get('action', 'vote')
@@ -268,7 +264,7 @@ def proposal_detail(request, pk):
                 messages.success(request, f"Schriftliche Stimme für Einheit {unit.unit_number} erfasst.")
                 return redirect('voting:proposal_detail', pk=pk)
 
-    # Build display lists
+    # ── Build display lists ───────────────────────────────────────────────────
     units_with_votes = []
     for unit in user_units:
         granted_proxy = my_granted_proxies.get(unit.id)
@@ -299,20 +295,25 @@ def proposal_detail(request, pk):
     proxy_form = ProxyForm(community=community)
 
     return render(request, 'voting/proposal_detail.html', {
-        'proposal':             proposal,
-        'units_with_votes':     units_with_votes,
-        'all_voted':            all_voted,
-        'results':              results,
-        'show_results':         show_results,
-        'is_creator':           is_creator,
-        'is_community_admin':   is_community_admin,
-        'form':                 VoteForm(),
-        'documents':            documents,
-        'doc_form':             doc_form,
-        'proxy_form':           proxy_form,
-        'my_granted_proxies':   my_granted_proxies,
-        'admin_units_overview': admin_units_overview,
-        'manual_vote_form':     ManualVoteForm(),
+        'proposal':              proposal,
+        'units_with_votes':      units_with_votes,
+        'all_voted':             all_voted,
+        'results':               results,
+        'show_results':          show_results,
+        'is_creator':            is_creator,
+        'is_community_admin':    is_community_admin,
+        'form':                  VoteForm(),
+        'documents':             documents,
+        'doc_form':              doc_form,
+        'proxy_form':            proxy_form,
+        'my_granted_proxies':    my_granted_proxies,
+        'admin_units_overview':  admin_units_overview,
+        'manual_vote_form':      ManualVoteForm(),
+        # Umlaufbeschluss-Status
+        'total_units_count':     total_units_count,
+        'voted_units_count':     voted_units_count,
+        'all_units_voted':       all_units_voted,
+        'missing_votes_count':   missing_votes_count,
     })
 
 
@@ -462,17 +463,26 @@ def proposal_pdf(request, pk):
         messages.error(request, "Protokoll nur für offene oder abgeschlossene Abstimmungen verfügbar.")
         return redirect('voting:proposal_detail', pk=pk)
 
-    results = proposal.get_results()
-    votes   = proposal.votes.select_related('unit', 'unit__owner', 'cast_by').order_by('unit__unit_number')
-    proxies = proposal.proxies.select_related('unit', 'delegate', 'granted_by')
+    results  = proposal.get_results()
+    votes    = proposal.votes.select_related('unit', 'unit__owner', 'cast_by').order_by('unit__unit_number')
+    proxies  = proposal.proxies.select_related('unit', 'delegate', 'granted_by')
+    all_units = community.units.select_related('owner').order_by('unit_number')
+
+    # Anfechtungsfrist: 30 Tage ab Beschlussfassung (ZGB Art. 712m Abs. 2)
+    from datetime import timedelta
+    appeal_deadline = None
+    if proposal.closed_at:
+        appeal_deadline = proposal.closed_at + timedelta(days=30)
 
     return render(request, 'voting/proposal_pdf.html', {
-        'proposal':     proposal,
-        'results':      results,
-        'votes':        votes,
-        'proxies':      proxies,
-        'generated_at': timezone.now(),
-        'community':    community,
+        'proposal':       proposal,
+        'results':        results,
+        'votes':          votes,
+        'proxies':        proxies,
+        'all_units':      all_units,
+        'generated_at':   timezone.now(),
+        'community':      community,
+        'appeal_deadline': appeal_deadline,
     })
 
 
@@ -526,12 +536,16 @@ def export_results_csv(request, pk):
     results = proposal.get_results()
     writer.writerow([])
     writer.writerow(['Zusammenfassung'])
-    writer.writerow(['Ja (Köpfe)',        results['yes_count']])
-    writer.writerow(['Nein (Köpfe)',      results['no_count']])
-    writer.writerow(['Enthaltungen',      results['abstain_count']])
-    writer.writerow(['Ja (Wertquoten ‰)', results['yes_quota']])
-    writer.writerow(['Nein (Wertquoten ‰)', results['no_quota']])
-    writer.writerow(['Ergebnis',          'Angenommen' if results['passed'] else 'Abgelehnt'])
+    writer.writerow(['Ja (Köpfe)',             results['yes_count']])
+    writer.writerow(['Nein (Köpfe)',            results['no_count']])
+    writer.writerow(['Enthaltungen (Köpfe)',    results['abstain_count']])
+    writer.writerow(['Ja (Wertquoten ‰)',       results['yes_quota']])
+    writer.writerow(['Nein (Wertquoten ‰)',     results['no_quota']])
+    writer.writerow(['Enthaltungen (Wertq. ‰)', results['abstain_quota']])
+    writer.writerow(['Beteiligung (Köpfe)',     f"{results['total_voted']}/{results['total_units']}"])
+    writer.writerow(['Beteiligung (Wertq. ‰)',  results['voted_quota']])
+    writer.writerow(['Quorum erfüllt',          'Ja' if results['quorum_met'] else 'Nein'])
+    writer.writerow(['Ergebnis',                'Angenommen' if results['passed'] else 'Abgelehnt'])
 
     return response
 
@@ -602,6 +616,16 @@ def proposal_document_delete(request, proposal_pk, doc_pk):
 
 @login_required
 def proxy_grant(request, proposal_pk):
+    """
+    Erteile eine Vollmacht für eine eigene Einheit.
+
+    Sicherheitsmerkmale:
+    - Nur der Einheits-Eigentümer (Unit.owner == request.user) darf Vollmacht erteilen.
+      Bevollmächtigte können KEINE Unter-Vollmacht erteilen (keine Ketten-Vollmachten).
+    - Delegate muss Mitglied dieser Gemeinschaft sein (ProxyForm-Scoping).
+    - Vollmacht kann nicht an sich selbst erteilt werden.
+    - Vollmacht nicht mehr möglich, wenn Stimme bereits abgegeben wurde.
+    """
     proposal  = get_object_or_404(Proposal, pk=proposal_pk)
     community = proposal.community
 
@@ -620,15 +644,30 @@ def proxy_grant(request, proposal_pk):
             delegate = form.cleaned_data['delegate']
             note     = form.cleaned_data.get('note', '')
 
+            # SECURITY: only the actual owner of the unit can grant a proxy
             unit = get_object_or_404(
                 Unit, id=unit_id, community=community, owner=request.user,
             )
             if delegate == request.user:
                 messages.error(request, "Vollmacht kann nicht an sich selbst erteilt werden.")
                 return redirect('voting:proposal_detail', pk=proposal_pk)
+
             if Vote.objects.filter(proposal=proposal, unit=unit).exists():
                 messages.error(
                     request, f"Stimme für Einheit {unit.unit_number} bereits abgegeben.",
+                )
+                return redirect('voting:proposal_detail', pk=proposal_pk)
+
+            # FIX: Ketten-Vollmacht verhindern — Delegate darf nicht selbst schon
+            # Vollmacht-Geber für eine andere Einheit in dieser Abstimmung sein.
+            # (Implizit bereits verhindert, da nur Eigentümer Vollmachten erteilen
+            # können. Explizite Prüfung zur Klarheit.)
+            if Proxy.objects.filter(proposal=proposal, granted_by=delegate).exists():
+                delegate_name = delegate.get_full_name() or delegate.username
+                messages.error(
+                    request,
+                    f"{delegate_name} hat selbst bereits Vollmachten erteilt. "
+                    "Ketten-Vollmachten sind nicht zulässig.",
                 )
                 return redirect('voting:proposal_detail', pk=proposal_pk)
 
@@ -726,51 +765,38 @@ def community_members(request, community_id):
     community = get_object_or_404(Community, id=community_id)
     if not community.is_admin(request.user):
         messages.error(request, "Keine Berechtigung.")
-        return redirect('voting:unit_manage', community_id=community_id)
+        return redirect('voting:dashboard')
 
     memberships = community.memberships.select_related('user', 'added_by').all()
-
-    # Eigentümer: pro Benutzer alle seine Einheiten in dieser Gemeinschaft
-    owner_units_qs = (
-        community.units
-        .filter(owner__isnull=False)
-        .select_related('owner')
-        .order_by('owner__last_name', 'owner__first_name', 'unit_number')
-    )
-    owners_map = {}
-    for unit in owner_units_qs:
-        owners_map.setdefault(unit.owner, []).append(unit)
-    owners = [{'user': user, 'units': units} for user, units in owners_map.items()]
 
     if request.method == 'POST':
         form = MembershipForm(request.POST)
         if form.is_valid():
             user = form.cleaned_data['user']
             role = form.cleaned_data['role']
-            if user == community.created_by:
+            if community.units.filter(owner=user).exists():
                 messages.warning(
                     request,
-                    f"{user.get_full_name() or user.username} ist bereits Ersteller/Hauptadmin.",
+                    f"{user.get_full_name() or user.username} ist bereits Eigentümer in dieser Gemeinschaft.",
                 )
-                return redirect('voting:community_members', community_id=community_id)
-
-            membership, created = CommunityMembership.objects.update_or_create(
-                community=community, user=user,
-                defaults={'role': role, 'added_by': request.user},
-            )
-            action = "hinzugefügt" if created else "aktualisiert"
-            messages.success(
-                request,
-                f"{user.get_full_name() or user.username} als {membership.get_role_display()} {action}.",
-            )
-            return redirect('voting:community_members', community_id=community_id)
+            else:
+                membership, created = CommunityMembership.objects.update_or_create(
+                    community=community, user=user,
+                    defaults={'role': role, 'added_by': request.user},
+                )
+                action = "hinzugefügt" if created else "aktualisiert"
+                messages.success(
+                    request,
+                    f"{user.get_full_name() or user.username} als {membership.get_role_display()} {action}.",
+                )
+        else:
+            messages.error(request, "Ungültige Eingabe.")
     else:
         form = MembershipForm()
 
     return render(request, 'voting/community_members.html', {
         'community':   community,
         'memberships': memberships,
-        'owners':      owners,
         'form':        form,
     })
 
@@ -813,13 +839,21 @@ def unit_manage(request, community_id):
 
     total_quota = sum(u.quota for u in units)
 
+    # FIX: Warne wenn Wertquoten-Summe nicht 1000‰ ergibt
+    # Eine falsche Summe verfälscht alle Mehrheitsberechnungen.
+    unit_count         = len(list(units))
+    quota_sum_ok       = abs(float(total_quota) - 1000.0) < 0.5
+    quota_sum_warning  = unit_count > 0 and not quota_sum_ok
+
     return render(request, 'voting/unit_manage.html', {
-        'community':   community,
-        'units':       units,
-        'form':        form,
-        'total_quota': total_quota,
-        'import_form': UnitImportForm(),
-        'is_admin':    community.is_admin(request.user),
+        'community':          community,
+        'units':              units,
+        'form':               form,
+        'total_quota':        total_quota,
+        'import_form':        UnitImportForm(),
+        'is_admin':           community.is_admin(request.user),
+        'quota_sum_warning':  quota_sum_warning,
+        'quota_sum_ok':       quota_sum_ok,
     })
 
 
@@ -927,7 +961,7 @@ def unit_export_csv(request, community_id):
             unit.unit_number,
             unit.description,
             unit.quota,
-            unit.owner.username       if unit.owner else '',
+            unit.owner.username        if unit.owner else '',
             unit.owner.get_full_name() if unit.owner else '',
         ])
     return response
@@ -937,21 +971,15 @@ def unit_export_csv(request, community_id):
 # INVITE SYSTEM
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# ── Invite management (admin) ─────────────────────────────────────────────────
-
 @login_required
 def invite_manage(request, community_id):
-    """
-    List all invite tokens for a community and allow admins to create new ones.
-    """
     community = get_object_or_404(Community, id=community_id)
     if not community.is_admin(request.user):
         messages.error(request, "Keine Berechtigung.")
         return redirect('voting:unit_manage', community_id=community_id)
 
-    tokens   = community.invite_tokens.select_related('unit', 'used_by', 'created_by').all()
+    tokens = community.invite_tokens.select_related('unit', 'used_by', 'created_by').all()
 
-    # Pre-select unit if coming from unit_manage via ?unit=<id>
     preselect_unit_id = request.GET.get('unit')
     initial = {}
     if preselect_unit_id:
@@ -981,67 +1009,52 @@ def invite_manage(request, community_id):
 
 @login_required
 def invite_revoke(request, community_id, token_pk):
-    """Deactivate an invite token so it can no longer be used."""
     community = get_object_or_404(Community, id=community_id)
+    invite    = get_object_or_404(InviteToken, pk=token_pk, community=community)
     if not community.is_admin(request.user):
         messages.error(request, "Keine Berechtigung.")
         return redirect('voting:invite_manage', community_id=community_id)
-
-    invite = get_object_or_404(InviteToken, pk=token_pk, community=community)
     if request.method == 'POST':
         invite.is_active = False
-        invite.save()
-        messages.success(request, "Einladung widerrufen.")
+        invite.save(update_fields=['is_active'])
+        messages.success(request, "Einladungslink widerrufen.")
     return redirect('voting:invite_manage', community_id=community_id)
 
 
-# ── Public registration via invite token ──────────────────────────────────────
-# NOTE: No @login_required — this view must be publicly accessible.
-
 def invite_register(request, token):
-    """
-    Public endpoint for self-registration via an invite token.
-
-    Security:
-    - Token must be valid (active, not used, not expired).
-    - After registration the token is consumed (single-use).
-    - The new account is automatically scoped to exactly one community.
-    - No Django admin access is granted.
-    """
-    invite = get_object_or_404(InviteToken, token=token)
+    """Public view — no login required."""
+    try:
+        invite = InviteToken.objects.select_related('community', 'unit').get(token=token)
+    except InviteToken.DoesNotExist:
+        return render(request, 'voting/invite_register.html', {'invalid': True})
 
     if not invite.is_valid:
-        return render(request, 'voting/invite_register.html', {
-            'invalid': True,
-            'invite':  invite,
-        })
-
-    # Already logged in → just claim the invite
-    if request.user.is_authenticated:
-        _apply_invite(invite, request.user)
-        messages.success(
-            request,
-            f"Du bist nun Mitglied der Gemeinschaft «{invite.community.name}».",
-        )
-        return redirect('voting:dashboard')
+        return render(request, 'voting/invite_register.html', {'invalid': True, 'invite': invite})
 
     if request.method == 'POST':
         form = InviteRegistrationForm(request.POST)
         if form.is_valid():
-            user = User.objects.create_user(
-                username   = form.cleaned_data['username'],
-                email      = form.cleaned_data['email'],
-                password   = form.cleaned_data['password1'],
-                first_name = form.cleaned_data['first_name'],
-                last_name  = form.cleaned_data['last_name'],
-            )
-            _apply_invite(invite, user)
-            auth_login(request, user)
-            messages.success(
-                request,
-                f"Willkommen! Du bist nun Mitglied der Gemeinschaft «{invite.community.name}».",
-            )
-            return redirect('voting:dashboard')
+            username  = form.cleaned_data['username']
+            password  = form.cleaned_data['password1']
+            email     = form.cleaned_data.get('email', '')
+            first     = form.cleaned_data.get('first_name', '')
+            last      = form.cleaned_data.get('last_name', '')
+
+            if User.objects.filter(username=username).exists():
+                form.add_error('username', "Benutzername bereits vergeben.")
+            else:
+                user = User.objects.create_user(
+                    username=username, password=password,
+                    email=email, first_name=first, last_name=last,
+                )
+                _apply_invite(invite, user)
+                auth_login(request, user)
+                messages.success(
+                    request,
+                    f"Willkommen, {user.get_full_name() or user.username}! "
+                    f"Du bist nun Mitglied der Gemeinschaft «{invite.community.name}».",
+                )
+                return redirect('voting:dashboard')
     else:
         form = InviteRegistrationForm(initial={'email': invite.email})
 
@@ -1053,43 +1066,23 @@ def invite_register(request, token):
 
 
 def _apply_invite(invite: InviteToken, user: User) -> None:
-    """
-    Consume an invite token and grant the user the appropriate access.
-
-    OWNER:
-        If a unit was pre-assigned to the token, set unit.owner = user.
-        (Unit.owner is nullable precisely to support this flow.)
-    MANAGER / BOARD:
-        Create or update a CommunityMembership with the specified role.
-    """
     community = invite.community
-
     if invite.role == InviteToken.Role.OWNER:
         if invite.unit is not None:
             invite.unit.owner = user
             invite.unit.save(update_fields=['owner'])
-        # If no unit was pre-assigned, the admin must assign one manually.
-        # The user can still log in and see the community via unit ownership
-        # once assigned.  Give them a membership as a fallback so they can
-        # at least access the community immediately.
         else:
             CommunityMembership.objects.get_or_create(
                 community=community,
                 user=user,
                 defaults={'role': CommunityMembership.Role.BOARD, 'added_by': invite.created_by},
             )
-
     elif invite.role in (InviteToken.Role.MANAGER, InviteToken.Role.BOARD):
         CommunityMembership.objects.update_or_create(
             community=community,
             user=user,
-            defaults={
-                'role':     invite.role,
-                'added_by': invite.created_by,
-            },
+            defaults={'role': invite.role, 'added_by': invite.created_by},
         )
-
-    # Mark token consumed
     invite.used_at = timezone.now()
     invite.used_by = user
     invite.save(update_fields=['used_at', 'used_by'])
