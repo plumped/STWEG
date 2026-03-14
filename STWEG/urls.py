@@ -10,6 +10,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('', include('base.urls')),
     path('', include('voting.urls')),
+    path('maintenance/', include('maintenance.urls')),
 ]
 
 # Serve uploaded files in development

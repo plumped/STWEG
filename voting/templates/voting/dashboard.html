@@ -111,6 +111,7 @@
         </div>
         <div class="flex gap-1 flex-shrink-0 ml-md">
             <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline btn-sm">Anträge</a>
+            <a href="{% url 'maintenance:ticket_list' community.id %}" class="btn btn-outline btn-sm">+ Mängel erfassen</a>
             {% if community.id in admin_community_ids %}
             <a href="{% url 'voting:unit_manage' community.id %}" class="btn btn-outline btn-sm">Einheiten</a>
             {% endif %}

@@ -1,0 +1,25 @@
+{% extends "voting/base.html" %}
+{% block title %}Ticket löschen – {{ ticket.title }}{% endblock %}
+
+{% block content %}
+<a href="{% url 'maintenance:ticket_detail' ticket.pk %}" class="back-link">{{ ticket.title }}</a>
+
+<div class="page-header">
+  <h1>Ticket löschen</h1>
+  <p>Diese Aktion kann nicht rückgängig gemacht werden.</p>
+</div>
+
+<div class="card card--padded" style="max-width:500px;">
+  <p style="margin-bottom:1.25rem;">
+    Soll das Ticket <strong>«{{ ticket.title }}»</strong> wirklich gelöscht werden?
+    Alle Kommentare und Anhänge gehen dabei verloren.
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="flex gap-1">
+      <button type="submit" class="btn btn-danger">Ja, Ticket löschen</button>
+      <a href="{% url 'maintenance:ticket_detail' ticket.pk %}" class="btn btn-outline">Abbrechen</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

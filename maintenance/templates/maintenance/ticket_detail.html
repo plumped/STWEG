@@ -1,0 +1,225 @@
+{% extends "voting/base.html" %}
+{% block title %}{{ ticket.title }} – Mängel{% endblock %}
+
+{% block extra_head %}
+<style>
+.badge { padding:.15rem .55rem; border-radius:999px; font-size:.7rem; font-weight:700; letter-spacing:.03em; }
+.badge-open     { background:#EFF6FF; color:#1a56db; border:1px solid #BFDBFE; }
+.badge-progress { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-border); }
+.badge-offer    { background:#F5F3FF; color:#5B21B6; border:1px solid #DDD6FE; }
+.badge-done     { background:var(--accent-light); color:var(--accent); border:1px solid var(--accent-border); }
+.badge-archived { background:var(--surface-alt); color:var(--text-muted); border:1px solid var(--border); }
+.badge-urgent   { background:var(--red-light); color:var(--red); border:1px solid var(--red-border); }
+.badge-private  { background:#FDF4FF; color:#7E22CE; border:1px solid #E9D5FF; }
+.detail-grid { display:grid; grid-template-columns:1fr 340px; gap:1.5rem; align-items:start; }
+.meta-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+.meta-table th { text-align:left; color:var(--text-muted); font-weight:500; padding:.4rem 0; width:130px; vertical-align:top; }
+.meta-table td { color:var(--text); padding:.4rem 0; border-bottom:1px solid var(--border); }
+.timeline { list-style:none; padding:0; margin:0; position:relative; }
+.timeline::before { content:''; position:absolute; left:10px; top:8px; bottom:0; width:1px; background:var(--border); }
+.tl-item { display:flex; gap:1rem; padding-bottom:1.25rem; position:relative; }
+.tl-dot  { width:20px; height:20px; border-radius:50%; background:var(--surface); border:2px solid var(--border-mid); flex-shrink:0; z-index:1; margin-top:2px; }
+.tl-dot.status-change { border-color:var(--accent); background:var(--accent-light); }
+.tl-dot.system { border-color:var(--border); background:var(--surface-alt); }
+.tl-body { flex:1; }
+.tl-header { font-size:.8rem; color:var(--text-muted); margin-bottom:.25rem; }
+.tl-text  { font-size:.875rem; color:var(--text); }
+.tl-status-change { font-size:.78rem; font-weight:600; color:var(--accent); margin-top:.2rem; }
+.sidebar-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:1.25rem; margin-bottom:1rem; }
+.sidebar-section h3 { font-size:.78rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:1rem; }
+.att-item { display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.5rem 0; border-bottom:1px solid var(--border); font-size:.85rem; }
+.att-item:last-child { border-bottom:none; padding-bottom:0; }
+.proposal-banner { background:var(--accent-light); border:1px solid var(--accent-border); border-radius:var(--r-lg); padding:1rem 1.25rem; margin-bottom:1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.action-panel { background:#FFFBF5; border:1px solid var(--amber-border); border-radius:var(--r-lg); padding:1.25rem; margin-bottom:1rem; }
+.action-panel h3 { font-size:.78rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--amber); margin-bottom:1rem; }
+@media(max-width:800px){ .detail-grid{grid-template-columns:1fr} }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="{% url 'maintenance:ticket_list' community.id %}" class="back-link">{{ community.name }} – Mängel</a>
+
+<div class="page-header flex-between">
+  <div>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.5rem;">
+      {% if ticket.priority_is_urgent %}<span class="badge badge-urgent">Dringend</span>{% endif %}
+      <span class="badge {% if ticket.scope == 'private' %}badge-private{% else %}badge-archived{% endif %}">{{ ticket.get_scope_display }}</span>
+      <span class="badge {{ ticket.status_css }}">{{ ticket.get_status_display }}</span>
+    </div>
+    <h1>{{ ticket.title }}</h1>
+    <p>{{ ticket.get_area_display }} · {{ ticket.created_at|date:"d.m.Y, H:i" }}
+      {% if ticket.reported_by %} · gemeldet von {{ ticket.reported_by.get_full_name|default:ticket.reported_by.username }}{% endif %}
+    </p>
+  </div>
+  <div class="flex gap-1">
+    {% if is_admin or ticket.reported_by == request.user %}
+    <a href="{% url 'maintenance:ticket_edit' ticket.pk %}" class="btn btn-outline btn-sm">Bearbeiten</a>
+    {% endif %}
+    {% if is_admin %}
+    <form method="post" action="{% url 'maintenance:ticket_delete' ticket.pk %}" style="display:inline;" onsubmit="return confirm('Ticket wirklich löschen?')">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Proposal banner if linked -->
+{% if ticket.proposal %}
+<div class="proposal-banner">
+  <div>
+    <strong>Antrag verknüpft:</strong> {{ ticket.proposal.title }}
+    <span style="margin-left:.5rem;font-size:.8rem;color:var(--text-muted);">{{ ticket.proposal.get_status_display }}</span>
+  </div>
+  <a href="{% url 'voting:proposal_detail' ticket.proposal.pk %}" class="btn btn-outline btn-sm">Zum Antrag →</a>
+</div>
+{% endif %}
+
+<div class="detail-grid">
+
+  <!-- Left: description + timeline + comment -->
+  <div>
+    <div class="card card--padded mb-2">
+      <div class="section-label">Beschreibung</div>
+      <p style="white-space:pre-wrap;font-size:.9rem;line-height:1.7;">{{ ticket.description }}</p>
+    </div>
+
+    <!-- Timeline -->
+    <div class="card card--padded mb-2">
+      <div class="section-label">Verlauf</div>
+      <ul class="timeline">
+        {% for update in updates %}
+        <li class="tl-item">
+          <div class="tl-dot {% if update.is_status_change %}status-change{% elif not update.author %}system{% endif %}"></div>
+          <div class="tl-body">
+            <div class="tl-header">
+              {% if update.author %}{{ update.author.get_full_name|default:update.author.username }}{% else %}System{% endif %}
+              · {{ update.created_at|date:"d.m.Y, H:i" }}
+            </div>
+            {% if update.comment %}<div class="tl-text">{{ update.comment }}</div>{% endif %}
+            {% if update.is_status_change %}
+            <div class="tl-status-change">
+              Status: {{ update.old_status }} → {{ update.new_status }}
+            </div>
+            {% endif %}
+          </div>
+        </li>
+        {% empty %}
+        <li style="color:var(--text-muted);font-size:.85rem;">Noch keine Einträge.</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Add comment -->
+    <div class="card card--padded">
+      <div class="section-label">Kommentar hinzufügen</div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_comment">
+        <div class="form-group">{{ comment_form.comment }}</div>
+        <button type="submit" class="btn btn-outline btn-sm">Kommentar speichern</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right: sidebar -->
+  <div>
+
+    <!-- Meta -->
+    <div class="sidebar-section">
+      <h3>Details</h3>
+      <table class="meta-table">
+        <tr><th>Status</th><td><span class="badge {{ ticket.status_css }}">{{ ticket.get_status_display }}</span></td></tr>
+        <tr><th>Dringlichkeit</th><td>{{ ticket.get_priority_display }}</td></tr>
+        <tr><th>Bereich</th><td>{{ ticket.get_area_display }}</td></tr>
+        <tr><th>Art</th><td>{{ ticket.get_scope_display }}</td></tr>
+        {% if ticket.unit %}<tr><th>Einheit</th><td>{{ ticket.unit.unit_number }}</td></tr>{% endif %}
+        {% if ticket.assigned_to %}<tr><th>Handwerker</th><td>{{ ticket.assigned_to }}</td></tr>{% endif %}
+        {% if ticket.offer_amount %}<tr><th>Offertbetrag</th><td><strong>CHF {{ ticket.offer_amount|floatformat:"2" }}</strong></td></tr>{% endif %}
+        {% if ticket.resolved_at %}<tr><th>Erledigt am</th><td>{{ ticket.resolved_at|date:"d.m.Y" }}</td></tr>{% endif %}
+      </table>
+    </div>
+
+    <!-- Attachments -->
+    <div class="sidebar-section">
+      <h3>Anhänge</h3>
+      {% for att in attachments %}
+      <div class="att-item">
+        <a href="{{ att.file.url }}" target="_blank" style="color:var(--accent);font-weight:500;">{{ att.name }}</a>
+        {% if is_admin %}
+        <form method="post" style="display:inline;" onsubmit="return confirm('Anhang löschen?')">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="delete_attachment">
+          <input type="hidden" name="attachment_id" value="{{ att.pk }}">
+          <button type="submit" class="btn btn-danger btn-sm" style="padding:.15rem .5rem;font-size:.7rem;">✕</button>
+        </form>
+        {% endif %}
+      </div>
+      {% empty %}
+      <p style="font-size:.82rem;color:var(--text-muted);">Noch keine Anhänge.</p>
+      {% endfor %}
+
+      <form method="post" enctype="multipart/form-data" style="margin-top:1rem;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_attachment">
+        <div class="form-group form-group--mb-sm">
+          <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);">Bezeichnung</label>
+          {{ attachment_form.name }}
+        </div>
+        <div class="form-group form-group--mb-sm">
+          <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);">Datei</label>
+          {{ attachment_form.file }}
+        </div>
+        <button type="submit" class="btn btn-outline btn-sm" style="width:100%;margin-top:.5rem;">Anhang hochladen</button>
+      </form>
+    </div>
+
+    <!-- Admin action panel -->
+    {% if is_admin %}
+    <div class="action-panel">
+      <h3>Status &amp; Zuweisung</h3>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_status">
+        <div class="form-group form-group--mb-sm">
+          <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);">Status</label>
+          {{ status_form.status }}
+        </div>
+        <div class="form-group form-group--mb-sm">
+          <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);">Handwerker</label>
+          {{ status_form.assigned_to }}
+        </div>
+        <div class="form-group form-group--mb-sm">
+          <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);">E-Mail Handwerker</label>
+          {{ status_form.assignee_email }}
+        </div>
+        <div class="form-group form-group--mb-sm">
+          <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);">Offertbetrag (CHF)</label>
+          {{ status_form.offer_amount }}
+        </div>
+        <div class="form-group form-group--mb-sm">
+          <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);">Kommentar</label>
+          {{ status_form.comment }}
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm" style="width:100%;margin-top:.5rem;">Speichern</button>
+      </form>
+    </div>
+
+    <!-- Killer feature: → Abstimmung -->
+    {% if not ticket.proposal %}
+    <div class="sidebar-section" style="border-color:var(--accent-border);background:var(--accent-light);">
+      <h3 style="color:var(--accent);">Antrag erstellen</h3>
+      <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:1rem;">
+        Offerte übersteigt dein Kompetenzlimit? Erstelle mit einem Klick einen vorausgefüllten Abstimmungsantrag.
+      </p>
+      <form method="post" action="{% url 'maintenance:ticket_to_proposal' ticket.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary btn-sm" style="width:100%;">→ Antrag aus Ticket erstellen</button>
+      </form>
+    </div>
+    {% endif %}
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
