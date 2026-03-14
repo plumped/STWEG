@@ -1,6 +1,6 @@
 {% comment %}
-voting/templates/voting/landing.html
-Place this at the root URL ("/") – replaces any existing home view.
+base/templates/base/landing.html
+Public landing page — served at "/" for unauthenticated visitors.
 {% endcomment %}
 <!DOCTYPE html>
 <html lang="de">
@@ -25,6 +25,8 @@ Place this at the root URL ("/") – replaces any existing home view.
     --cream-mid:  #EDE8DF;
     --white:      #FDFCFB;
     --border:     #DDD7CC;
+    --red:        #C0392B;
+    --red-bg:     #FCECEA;
 
     --serif: 'Cormorant Garamond', Georgia, serif;
     --sans:  'DM Sans', sans-serif;
@@ -412,7 +414,6 @@ Place this at the root URL ("/") – replaces any existing home view.
     50%       { opacity: .4; }
   }
 
-  /* second floating card (background) */
   .ballot-card-bg {
     position: absolute;
     background: rgba(255,255,255,.03);
@@ -533,7 +534,6 @@ Place this at the root URL ("/") – replaces any existing home view.
     font-size: .9rem;
   }
 
-  /* Problem side */
   .problem-card {
     background: var(--white);
     border: 1px solid var(--border);
@@ -770,7 +770,6 @@ Place this at the root URL ("/") – replaces any existing home view.
     align-items: start;
   }
 
-  /* Form styles */
   .reg-form {
     background: var(--cream);
     border: 1px solid var(--border);
@@ -829,8 +828,31 @@ Place this at the root URL ("/") – replaces any existing home view.
   }
 
   .form-input:focus { border-color: var(--gold); }
-
   .form-input::placeholder { color: var(--ink-faint); }
+  .form-input.is-invalid { border-color: var(--red); }
+
+  .form-error {
+    font-size: .72rem;
+    color: var(--red);
+    margin-top: .2rem;
+  }
+
+  /* Global form error banner */
+  .form-errors-banner {
+    background: var(--red-bg);
+    border: 1px solid rgba(192,57,43,.2);
+    border-radius: 2px;
+    padding: .85rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: .82rem;
+    color: var(--red);
+    line-height: 1.6;
+  }
+
+  .form-errors-banner ul {
+    padding-left: 1.1rem;
+    margin: 0;
+  }
 
   .form-submit {
     width: 100%;
@@ -955,7 +977,6 @@ Place this at the root URL ("/") – replaces any existing home view.
     transform: none;
   }
 
-  /* delay helpers */
   .d1 { transition-delay: .1s; }
   .d2 { transition-delay: .2s; }
   .d3 { transition-delay: .3s; }
@@ -1017,7 +1038,7 @@ Place this at the root URL ("/") – replaces any existing home view.
       </div>
       <div>
         <div class="hero-stat-num">100%</div>
-        <div class="hero-stat-label">Papierlos & digital</div>
+        <div class="hero-stat-label">Papierlos &amp; digital</div>
       </div>
       <div>
         <div class="hero-stat-num">∞</div>
@@ -1131,30 +1152,30 @@ Place this at the root URL ("/") – replaces any existing home view.
       <div class="feature-card fade-in d1">
         <div class="feature-num">02</div>
         <div class="feature-name">Eigentümer einladen</div>
-        <div class="feature-desc">Erstellen Sie einmalig gültige Einladungslinks für jeden Eigentümer. Einfache Selbstregistrierung — kein manueller Admin-Aufwand.</div>
-        <span class="feature-tag">Einladungslinks</span>
+        <div class="feature-desc">Erstellen Sie einmalig gültige Einladungslinks für jeden Eigentümer. Jeder erhält ausschliesslich Zugang zu seiner eigenen Gemeinschaft.</div>
+        <span class="feature-tag">Invite-System</span>
       </div>
       <div class="feature-card fade-in d2">
         <div class="feature-num">03</div>
-        <div class="feature-name">Anträge erstellen & freigeben</div>
-        <div class="feature-desc">Eigentümer können Anträge als Entwurf einreichen. Der Verwalter prüft und gibt sie zur Abstimmung frei — gemäss ZGB Art. 712m.</div>
-        <span class="feature-tag">Traktandierungsrecht</span>
-      </div>
-      <div class="feature-card fade-in d3">
-        <div class="feature-num">04</div>
-        <div class="feature-name">Rechtskonforme Mehrheiten</div>
-        <div class="feature-desc">Einfaches, absolutes, qualifiziertes Mehr und Einstimmigkeit — alles nach ZGB automatisch berechnet, mit Kopf- und Wertquoten-Auswertung.</div>
+        <div class="feature-name">Rechtssichere Abstimmungen</div>
+        <div class="feature-desc">Alle vier Mehrheitsarten nach Schweizer ZGB: Einfaches Mehr, Absolutes Mehr, Qualifiziertes Mehr und Einstimmigkeit.</div>
         <span class="feature-tag">ZGB-konform</span>
       </div>
       <div class="feature-card fade-in">
-        <div class="feature-num">05</div>
-        <div class="feature-name">Vollmachten (Proxy)</div>
-        <div class="feature-desc">Eigentümer können einer Vertrauensperson eine Vollmacht erteilen. Vollmacht-Stimmen werden korrekt in der Auswertung ausgewiesen.</div>
-        <span class="feature-tag">Proxy-Voting</span>
+        <div class="feature-num">04</div>
+        <div class="feature-name">E-Mail-Benachrichtigungen</div>
+        <div class="feature-desc">Automatische Benachrichtigungen bei neuen Abstimmungen, Fristerinnerungen und Ergebnisbekanntgabe direkt per E-Mail.</div>
+        <span class="feature-tag">Automatisch</span>
       </div>
       <div class="feature-card fade-in d1">
+        <div class="feature-num">05</div>
+        <div class="feature-name">Vollmachten (Proxy-Voting)</div>
+        <div class="feature-desc">Eigentümer können für einzelne Abstimmungen Vollmacht erteilen. Vollmacht-Stimmen werden korrekt in der Auswertung ausgewiesen.</div>
+        <span class="feature-tag">Proxy-Voting</span>
+      </div>
+      <div class="feature-card fade-in d2">
         <div class="feature-num">06</div>
-        <div class="feature-name">PDF-Protokoll & CSV-Export</div>
+        <div class="feature-name">PDF-Protokoll &amp; CSV-Export</div>
         <div class="feature-desc">Jede Abstimmung erzeugt ein druckbares, rechtssicheres Protokoll als PDF. Einheiten können per CSV importiert und exportiert werden.</div>
         <span class="feature-tag">Dokumentation</span>
       </div>
@@ -1184,12 +1205,12 @@ Place this at the root URL ("/") – replaces any existing home view.
       </div>
       <div class="step">
         <div class="step-dot">3</div>
-        <div class="step-title">Antrag stellen & abstimmen</div>
+        <div class="step-title">Antrag stellen &amp; abstimmen</div>
         <div class="step-desc">Verwalter oder Eigentümer stellen Anträge. Per E-Mail werden alle zur Abstimmung aufgefordert.</div>
       </div>
       <div class="step">
         <div class="step-dot">4</div>
-        <div class="step-title">Beschluss & Protokoll</div>
+        <div class="step-title">Beschluss &amp; Protokoll</div>
         <div class="step-desc">Ergebnis wird rechtssicher berechnet und als PDF-Protokoll zum Download bereitgestellt.</div>
       </div>
     </div>
@@ -1204,66 +1225,42 @@ Place this at the root URL ("/") – replaces any existing home view.
         <div class="section-eyebrow fade-in">Rechtssicherheit</div>
         <h2 class="section-title fade-in">Alle Mehrheitsarten<br>nach <em>Schweizer ZGB</em></h2>
         <p class="section-lead fade-in" style="margin-bottom: 2.5rem;">
-          Das Portal kennt jede Abstimmungsart nach Schweizer Recht und berechnet das Ergebnis nach Köpfen <em>und</em> Wertquoten — vollständig automatisch.
+          Das Portal kennt jede Abstimmungsart nach Schweizer Recht und berechnet das Ergebnis
+          nach Köpfen <em>und</em> Wertquoten — vollständig automatisch.
         </p>
-
         <div class="majority-cards fade-in d1">
           <div class="majority-card">
             <div class="majority-name">Einfaches Mehr</div>
-            <div class="majority-law">Nur bei Regelung im Reglement</div>
-            <div class="majority-desc">Mehr Ja- als Nein-Stimmen nach Köpfen. Enthaltungen bleiben neutral. Nur für Ordnungsgeschäfte.</div>
+            <div class="majority-law">Art. 647 ZGB</div>
+            <div class="majority-desc">Mehr Ja- als Nein-Stimmen nach Köpfen und Wertquoten. Für gewöhnliche Verwaltungshandlungen.</div>
           </div>
           <div class="majority-card">
             <div class="majority-name">Absolutes Mehr</div>
-            <div class="majority-law">ZGB Art. 712m Abs. 1 · Gesetzlicher Standard</div>
-            <div class="majority-desc">Mehr Ja- als Nein-Stimmen nach Köpfen <em>und</em> Wertquoten. Standard für normale Beschlüsse.</div>
+            <div class="majority-law">Art. 647b ZGB</div>
+            <div class="majority-desc">Mehr als die Hälfte aller Stimmen und Wertquoten. Für wichtige Verwaltungshandlungen.</div>
           </div>
           <div class="majority-card">
             <div class="majority-name">Qualifiziertes Mehr</div>
-            <div class="majority-law">ZGB Art. 712g Abs. 2 · Grössere Massnahmen</div>
-            <div class="majority-desc">Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen und Wertquoten. Für grössere bauliche Massnahmen.</div>
+            <div class="majority-law">Art. 647c–e ZGB</div>
+            <div class="majority-desc">Mindestens ¾ aller Stimmen und Wertquoten. Für bauliche Massnahmen und erhebliche Investitionen.</div>
           </div>
           <div class="majority-card">
             <div class="majority-name">Einstimmigkeit</div>
-            <div class="majority-law">ZGB Art. 648 / 712g Abs. 3</div>
-            <div class="majority-desc">Alle Eigentümer müssen Ja stimmen. Fehlende Stimmen gelten als fehlende Zustimmung.</div>
+            <div class="majority-law">Art. 648 ZGB</div>
+            <div class="majority-desc">Alle Eigentümer müssen zustimmen. Für Verfügungen über das gemeinschaftliche Eigentum.</div>
           </div>
         </div>
       </div>
-
-      <div class="fade-in d2" style="padding-top:1rem;">
-        <div style="background:var(--ink);border-radius:4px;padding:2.5rem;color:#fff;">
-          <div style="font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-light);margin-bottom:1.5rem;">Beispiel-Auswertung</div>
-
-          <div style="font-family:var(--serif);font-size:1rem;color:rgba(255,255,255,.8);margin-bottom:1.5rem;line-height:1.5;">
-            Sanierung Lift — Absolutes Mehr
+      <div class="fade-in d2" style="padding-top:6rem;">
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:4px;padding:2rem;">
+          <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:1.5rem;">Automatische Berechnung</div>
+          <div style="font-size:.9rem;color:var(--ink-light);line-height:1.7;margin-bottom:1.5rem;">
+            Das Portal berechnet für jeden Antrag automatisch, ob das gewählte Quorum erreicht wurde —
+            sowohl nach Anzahl der Eigentümer als auch nach ihren Wertquoten (Tausendstel).
           </div>
-
-          <!-- Bar chart mockup -->
-          <div style="margin-bottom:1.5rem;">
-            <div style="display:flex;justify-content:space-between;font-size:.7rem;color:rgba(255,255,255,.4);margin-bottom:.4rem;">
-              <span>Ja-Stimmen (Köpfe)</span><span>7 / 10</span>
-            </div>
-            <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-bottom:.8rem;">
-              <div style="width:70%;height:100%;background:#6DD09A;border-radius:3px;"></div>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:.7rem;color:rgba(255,255,255,.4);margin-bottom:.4rem;">
-              <span>Ja-Stimmen (Wertquoten)</span><span>724‰ / 1000‰</span>
-            </div>
-            <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-bottom:.8rem;">
-              <div style="width:72.4%;height:100%;background:#6DD09A;border-radius:3px;"></div>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:.7rem;color:rgba(255,255,255,.4);margin-bottom:.4rem;">
-              <span>Quorum (Beteiligung)</span><span>910‰ ≥ 500‰</span>
-            </div>
-            <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;">
-              <div style="width:91%;height:100%;background:var(--gold-light);border-radius:3px;"></div>
-            </div>
-          </div>
-
-          <div style="background:rgba(109,208,154,.1);border:1px solid rgba(109,208,154,.2);border-radius:3px;padding:1rem;text-align:center;">
-            <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6DD09A;margin-bottom:.3rem;">✓ Antrag angenommen</div>
-            <div style="font-size:.78rem;color:rgba(255,255,255,.4);">Absolutes Mehr in Köpfen und Wertquoten erreicht</div>
+          <div style="font-size:.9rem;color:var(--ink-light);line-height:1.7;">
+            Das Ergebnis ist sofort nach Schliessung der Abstimmung sichtbar und wird im PDF-Protokoll
+            rechtssicher dokumentiert.
           </div>
         </div>
       </div>
@@ -1271,14 +1268,15 @@ Place this at the root URL ("/") – replaces any existing home view.
   </div>
 </section>
 
-<!-- ── REGISTRATION ───────────────────────────────────────────── -->
+<!-- ── REGISTRATION ──────────────────────────────────────────── -->
 <section class="register" id="registrieren">
   <div class="container">
-    <div style="text-align:center;margin-bottom:4rem;" class="fade-in">
-      <div class="section-eyebrow" style="justify-content:center;">Für Verwalter</div>
-      <h2 class="section-title">Jetzt kostenlos <em>starten</em></h2>
-      <p class="section-lead" style="margin:0 auto;text-align:center;">
-        Registrieren Sie sich als Verwalter und legen Sie Ihre erste Gemeinschaft sofort an.
+    <div class="fade-in" style="max-width:560px;margin-bottom:4rem;">
+      <div class="section-eyebrow">Registrierung</div>
+      <h2 class="section-title">Jetzt starten —<br><em>kostenlos &amp; sofort</em></h2>
+      <p class="section-lead">
+        Erstellen Sie Ihren Verwalter-Account und legen Sie Ihre erste Gemeinschaft an.
+        Keine Kreditkarte, keine Wartezeit.
       </p>
     </div>
 
@@ -1318,39 +1316,78 @@ Place this at the root URL ("/") – replaces any existing home view.
         <div class="reg-form-title">Konto erstellen</div>
         <div class="reg-form-sub">Als Verwalter registrieren und sofort loslegen.</div>
 
-        <form method="post" action="{% url 'voting:register' %}" novalidate>
+        {% if form.errors %}
+        <div class="form-errors-banner">
+          <ul>
+            {% for field in form %}
+              {% for error in field.errors %}
+                <li>{{ error }}</li>
+              {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+              <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'base:register' %}" novalidate>
           {% csrf_token %}
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Vorname</label>
-              <input type="text" name="first_name" class="form-input" placeholder="Hans" required>
+              <input type="text" name="first_name" class="form-input" placeholder="Hans"
+                     value="{{ form.first_name.value|default:'' }}">
             </div>
             <div class="form-group">
               <label class="form-label">Nachname</label>
-              <input type="text" name="last_name" class="form-input" placeholder="Muster" required>
+              <input type="text" name="last_name" class="form-input" placeholder="Muster"
+                     value="{{ form.last_name.value|default:'' }}">
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">E-Mail-Adresse</label>
-            <input type="email" name="email" class="form-input" placeholder="hans.muster@verwaltung.ch" required>
+            <input type="email" name="email"
+                   class="form-input{% if form.email.errors %} is-invalid{% endif %}"
+                   placeholder="hans.muster@verwaltung.ch"
+                   value="{{ form.email.value|default:'' }}">
+            {% if form.email.errors %}
+              <div class="form-error">{{ form.email.errors.0 }}</div>
+            {% endif %}
           </div>
           <div class="form-group">
             <label class="form-label">Benutzername</label>
-            <input type="text" name="username" class="form-input" placeholder="h.muster" required>
+            <input type="text" name="username"
+                   class="form-input{% if form.username.errors %} is-invalid{% endif %}"
+                   placeholder="h.muster"
+                   value="{{ form.username.value|default:'' }}">
+            {% if form.username.errors %}
+              <div class="form-error">{{ form.username.errors.0 }}</div>
+            {% endif %}
           </div>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Passwort</label>
-              <input type="password" name="password1" class="form-input" placeholder="••••••••" required>
+              <input type="password" name="password1"
+                     class="form-input{% if form.password1.errors %} is-invalid{% endif %}"
+                     placeholder="••••••••">
+              {% if form.password1.errors %}
+                <div class="form-error">{{ form.password1.errors.0 }}</div>
+              {% endif %}
             </div>
             <div class="form-group">
               <label class="form-label">Bestätigen</label>
-              <input type="password" name="password2" class="form-input" placeholder="••••••••" required>
+              <input type="password" name="password2"
+                     class="form-input{% if form.password2.errors %} is-invalid{% endif %}"
+                     placeholder="••••••••">
+              {% if form.password2.errors %}
+                <div class="form-error">{{ form.password2.errors.0 }}</div>
+              {% endif %}
             </div>
           </div>
           <button type="submit" class="form-submit">Jetzt registrieren</button>
           <div class="form-hint">
-            Bereits registriert? <a href="{% url 'login' %}">Bereits registriert? Anmelden →</a>
+            Bereits registriert? <a href="{% url 'login' %}">Anmelden →</a>
           </div>
         </form>
       </div>
@@ -1369,7 +1406,6 @@ Place this at the root URL ("/") – replaces any existing home view.
       <li><a href="{% url 'login' %}">Anmelden</a></li>
       <li><a href="#registrieren">Registrieren</a></li>
       <li><a href="#rechtssicherheit">ZGB-Grundlagen</a></li>
-      <li><a href="{% url 'voting:dashboard' %}">Dashboard</a></li>
     </ul>
   </div>
 </footer>
@@ -1386,6 +1422,13 @@ Place this at the root URL ("/") – replaces any existing home view.
   }, { threshold: .12 });
 
   document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+  // Scroll to registration form if there are errors (form was submitted)
+  {% if form.errors %}
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('registrieren').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  {% endif %}
 
   // Animated ballot fill on load
   window.addEventListener('load', () => {
