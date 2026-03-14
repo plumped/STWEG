@@ -62,11 +62,25 @@ def dashboard(request):
         ).count()
         unit_counts[proposal.id] = len(all_ids)
 
+    # Für Verwalter: Entwürfe die von Eigentümern eingereicht wurden und auf Freigabe warten.
+    # Nur Entwürfe die NICHT vom Verwalter selbst erstellt wurden (fremde Anträge).
+    admin_community_ids = set(
+        c.id for c in communities if c.is_admin(request.user)
+    )
+    pending_drafts = Proposal.objects.filter(
+        community__id__in=admin_community_ids,
+        status=Proposal.Status.DRAFT,
+    ).exclude(
+        created_by=request.user,
+    ).select_related('community', 'created_by').order_by('created_at')
+
     return render(request, 'voting/dashboard.html', {
-        'communities':   communities,
-        'open_proposals': open_proposals,
-        'voted_counts':  voted_counts,
-        'unit_counts':   unit_counts,
+        'communities':         communities,
+        'open_proposals':      open_proposals,
+        'voted_counts':        voted_counts,
+        'unit_counts':         unit_counts,
+        'pending_drafts':      pending_drafts,
+        'admin_community_ids': admin_community_ids,
     })
 
 
@@ -79,12 +93,19 @@ def proposal_list(request, community_id):
         messages.error(request, "Kein Zugang.")
         return redirect('voting:dashboard')
 
-    # Non-admins (unit owners, board) never see drafts
+    # Admins sehen alle Entwürfe.
+    # Eigentümer/Beirat sehen offene/abgeschlossene Anträge + eigene Entwürfe (Traktandierungsrecht ZGB Art. 712m).
     is_admin_flag = community.is_admin(request.user)
     if is_admin_flag:
         proposals = community.proposals.all()
     else:
-        proposals = community.proposals.exclude(status=Proposal.Status.DRAFT)
+        proposals = (
+            community.proposals.exclude(status=Proposal.Status.DRAFT)
+            | community.proposals.filter(
+                status=Proposal.Status.DRAFT, created_by=request.user
+            )
+        ).distinct().order_by('-created_at')
+
     user_units  = Unit.objects.filter(owner=request.user, community=community)
     voted_ids   = set(Vote.objects.filter(unit__in=user_units).values_list('proposal_id', flat=True))
     fully_voted_ids = set()
@@ -175,13 +196,10 @@ def proposal_detail(request, pk):
             for v in proposal.votes.select_related('unit', 'cast_by', 'unit__owner')
         }
 
-    # ── Umlaufbeschluss-Status ────────────────────────────────────────────────
-    # Zeige Hinweis, wenn noch nicht alle Einheiten abgestimmt haben.
-    # Umlaufbeschlüsse sind nur rechtsgültig, wenn das Reglement sie erlaubt
-    # und alle Eigentümer Gelegenheit hatten abzustimmen (ZGB Art. 712m Abs. 4).
-    total_units_count  = community.units.count()
-    voted_units_count  = proposal.votes.count() if proposal.status != Proposal.Status.DRAFT else 0
-    all_units_voted    = (voted_units_count == total_units_count and total_units_count > 0)
+    # Umlaufbeschluss-Status
+    total_units_count   = community.units.count()
+    voted_units_count   = proposal.votes.count() if proposal.status != Proposal.Status.DRAFT else 0
+    all_units_voted     = (voted_units_count == total_units_count and total_units_count > 0)
     missing_votes_count = total_units_count - voted_units_count
 
     # ── POST ──────────────────────────────────────────────────────────────────
@@ -281,7 +299,7 @@ def proposal_detail(request, pk):
     all_voted = bool(units_with_votes) and all(item['vote'] is not None for item in units_with_votes)
 
     admin_units_overview = []
-    if is_community_admin:
+    if is_community_admin and all_units:
         for unit in all_units:
             admin_units_overview.append({
                 'unit': unit,
@@ -364,9 +382,13 @@ def vote_reset(request, proposal_pk, vote_pk):
 @login_required
 def proposal_create(request, community_id):
     community = get_object_or_404(Community, id=community_id)
-    if not community.is_admin(request.user):
+    # ÄNDERUNG: Alle Community-Mitglieder (Eigentümer, Beirat, Verwalter) dürfen
+    # Antragsvorschläge als Entwurf einreichen (Traktandierungsrecht, ZGB Art. 712m).
+    # Nur Verwalter können Entwürfe zur Abstimmung freigeben (proposal_open).
+    if not community.can_manage(request.user):
         messages.error(request, "Keine Berechtigung.")
         return redirect('voting:dashboard')
+    is_admin = community.is_admin(request.user)
     if request.method == 'POST':
         form = ProposalForm(request.POST)
         if form.is_valid():
@@ -374,11 +396,21 @@ def proposal_create(request, community_id):
             proposal.community   = community
             proposal.created_by  = request.user
             proposal.save()
-            messages.success(request, "Antrag erstellt.")
+            if is_admin:
+                messages.success(request, "Antrag erstellt.")
+            else:
+                messages.success(
+                    request,
+                    "Antrag eingereicht. Der Verwalter wird ihn prüfen und zur Abstimmung freigeben.",
+                )
             return redirect('voting:proposal_detail', pk=proposal.pk)
     else:
         form = ProposalForm()
-    return render(request, 'voting/proposal_create.html', {'community': community, 'form': form})
+    return render(request, 'voting/proposal_create.html', {
+        'community': community,
+        'form':      form,
+        'is_admin':  is_admin,
+    })
 
 
 @login_required
@@ -404,8 +436,10 @@ def proposal_edit(request, pk):
 @login_required
 def proposal_open(request, pk):
     proposal = get_object_or_404(Proposal, pk=pk)
+    # ÄNDERUNG: Nur Admins (Verwalter) dürfen Abstimmungen öffnen.
+    # Eigentümer dürfen Entwürfe einreichen, aber nicht selbst zur Abstimmung freigeben.
     if (
-        (proposal.created_by == request.user or proposal.community.is_admin(request.user))
+        proposal.community.is_admin(request.user)
         and proposal.status == Proposal.Status.DRAFT
     ):
         proposal.open()
@@ -658,58 +692,43 @@ def proxy_grant(request, proposal_pk):
                 )
                 return redirect('voting:proposal_detail', pk=proposal_pk)
 
-            # FIX: Ketten-Vollmacht verhindern — Delegate darf nicht selbst schon
-            # Vollmacht-Geber für eine andere Einheit in dieser Abstimmung sein.
-            # (Implizit bereits verhindert, da nur Eigentümer Vollmachten erteilen
-            # können. Explizite Prüfung zur Klarheit.)
-            if Proxy.objects.filter(proposal=proposal, granted_by=delegate).exists():
-                delegate_name = delegate.get_full_name() or delegate.username
-                messages.error(
-                    request,
-                    f"{delegate_name} hat selbst bereits Vollmachten erteilt. "
-                    "Ketten-Vollmachten sind nicht zulässig.",
-                )
-                return redirect('voting:proposal_detail', pk=proposal_pk)
-
             Proxy.objects.update_or_create(
                 proposal=proposal, unit=unit,
                 defaults={'delegate': delegate, 'granted_by': request.user, 'note': note},
             )
-            delegate_name = delegate.get_full_name() or delegate.username
             messages.success(
                 request,
-                f"Vollmacht für Einheit {unit.unit_number} an {delegate_name} erteilt.",
+                f"Vollmacht für Einheit {unit.unit_number} an "
+                f"{delegate.get_full_name() or delegate.username} erteilt.",
             )
-        else:
-            messages.error(request, "Ungültige Eingabe bei Vollmacht.")
     return redirect('voting:proposal_detail', pk=proposal_pk)
 
 
 @login_required
 def proxy_revoke(request, proposal_pk, proxy_pk):
-    proxy = get_object_or_404(
-        Proxy, pk=proxy_pk, proposal__pk=proposal_pk, granted_by=request.user,
-    )
+    proposal = get_object_or_404(Proposal, pk=proposal_pk)
+    proxy    = get_object_or_404(Proxy, pk=proxy_pk, proposal=proposal)
+
+    if proxy.unit.owner != request.user and not proposal.community.is_admin(request.user):
+        messages.error(request, "Keine Berechtigung.")
+        return redirect('voting:proposal_detail', pk=proposal_pk)
+
+    if Vote.objects.filter(proposal=proposal, unit=proxy.unit).exists():
+        messages.error(request, "Stimme bereits abgegeben — Vollmacht kann nicht mehr widerrufen werden.")
+        return redirect('voting:proposal_detail', pk=proposal_pk)
+
     if request.method == 'POST':
-        if Vote.objects.filter(proposal=proxy.proposal, unit=proxy.unit).exists():
-            messages.error(
-                request,
-                "Stimme bereits abgegeben — Vollmacht kann nicht mehr widerrufen werden.",
-            )
-        else:
-            unit_number = proxy.unit.unit_number
-            proxy.delete()
-            messages.success(request, f"Vollmacht für Einheit {unit_number} widerrufen.")
+        unit_number = proxy.unit.unit_number
+        proxy.delete()
+        messages.success(request, f"Vollmacht für Einheit {unit_number} widerrufen.")
+
     return redirect('voting:proposal_detail', pk=proposal_pk)
 
 
-# ── Community CRUD ────────────────────────────────────────────────────────────
+# ── Community management ──────────────────────────────────────────────────────
 
 @login_required
 def community_create(request):
-    if not request.user.is_staff:
-        messages.error(request, "Keine Berechtigung.")
-        return redirect('voting:dashboard')
     if request.method == 'POST':
         form = CommunityForm(request.POST)
         if form.is_valid():
@@ -744,21 +763,15 @@ def community_edit(request, community_id):
 def community_delete(request, community_id):
     community = get_object_or_404(Community, id=community_id)
     if not community.is_admin(request.user):
-        messages.error(request, "Nur Administratoren können eine Gemeinschaft löschen.")
-        return redirect('voting:unit_manage', community_id=community_id)
+        messages.error(request, "Keine Berechtigung.")
+        return redirect('voting:dashboard')
     if request.method == 'POST':
-        confirm_name = request.POST.get('confirm_name', '').strip()
-        if confirm_name != community.name:
-            messages.error(request, "Name stimmt nicht überein — Gemeinschaft wurde nicht gelöscht.")
-            return redirect('voting:community_delete', community_id=community_id)
         name = community.name
         community.delete()
         messages.success(request, f"Gemeinschaft «{name}» wurde gelöscht.")
         return redirect('voting:dashboard')
     return render(request, 'voting/community_delete.html', {'community': community})
 
-
-# ── Community members (roles) ─────────────────────────────────────────────────
 
 @login_required
 def community_members(request, community_id):
@@ -767,32 +780,23 @@ def community_members(request, community_id):
         messages.error(request, "Keine Berechtigung.")
         return redirect('voting:dashboard')
 
-    memberships = community.memberships.select_related('user', 'added_by').all()
+    memberships = community.memberships.select_related('user', 'added_by')
 
     if request.method == 'POST':
-        form = MembershipForm(request.POST)
+        form = MembershipForm(request.POST, community=community)
         if form.is_valid():
-            user = form.cleaned_data['user']
-            role = form.cleaned_data['role']
-            if community.units.filter(owner=user).exists():
-                messages.warning(
-                    request,
-                    f"{user.get_full_name() or user.username} ist bereits Eigentümer in dieser Gemeinschaft.",
-                )
-            else:
-                membership, created = CommunityMembership.objects.update_or_create(
-                    community=community, user=user,
-                    defaults={'role': role, 'added_by': request.user},
-                )
-                action = "hinzugefügt" if created else "aktualisiert"
-                messages.success(
-                    request,
-                    f"{user.get_full_name() or user.username} als {membership.get_role_display()} {action}.",
-                )
-        else:
-            messages.error(request, "Ungültige Eingabe.")
+            membership          = form.save(commit=False)
+            membership.community = community
+            membership.added_by  = request.user
+            membership.save()
+            messages.success(
+                request,
+                f"{membership.user.get_full_name() or membership.user.username} "
+                f"als {membership.get_role_display()} hinzugefügt.",
+            )
+            return redirect('voting:community_members', community_id=community_id)
     else:
-        form = MembershipForm()
+        form = MembershipForm(community=community)
 
     return render(request, 'voting/community_members.html', {
         'community':   community,
@@ -811,7 +815,7 @@ def community_member_remove(request, community_id, membership_pk):
     if request.method == 'POST':
         name = membership.user.get_full_name() or membership.user.username
         membership.delete()
-        messages.success(request, f"{name} wurde aus der Gemeinschaft entfernt.")
+        messages.success(request, f"{name} aus der Gemeinschaft entfernt.")
     return redirect('voting:community_members', community_id=community_id)
 
 
@@ -839,8 +843,6 @@ def unit_manage(request, community_id):
 
     total_quota = sum(u.quota for u in units)
 
-    # FIX: Warne wenn Wertquoten-Summe nicht 1000‰ ergibt
-    # Eine falsche Summe verfälscht alle Mehrheitsberechnungen.
     unit_count         = len(list(units))
     quota_sum_ok       = abs(float(total_quota) - 1000.0) < 0.5
     quota_sum_warning  = unit_count > 0 and not quota_sum_ok
@@ -937,7 +939,6 @@ def unit_import_csv(request, community_id):
         messages.warning(request, e)
     if len(errors) > 5:
         messages.warning(request, f"… und {len(errors) - 5} weitere Fehler.")
-
     return redirect('voting:unit_manage', community_id=community_id)
 
 
@@ -951,54 +952,44 @@ def unit_export_csv(request, community_id):
         return redirect('voting:dashboard')
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
-    response['Content-Disposition'] = f'attachment; filename="einheiten_{community.id}.csv"'
+    response['Content-Disposition'] = (
+        f'attachment; filename="einheiten_{community.id}.csv"'
+    )
     response.write('\ufeff')
-
     writer = csv.writer(response, delimiter=';')
-    writer.writerow(['unit_number', 'description', 'quota', 'owner_username', 'owner_name'])
+    writer.writerow(['unit_number', 'description', 'quota', 'owner_username'])
     for unit in community.units.select_related('owner').order_by('unit_number'):
         writer.writerow([
             unit.unit_number,
             unit.description,
             unit.quota,
-            unit.owner.username        if unit.owner else '',
-            unit.owner.get_full_name() if unit.owner else '',
+            unit.owner.username if unit.owner else '',
         ])
     return response
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# INVITE SYSTEM
-# ═══════════════════════════════════════════════════════════════════════════════
+# ── Invite system ─────────────────────────────────────────────────────────────
 
 @login_required
 def invite_manage(request, community_id):
     community = get_object_or_404(Community, id=community_id)
     if not community.is_admin(request.user):
         messages.error(request, "Keine Berechtigung.")
-        return redirect('voting:unit_manage', community_id=community_id)
+        return redirect('voting:dashboard')
 
-    tokens = community.invite_tokens.select_related('unit', 'used_by', 'created_by').all()
-
-    preselect_unit_id = request.GET.get('unit')
-    initial = {}
-    if preselect_unit_id:
-        try:
-            initial['unit'] = Unit.objects.get(pk=preselect_unit_id, community=community, owner__isnull=True)
-        except Unit.DoesNotExist:
-            pass
-
-    form = InviteTokenForm(community=community, initial=initial)
+    tokens = community.invite_tokens.select_related('created_by', 'used_by', 'unit').order_by('-created_at')
 
     if request.method == 'POST':
         form = InviteTokenForm(request.POST, community=community)
         if form.is_valid():
-            invite            = form.save(commit=False)
-            invite.community  = community
-            invite.created_by = request.user
-            invite.save()
+            token            = form.save(commit=False)
+            token.community  = community
+            token.created_by = request.user
+            token.save()
             messages.success(request, "Einladungslink erstellt.")
             return redirect('voting:invite_manage', community_id=community_id)
+    else:
+        form = InviteTokenForm(community=community)
 
     return render(request, 'voting/invite_manage.html', {
         'community': community,
@@ -1010,79 +1001,60 @@ def invite_manage(request, community_id):
 @login_required
 def invite_revoke(request, community_id, token_pk):
     community = get_object_or_404(Community, id=community_id)
-    invite    = get_object_or_404(InviteToken, pk=token_pk, community=community)
+    token     = get_object_or_404(InviteToken, pk=token_pk, community=community)
     if not community.is_admin(request.user):
         messages.error(request, "Keine Berechtigung.")
         return redirect('voting:invite_manage', community_id=community_id)
     if request.method == 'POST':
-        invite.is_active = False
-        invite.save(update_fields=['is_active'])
+        token.is_active = False
+        token.save()
         messages.success(request, "Einladungslink widerrufen.")
     return redirect('voting:invite_manage', community_id=community_id)
 
 
 def invite_register(request, token):
-    """Public view — no login required."""
-    try:
-        invite = InviteToken.objects.select_related('community', 'unit').get(token=token)
-    except InviteToken.DoesNotExist:
-        return render(request, 'voting/invite_register.html', {'invalid': True})
+    invite = get_object_or_404(InviteToken, token=token)
 
     if not invite.is_valid:
-        return render(request, 'voting/invite_register.html', {'invalid': True, 'invite': invite})
+        return render(request, 'voting/invite_invalid.html', {'invite': invite})
 
     if request.method == 'POST':
         form = InviteRegistrationForm(request.POST)
         if form.is_valid():
-            username  = form.cleaned_data['username']
-            password  = form.cleaned_data['password1']
-            email     = form.cleaned_data.get('email', '')
-            first     = form.cleaned_data.get('first_name', '')
-            last      = form.cleaned_data.get('last_name', '')
+            user = form.save(commit=False)
+            user.set_password(form.cleaned_data['password'])
+            user.save()
 
-            if User.objects.filter(username=username).exists():
-                form.add_error('username', "Benutzername bereits vergeben.")
-            else:
-                user = User.objects.create_user(
-                    username=username, password=password,
-                    email=email, first_name=first, last_name=last,
+            # Consume the token
+            invite.used_at = timezone.now()
+            invite.used_by = user
+            invite.save()
+
+            # Assign role
+            if invite.role == InviteToken.Role.OWNER and invite.unit:
+                invite.unit.owner = user
+                invite.unit.save()
+            elif invite.role in (InviteToken.Role.MANAGER, InviteToken.Role.BOARD):
+                role_map = {
+                    InviteToken.Role.MANAGER: CommunityMembership.Role.MANAGER,
+                    InviteToken.Role.BOARD:   CommunityMembership.Role.BOARD,
+                }
+                CommunityMembership.objects.get_or_create(
+                    community=invite.community,
+                    user=user,
+                    defaults={'role': role_map[invite.role], 'added_by': invite.created_by},
                 )
-                _apply_invite(invite, user)
-                auth_login(request, user)
-                messages.success(
-                    request,
-                    f"Willkommen, {user.get_full_name() or user.username}! "
-                    f"Du bist nun Mitglied der Gemeinschaft «{invite.community.name}».",
-                )
-                return redirect('voting:dashboard')
+
+            auth_login(request, user)
+            messages.success(request, f"Willkommen, {user.get_full_name() or user.username}!")
+            return redirect('voting:proposal_list', community_id=invite.community.id)
     else:
-        form = InviteRegistrationForm(initial={'email': invite.email})
+        initial = {}
+        if invite.email:
+            initial['email'] = invite.email
+        form = InviteRegistrationForm(initial=initial)
 
     return render(request, 'voting/invite_register.html', {
-        'invite':  invite,
         'form':    form,
-        'invalid': False,
+        'invite':  invite,
     })
-
-
-def _apply_invite(invite: InviteToken, user: User) -> None:
-    community = invite.community
-    if invite.role == InviteToken.Role.OWNER:
-        if invite.unit is not None:
-            invite.unit.owner = user
-            invite.unit.save(update_fields=['owner'])
-        else:
-            CommunityMembership.objects.get_or_create(
-                community=community,
-                user=user,
-                defaults={'role': CommunityMembership.Role.BOARD, 'added_by': invite.created_by},
-            )
-    elif invite.role in (InviteToken.Role.MANAGER, InviteToken.Role.BOARD):
-        CommunityMembership.objects.update_or_create(
-            community=community,
-            user=user,
-            defaults={'role': invite.role, 'added_by': invite.created_by},
-        )
-    invite.used_at = timezone.now()
-    invite.used_by = user
-    invite.save(update_fields=['used_at', 'used_by'])

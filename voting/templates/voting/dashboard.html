@@ -15,9 +15,39 @@
     {% endif %}
 </div>
 
+<!-- ── Ausstehende Anträge (nur für Verwalter sichtbar) ───────────────── -->
+{% if pending_drafts %}
+<div class="section-label">
+    Ausstehende Anträge
+    <span class="badge badge-pending" style="margin-left:0.5rem;font-size:0.72rem;">{{ pending_drafts|length }}</span>
+</div>
+
+{% for proposal in pending_drafts %}
+<a href="{% url 'voting:proposal_detail' proposal.pk %}" class="card-link">
+    <div class="card card-interactive" style="border-left:3px solid var(--amber,#f59e0b);">
+        <div class="flex-between items-center">
+            <div style="flex:1;min-width:0;">
+                <div class="flex items-center gap-xs" style="margin-bottom:0.55rem;flex-wrap:wrap;">
+                    <span class="badge badge-draft">Entwurf</span>
+                    <span class="badge badge-pending" style="font-size:0.72rem;">⏳ Freigabe ausstehend</span>
+                </div>
+                <div class="card-title">{{ proposal.title }}</div>
+                <div class="card-meta" style="margin-top:0.2rem;">
+                    {{ proposal.community.name }}
+                    · Eingereicht von {{ proposal.created_by.get_full_name|default:proposal.created_by.username }}
+                    · {{ proposal.created_at|date:"d.m.Y" }}
+                </div>
+            </div>
+            <span style="color:var(--border-strong);font-size:1.1rem;margin-left:1rem;flex-shrink:0;">›</span>
+        </div>
+    </div>
+</a>
+{% endfor %}
+{% endif %}
+
 <!-- ── Offene Abstimmungen ─────────────────────────────────────────────── -->
 {% if open_proposals %}
-<div class="section-label">Offene Abstimmungen</div>
+<div class="section-label" {% if pending_drafts %}style="margin-top:2rem;"{% endif %}>Offene Abstimmungen</div>
 
 {% for proposal in open_proposals %}
 {% with voted=voted_counts|get_item:proposal.id total=unit_counts|get_item:proposal.id %}
@@ -49,6 +79,7 @@
 {% endfor %}
 
 {% else %}
+{% if not pending_drafts %}
 <div class="card">
     <div class="empty-state">
         <span class="empty-state-icon">🗳</span>
@@ -56,6 +87,7 @@
         <div class="empty-state-sub">Sobald eine Abstimmung geöffnet wird, erscheint sie hier.</div>
     </div>
 </div>
+{% endif %}
 {% endif %}
 
 <!-- ── Gemeinschaften ──────────────────────────────────────────────────── -->

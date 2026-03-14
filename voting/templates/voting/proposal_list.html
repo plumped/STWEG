@@ -8,12 +8,13 @@
         <h1>{{ community.name }}</h1>
         <p>{{ community.address }}</p>
     </div>
-    {% if is_admin %}
+    <!-- ÄNDERUNG: "Antrag einreichen" für alle Community-Mitglieder sichtbar (ZGB Art. 712m Traktandierungsrecht) -->
     <div class="flex gap-1">
+        {% if is_admin %}
         <a href="{% url 'voting:unit_manage' community.id %}" class="btn btn-outline btn-sm">Einheiten</a>
-        <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary">+ Neuer Antrag</a>
+        {% endif %}
+        <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary">+ Antrag einreichen</a>
     </div>
-    {% endif %}
 </div>
 
 {% if my_units and not is_admin %}
@@ -55,6 +56,9 @@
                         {% endif %}
                     {% elif proposal.status == 'draft' %}
                         <span class="badge badge-draft">Entwurf</span>
+                        {% if proposal.created_by == request.user and not is_admin %}
+                            <span class="badge badge-pending" style="font-size:0.72rem;">⏳ Wartet auf Freigabe</span>
+                        {% endif %}
                     {% else %}
                         <span class="badge badge-closed">Abgeschlossen</span>
                     {% endif %}
@@ -78,11 +82,8 @@
     <div class="empty-state">
         <span class="empty-state-icon">&#x1F4CB;</span>
         <div class="empty-state-title">Noch keine Antraege</div>
-        {% if is_admin %}
-        <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary mt-2">Ersten Antrag erstellen</a>
-        {% else %}
         <div class="empty-state-sub">Sobald ein Antrag zur Abstimmung freigegeben wird, erscheint er hier.</div>
-        {% endif %}
+        <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary mt-2">Antrag einreichen</a>
     </div>
 </div>
 

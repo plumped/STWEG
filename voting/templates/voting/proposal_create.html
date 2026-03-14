@@ -5,8 +5,14 @@
 <a href="{% url 'voting:proposal_list' community.id %}" class="back-link">{{ community.name }}</a>
 
 <div class="page-header">
-    <h1>Neuer Antrag</h1>
-    <p>Erstelle einen Abstimmungsantrag für {{ community.name }}</p>
+    <h1>{% if is_admin %}Neuer Antrag{% else %}Antrag einreichen{% endif %}</h1>
+    <p>
+        {% if is_admin %}
+        Erstelle einen Abstimmungsantrag für {{ community.name }}
+        {% else %}
+        Reiche einen Antragsvorschlag für {{ community.name }} ein — der Verwalter gibt ihn zur Abstimmung frei.
+        {% endif %}
+    </p>
 </div>
 
 <div class="card" style="padding:2rem;">
@@ -45,11 +51,19 @@
         </div>
         <hr>
         <div class="flex gap-1">
-            <button type="submit" class="btn btn-primary">Antrag erstellen</button>
+            <button type="submit" class="btn btn-primary">
+                {% if is_admin %}Antrag erstellen{% else %}Antrag einreichen{% endif %}
+            </button>
             <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline">Abbrechen</a>
         </div>
+        <!-- ÄNDERUNG: Hinweistext je nach Rolle -->
         <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.875rem;">
+            {% if is_admin %}
             Der Antrag wird als Entwurf gespeichert. Du kannst ihn danach zur Abstimmung freigeben.
+            {% else %}
+            Der Antrag wird als Entwurf eingereicht. Der Verwalter prüft ihn und gibt ihn zur Abstimmung frei
+            (Traktandierungsrecht gemäss ZGB Art. 712m).
+            {% endif %}
         </p>
     </form>
 </div>
