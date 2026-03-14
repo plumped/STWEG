@@ -11,9 +11,9 @@
 </div>
 
 <!-- ── How it works ─────────────────────────────────────────────────────── -->
-<div class="card" style="padding:1.5rem;background:var(--accent-light);border-color:var(--accent-border);margin-bottom:1.5rem;">
-    <div style="font-weight:600;color:var(--accent);margin-bottom:0.5rem;">🔐 So funktioniert das Einladungssystem</div>
-    <div style="font-size:0.85rem;color:var(--text-secondary);line-height:1.7;">
+<div class="card card--accent card--mb-lg">
+    <div class="invite-info-title">🔐 So funktioniert das Einladungssystem</div>
+    <div class="invite-info-body">
         <strong>1.</strong> Erstelle einen Einladungslink für jeden neuen Eigentümer (oder Verwalter/Beirat).<br>
         <strong>2.</strong> Weise optional direkt eine unbesetzte Einheit zu.<br>
         <strong>3.</strong> Schicke den Link per E-Mail an die Person.<br>
@@ -23,16 +23,16 @@
 </div>
 
 <!-- ── Create new invite ─────────────────────────────────────────────────── -->
-<div class="card" style="padding:1.75rem;margin-bottom:1.5rem;">
+<div class="card card--padded card--mb-lg">
     <div class="section-label">Neuen Einladungslink erstellen</div>
     <form method="post">
         {% csrf_token %}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
-            <div class="form-group" style="margin:0;">
+        <div class="grid-2 mb-2">
+            <div class="form-group form-group--flush">
                 <label>{{ form.role.label }}</label>
                 {{ form.role }}
             </div>
-            <div class="form-group" style="margin:0;">
+            <div class="form-group form-group--flush">
                 <label>{{ form.unit.label }}</label>
                 {{ form.unit }}
                 {% if form.unit.help_text %}
@@ -40,12 +40,12 @@
                 {% endif %}
             </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
-            <div class="form-group" style="margin:0;">
+        <div class="grid-2 mb-2">
+            <div class="form-group form-group--flush">
                 <label>{{ form.email.label }}</label>
                 {{ form.email }}
             </div>
-            <div class="form-group" style="margin:0;">
+            <div class="form-group form-group--flush">
                 <label>{{ form.expires_at.label }}</label>
                 {{ form.expires_at }}
             </div>
@@ -58,91 +58,73 @@
 <div class="section-label">Bestehende Einladungen</div>
 
 {% if tokens %}
-<div class="card" style="padding:0;overflow:hidden;">
-    <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+<div class="table-card">
+    <table>
         <thead>
-            <tr style="background:var(--bg-subtle);border-bottom:1px solid var(--border);">
-                <th style="padding:0.75rem 1rem;text-align:left;font-weight:600;color:var(--text-secondary);">Rolle</th>
-                <th style="padding:0.75rem 1rem;text-align:left;font-weight:600;color:var(--text-secondary);">Einheit</th>
-                <th style="padding:0.75rem 1rem;text-align:left;font-weight:600;color:var(--text-secondary);">E-Mail</th>
-                <th style="padding:0.75rem 1rem;text-align:left;font-weight:600;color:var(--text-secondary);">Status</th>
-                <th style="padding:0.75rem 1rem;text-align:left;font-weight:600;color:var(--text-secondary);">Erstellt</th>
-                <th style="padding:0.75rem 1rem;text-align:left;font-weight:600;color:var(--text-secondary);">Link / Aktion</th>
+            <tr>
+                <th>Link / Token</th>
+                <th>Rolle</th>
+                <th>Einheit</th>
+                <th>E-Mail</th>
+                <th>Erstellt</th>
+                <th>Ablauf</th>
+                <th>Status</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
-        {% for tok in tokens %}
-            <tr style="border-bottom:1px solid var(--border);{% if not tok.is_valid %}opacity:0.55;{% endif %}">
-                <td style="padding:0.75rem 1rem;">
-                    {% if tok.role == 'owner' %}
-                        <span class="badge badge-open">Eigentümer</span>
-                    {% elif tok.role == 'manager' %}
-                        <span class="badge" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue);">Verwalter</span>
-                    {% else %}
-                        <span class="badge badge-pending">Beirat</span>
-                    {% endif %}
-                </td>
-                <td style="padding:0.75rem 1rem;color:var(--text-secondary);">
-                    {{ tok.unit.unit_number|default:"—" }}
-                </td>
-                <td style="padding:0.75rem 1rem;color:var(--text-secondary);">
-                    {{ tok.email|default:"—" }}
-                </td>
-                <td style="padding:0.75rem 1rem;">
-                    {% if tok.status_display == 'aktiv' %}
-                        <span class="badge badge-open">✓ aktiv</span>
-                    {% elif tok.status_display == 'verwendet' %}
-                        <span class="badge badge-done">verwendet von {{ tok.used_by.get_full_name|default:tok.used_by.username }}</span>
-                    {% elif tok.status_display == 'widerrufen' %}
-                        <span class="badge" style="background:#f5f5f5;color:#888;border-color:#ccc;">widerrufen</span>
-                    {% else %}
-                        <span class="badge badge-pending">abgelaufen</span>
-                    {% endif %}
-                </td>
-                <td style="padding:0.75rem 1rem;color:var(--text-muted);font-size:0.8rem;">
-                    {{ tok.created_at|date:"d.m.Y H:i" }}
-                </td>
-                <td style="padding:0.75rem 1rem;">
-                    {% if tok.is_valid %}
-                        {% url 'voting:invite_register' tok.token as invite_path %}
-                        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
-                            <input
-                                type="text"
-                                value="{{ request.scheme }}://{{ request.get_host }}{{ invite_path }}"
-                                id="link-{{ tok.pk }}"
-                                readonly
-                                style="font-size:0.75rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-subtle);color:var(--text-secondary);width:18rem;max-width:100%;"
-                            >
-                            <button
-                                type="button"
-                                onclick="navigator.clipboard.writeText(document.getElementById('link-{{ tok.pk }}').value).then(()=>{this.textContent='✓ Kopiert';setTimeout(()=>this.textContent='Kopieren',2000)})"
-                                class="btn btn-outline btn-sm"
-                                style="font-size:0.78rem;padding:0.3rem 0.65rem;"
-                            >Kopieren</button>
-                            <form method="post" action="{% url 'voting:invite_revoke' community.id tok.pk %}" style="display:inline;">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-danger btn-sm" style="font-size:0.78rem;padding:0.3rem 0.65rem;"
-                                    onclick="return confirm('Einladungslink widerrufen?')">
-                                    Widerrufen
-                                </button>
-                            </form>
-                        </div>
-                    {% else %}
-                        <span style="font-size:0.8rem;color:var(--text-muted);">—</span>
-                    {% endif %}
-                </td>
-            </tr>
+        {% for token in tokens %}
+        <tr>
+            <td>
+                {% if not token.used_by and not token.is_expired %}
+                <code>{{ request.scheme }}://{{ request.get_host }}{% url 'voting:invite_register' token.token %}</code>
+                {% else %}
+                <span class="text-muted text-xs">—</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if token.role == 'owner' %}
+                    <span class="badge badge-closed">Eigentümer</span>
+                {% elif token.role == 'manager' %}
+                    <span class="badge badge--manager">Verwalter</span>
+                {% else %}
+                    <span class="badge badge-pending">Beirat</span>
+                {% endif %}
+            </td>
+            <td class="td-muted">{{ token.unit.unit_number|default:"—" }}</td>
+            <td class="td-muted td-sm">{{ token.email|default:"—" }}</td>
+            <td class="td-muted td-xs">{{ token.created_at|date:"d.m.Y" }}</td>
+            <td class="td-muted td-xs">{{ token.expires_at|date:"d.m.Y"|default:"—" }}</td>
+            <td>
+                {% if token.used_by %}
+                    <span class="badge badge-done">✓ Verwendet</span>
+                    <div class="text-xs text-muted mt-xs">{{ token.used_by.get_full_name|default:token.used_by.username }}</div>
+                {% elif token.is_expired %}
+                    <span class="badge badge-closed">Abgelaufen</span>
+                {% else %}
+                    <span class="badge badge-open">Aktiv</span>
+                {% endif %}
+            </td>
+            <td class="td-right">
+                {% if not token.used_by %}
+                <form method="post" action="{% url 'voting:invite_revoke' community.id token.pk %}"
+                      onsubmit="return confirm('Einladungslink widerrufen?')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm">Widerrufen</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
         {% endfor %}
         </tbody>
     </table>
 </div>
-
 {% else %}
 <div class="card">
     <div class="empty-state">
-        <span class="empty-state-icon">✉️</span>
-        <div class="empty-state-title">Noch keine Einladungen</div>
-        <div class="empty-state-sub">Erstelle den ersten Einladungslink oben.</div>
+        <span class="empty-state-icon">✉</span>
+        <div class="empty-state-title">Noch keine Einladungen erstellt</div>
+        <div class="empty-state-sub">Erstelle oben den ersten Einladungslink.</div>
     </div>
 </div>
 {% endif %}

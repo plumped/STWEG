@@ -2,30 +2,32 @@
 {% block title %}Anmelden – STWEG{% endblock %}
 
 {% block content %}
-<div style="max-width:420px;margin:3rem auto;">
-    <div style="text-align:center;margin-bottom:2rem;">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:600;color:var(--accent);letter-spacing:-0.02em;margin-bottom:0.4rem;">STWEG</div>
-        <div class="section-label" style="margin:0;">Abstimmungsportal</div>
-        <div style="margin-top:1rem;color:var(--text-muted);font-size:0.9rem;">Melde dich an, um abzustimmen</div>
+<div class="login-wrapper">
+    <div class="login-header">
+        <div class="login-logo">STWEG</div>
+        <div class="section-label">Abstimmungsportal</div>
+        <div class="login-sub">Melde dich an, um abzustimmen</div>
     </div>
 
-    <div class="card" style="padding:2rem;">
+    <div class="card card--login">
         <form method="post">
             {% csrf_token %}
             <div class="form-group">
                 <label for="id_username">Benutzername</label>
-                <input type="text" name="username" id="id_username" class="form-input" autofocus required autocomplete="username">
+                <input type="text" name="username" id="id_username" class="form-input"
+                       autofocus required autocomplete="username">
             </div>
             <div class="form-group">
                 <label for="id_password">Passwort</label>
-                <input type="password" name="password" id="id_password" class="form-input" required autocomplete="current-password">
+                <input type="password" name="password" id="id_password" class="form-input"
+                       required autocomplete="current-password">
             </div>
             {% if form.errors %}
-            <div class="message message-error" style="margin-bottom:1rem;">
+            <div class="message message-error mb-1">
                 Benutzername oder Passwort falsch.
             </div>
             {% endif %}
-            <button type="submit" class="btn btn-primary btn-full" style="margin-top:0.5rem;">Anmelden</button>
+            <button type="submit" class="btn btn-primary btn-full mt-1">Anmelden</button>
         </form>
     </div>
 </div>

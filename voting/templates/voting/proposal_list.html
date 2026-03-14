@@ -1,5 +1,5 @@
 {% extends "voting/base.html" %}
-{% block title %}{{ community.name }} – Antraege{% endblock %}
+{% block title %}{{ community.name }} – Anträge{% endblock %}
 
 {% block content %}
 <div class="page-header flex-between">
@@ -8,7 +8,6 @@
         <h1>{{ community.name }}</h1>
         <p>{{ community.address }}</p>
     </div>
-    <!-- ÄNDERUNG: "Antrag einreichen" für alle Community-Mitglieder sichtbar (ZGB Art. 712m Traktandierungsrecht) -->
     <div class="flex gap-1">
         {% if is_admin %}
         <a href="{% url 'voting:unit_manage' community.id %}" class="btn btn-outline btn-sm">Einheiten</a>
@@ -18,16 +17,16 @@
 </div>
 
 {% if my_units and not is_admin %}
-<div class="card" style="padding:1.1rem 1.4rem;margin-bottom:1.5rem;background:var(--surface-alt);border-color:var(--border);">
-    <div class="section-label" style="margin-bottom:0.75rem;">Meine Einheiten</div>
-    <div style="display:flex;flex-wrap:wrap;gap:0.6rem;">
+<div class="card card--alt card--compact card--mb-lg">
+    <div class="section-label mb-md">Meine Einheiten</div>
+    <div class="flex flex-wrap gap-sm">
         {% for unit in my_units %}
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:0.5rem 0.9rem;font-size:0.85rem;">
-            <span style="font-weight:600;">{{ unit.unit_number }}</span>
+        <div class="unit-chip">
+            <span class="unit-chip__number">{{ unit.unit_number }}</span>
             {% if unit.description %}
-            <span style="color:var(--text-muted);margin-left:0.4rem;">{{ unit.description }}</span>
+            <span class="unit-chip__desc">{{ unit.description }}</span>
             {% endif %}
-            <span style="color:var(--text-muted);margin-left:0.5rem;font-size:0.78rem;">{{ unit.quota }}&#8240;</span>
+            <span class="unit-chip__quota">{{ unit.quota }}&#8240;</span>
         </div>
         {% endfor %}
     </div>
@@ -40,52 +39,41 @@
 <a href="{% url 'voting:proposal_detail' proposal.pk %}" class="card-link">
     <div class="card card-interactive">
         <div class="flex-between items-center">
-            <div style="flex:1;min-width:0;">
-                <div class="flex items-center gap-xs" style="margin-bottom:0.55rem;flex-wrap:wrap;">
+            <div class="flex-1">
+                <div class="flex items-center gap-xs mb-sm flex-wrap">
                     {% if proposal.status == 'open' %}
                         <span class="badge badge-open">Offen</span>
                         {% if proposal.id in fully_voted_ids %}
-                            <span class="badge badge-done">Abgestimmt</span>
+                            <span class="badge badge-done">✓ Vollständig abgestimmt</span>
                         {% elif proposal.id in voted_ids %}
                             <span class="badge badge-pending">Teilweise abgestimmt</span>
-                        {% else %}
-                            <span class="badge badge-pending">Ausstehend</span>
-                        {% endif %}
-                        {% if proposal.deadline and proposal.deadline_passed %}
-                            <span class="badge badge-danger">Frist abgelaufen</span>
                         {% endif %}
                     {% elif proposal.status == 'draft' %}
                         <span class="badge badge-draft">Entwurf</span>
-                        {% if proposal.created_by == request.user and not is_admin %}
-                            <span class="badge badge-pending" style="font-size:0.72rem;">⏳ Wartet auf Freigabe</span>
-                        {% endif %}
                     {% else %}
                         <span class="badge badge-closed">Abgeschlossen</span>
                     {% endif %}
                 </div>
                 <div class="card-title">{{ proposal.title }}</div>
-                <div class="card-meta" style="margin-top:0.2rem;">
-                    {{ proposal.get_majority_type_display }}
-                    {% if proposal.deadline %} &middot; Frist {{ proposal.deadline|date:"d.m.Y" }}{% endif %}
-                    &middot; {{ proposal.created_at|date:"d.m.Y" }}
+                <div class="card-meta mt-xs">
+                    {% if proposal.deadline %}Frist: {{ proposal.deadline|date:"d.m.Y" }}{% endif %}
+                    {% if proposal.created_at %} · {{ proposal.created_at|date:"d.m.Y" }}{% endif %}
                 </div>
             </div>
-            <span style="color:var(--border-strong);font-size:1.1rem;margin-left:1rem;flex-shrink:0;">&rsaquo;</span>
+            <span class="chevron">›</span>
         </div>
     </div>
 </a>
 {% endfor %}
 
 {% else %}
-
 <div class="card">
     <div class="empty-state">
-        <span class="empty-state-icon">&#x1F4CB;</span>
-        <div class="empty-state-title">Noch keine Antraege</div>
-        <div class="empty-state-sub">Sobald ein Antrag zur Abstimmung freigegeben wird, erscheint er hier.</div>
-        <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary mt-2">Antrag einreichen</a>
+        <span class="empty-state-icon">📋</span>
+        <div class="empty-state-title">Noch keine Anträge</div>
+        <div class="empty-state-sub">Erstelle den ersten Antrag für diese Gemeinschaft.</div>
     </div>
 </div>
-
 {% endif %}
+
 {% endblock %}

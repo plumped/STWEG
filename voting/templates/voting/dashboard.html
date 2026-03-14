@@ -19,26 +19,26 @@
 {% if pending_drafts %}
 <div class="section-label">
     Ausstehende Anträge
-    <span class="badge badge-pending" style="margin-left:0.5rem;font-size:0.72rem;">{{ pending_drafts|length }}</span>
+    <span class="badge badge-pending ml-sm">{{ pending_drafts|length }}</span>
 </div>
 
 {% for proposal in pending_drafts %}
 <a href="{% url 'voting:proposal_detail' proposal.pk %}" class="card-link">
-    <div class="card card-interactive" style="border-left:3px solid var(--amber,#f59e0b);">
+    <div class="card card-interactive card--amber-left">
         <div class="flex-between items-center">
-            <div style="flex:1;min-width:0;">
-                <div class="flex items-center gap-xs" style="margin-bottom:0.55rem;flex-wrap:wrap;">
+            <div class="flex-1">
+                <div class="flex items-center gap-xs mb-sm flex-wrap">
                     <span class="badge badge-draft">Entwurf</span>
-                    <span class="badge badge-pending" style="font-size:0.72rem;">⏳ Freigabe ausstehend</span>
+                    <span class="badge badge-pending">⏳ Freigabe ausstehend</span>
                 </div>
                 <div class="card-title">{{ proposal.title }}</div>
-                <div class="card-meta" style="margin-top:0.2rem;">
+                <div class="card-meta mt-xs">
                     {{ proposal.community.name }}
                     · Eingereicht von {{ proposal.created_by.get_full_name|default:proposal.created_by.username }}
                     · {{ proposal.created_at|date:"d.m.Y" }}
                 </div>
             </div>
-            <span style="color:var(--border-strong);font-size:1.1rem;margin-left:1rem;flex-shrink:0;">›</span>
+            <span class="chevron">›</span>
         </div>
     </div>
 </a>
@@ -47,15 +47,15 @@
 
 <!-- ── Offene Abstimmungen ─────────────────────────────────────────────── -->
 {% if open_proposals %}
-<div class="section-label" {% if pending_drafts %}style="margin-top:2rem;"{% endif %}>Offene Abstimmungen</div>
+<div class="section-label {% if pending_drafts %}mt-lg{% endif %}">Offene Abstimmungen</div>
 
 {% for proposal in open_proposals %}
 {% with voted=voted_counts|get_item:proposal.id total=unit_counts|get_item:proposal.id %}
 <a href="{% url 'voting:proposal_detail' proposal.pk %}" class="card-link">
     <div class="card card-interactive">
         <div class="flex-between items-center">
-            <div style="flex:1;min-width:0;">
-                <div class="flex items-center gap-xs" style="margin-bottom:0.55rem;flex-wrap:wrap;">
+            <div class="flex-1">
+                <div class="flex items-center gap-xs mb-sm flex-wrap">
                     <span class="badge badge-open">Offen</span>
                     {% if voted == total and total > 0 %}
                         <span class="badge badge-done">✓ Vollständig abgestimmt</span>
@@ -66,12 +66,12 @@
                     {% endif %}
                 </div>
                 <div class="card-title">{{ proposal.title }}</div>
-                <div class="card-meta" style="margin-top:0.2rem;">
+                <div class="card-meta mt-xs">
                     {{ proposal.community.name }}
                     {% if proposal.deadline %} · Frist: {{ proposal.deadline|date:"d.m.Y" }}{% endif %}
                 </div>
             </div>
-            <span style="color:var(--border-strong);font-size:1.1rem;margin-left:1rem;flex-shrink:0;">›</span>
+            <span class="chevron">›</span>
         </div>
     </div>
 </a>
@@ -92,24 +92,24 @@
 
 <!-- ── Gemeinschaften ──────────────────────────────────────────────────── -->
 {% if communities %}
-<div class="section-label" style="margin-top:2.5rem;">Meine Gemeinschaften</div>
+<div class="section-label mt-xl">Meine Gemeinschaften</div>
 
 {% for community in communities %}
 {% with unassigned=unassigned_counts|get_item:community.id %}
-<div class="card" style="padding:1.1rem 1.4rem;margin-bottom:0.6rem;">
+<div class="card card--compact card--mb-sm">
     <div class="flex-between items-center">
-        <div style="flex:1;min-width:0;">
-            <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.2rem;">
-                <span style="font-size:1rem;font-weight:600;color:var(--text);">{{ community.name }}</span>
+        <div class="flex-1">
+            <div class="flex items-center gap-sm flex-wrap mb-xs">
+                <span class="text-strong">{{ community.name }}</span>
                 {% if unassigned %}
-                <span class="badge badge-pending" style="font-size:0.72rem;">
+                <span class="badge badge-pending">
                     ⏳ {{ unassigned }} unbesetzt{% if unassigned != 1 %}e Einheiten{% else %}e Einheit{% endif %}
                 </span>
                 {% endif %}
             </div>
             <div class="card-meta">{{ community.address }}</div>
         </div>
-        <div class="flex gap-1" style="flex-shrink:0;margin-left:1rem;">
+        <div class="flex gap-1 flex-shrink-0 ml-md">
             <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline btn-sm">Anträge</a>
             {% if community.id in admin_community_ids %}
             <a href="{% url 'voting:unit_manage' community.id %}" class="btn btn-outline btn-sm">Einheiten</a>
@@ -126,7 +126,7 @@
         <span class="empty-state-icon">🏘</span>
         <div class="empty-state-title">Noch keine Gemeinschaft</div>
         <div class="empty-state-sub">Erstelle deine erste Gemeinschaft.</div>
-        <a href="{% url 'voting:community_create' %}" class="btn btn-primary" style="margin-top:1rem;">Gemeinschaft erstellen</a>
+        <a href="{% url 'voting:community_create' %}" class="btn btn-primary empty-state-action">Gemeinschaft erstellen</a>
     </div>
 </div>
 {% endif %}

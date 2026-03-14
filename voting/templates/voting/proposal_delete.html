@@ -1,0 +1,31 @@
+{% extends "voting/base.html" %}
+{% block title %}Antrag löschen – {{ proposal.title }}{% endblock %}
+
+{% block content %}
+<a href="{% url 'voting:proposal_detail' proposal.pk %}" class="back-link">{{ proposal.title }}</a>
+
+<div class="page-header">
+    <h1>Antrag löschen</h1>
+    <p>Diese Aktion kann nicht rückgängig gemacht werden.</p>
+</div>
+
+<div class="card card--padded card--danger">
+    <div class="section-label section-label--danger">Gefahrenzone</div>
+    <p class="text-base mb-2">
+        Möchtest du den Antrag <strong>«{{ proposal.title }}»</strong> wirklich löschen?
+    </p>
+    <div class="card-inset mb-2">
+        <div class="text-sm text-muted">
+            Nur Entwürfe können gelöscht werden. Offene oder abgeschlossene Abstimmungen
+            müssen zuerst geschlossen werden.
+        </div>
+    </div>
+    <div class="flex gap-sm">
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Antrag endgültig löschen</button>
+        </form>
+        <a href="{% url 'voting:proposal_detail' proposal.pk %}" class="btn btn-outline">Abbrechen</a>
+    </div>
+</div>
+{% endblock %}

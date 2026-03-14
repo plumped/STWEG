@@ -1,56 +1,46 @@
 {% extends "voting/base.html" %}
-{% block title %}{% if community %}Einstellungen – {{ community.name }}{% else %}Neue Gemeinschaft – STWEG{% endif %}{% endblock %}
+{% block title %}{% if community %}Gemeinschaft bearbeiten{% else %}Neue Gemeinschaft{% endif %} – STWEG{% endblock %}
 
 {% block content %}
 {% if community %}
 <a href="{% url 'voting:unit_manage' community.id %}" class="back-link">{{ community.name }}</a>
 {% else %}
-<a href="{% url 'voting:dashboard' %}" class="back-link">Übersicht</a>
+<a href="{% url 'voting:dashboard' %}" class="back-link">Dashboard</a>
 {% endif %}
 
 <div class="page-header">
-    <h1>{% if community %}Einstellungen{% else %}Neue Gemeinschaft{% endif %}</h1>
-    <p>{% if community %}{{ community.name }}{% else %}Erstelle eine neue Stockwerkeigentümergemeinschaft{% endif %}</p>
+    <h1>{% if community %}Gemeinschaft bearbeiten{% else %}Neue Gemeinschaft{% endif %}</h1>
+    <p>{% if community %}Einstellungen für {{ community.name }}{% else %}Lege eine neue Stockwerkeigentümergemeinschaft an{% endif %}</p>
 </div>
 
-<div class="card" style="padding:2rem;">
+<div class="card card--padded">
     <form method="post">
         {% csrf_token %}
         <div class="form-group">
             <label for="id_name">Name der Gemeinschaft *</label>
             <input type="text" name="name" id="id_name" class="form-input"
-                   placeholder="z.B. STWEG Musterstrasse 12" required
+                   placeholder="z.B. STWEG Musterstrasse 12, Zürich" required
                    value="{{ form.name.value|default:'' }}">
             {% if form.name.errors %}<div class="form-error">{{ form.name.errors.0 }}</div>{% endif %}
         </div>
         <div class="form-group">
             <label for="id_address">Adresse *</label>
             <textarea name="address" id="id_address" class="form-textarea" rows="3"
-                      placeholder="Musterstrasse 12&#10;8000 Zürich" required>{{ form.address.value|default:'' }}</textarea>
+                      placeholder="Strasse, PLZ Ort" required>{{ form.address.value|default:'' }}</textarea>
             {% if form.address.errors %}<div class="form-error">{{ form.address.errors.0 }}</div>{% endif %}
         </div>
-
-        <hr>
-        <div class="section-label">Abstimmungsregeln</div>
-
         <div class="form-group">
             <label for="id_quorum">Quorum (‰)</label>
-            <div style="display:flex;gap:1rem;align-items:center;">
-                <input type="number" name="quorum" id="id_quorum" class="form-input" style="max-width:160px;"
-                       placeholder="0" step="0.1" min="0" max="1000"
-                       value="{{ form.quorum.value|default:'0' }}">
-                <span style="font-size:0.85rem;color:var(--text-muted);">
-                    0 = kein Quorum &nbsp;|&nbsp; Häufig: 500‰ (Hälfte)
-                </span>
+            <input type="number" name="quorum" id="id_quorum" class="form-input"
+                   placeholder="0" step="0.1" min="0" max="1000"
+                   value="{{ form.quorum.value|default:'0' }}">
+            <div class="form-hint">
+                Mindest-Beteiligung in Wertquoten ‰ für gültige Abstimmungen. 0 = kein Quorum.
+                Häufig 500‰ (die Hälfte aller Wertquoten).
             </div>
             {% if form.quorum.errors %}<div class="form-error">{{ form.quorum.errors.0 }}</div>{% endif %}
-            <div class="form-hint">
-                Das Quorum bestimmt, wie viele Wertquoten (‰) beteiligt sein müssen, damit ein Beschluss gültig ist. Ist das Quorum nicht erreicht, gilt der Antrag als abgelehnt — unabhängig vom Stimmverhältnis.
-            </div>
         </div>
-
-        <hr>
-        <div class="flex gap-1">
+        <div class="flex gap-1 mt-2">
             <button type="submit" class="btn btn-primary">
                 {% if community %}Einstellungen speichern{% else %}Gemeinschaft erstellen{% endif %}
             </button>
@@ -60,11 +50,6 @@
             <a href="{% url 'voting:dashboard' %}" class="btn btn-outline">Abbrechen</a>
             {% endif %}
         </div>
-        {% if not community %}
-        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.875rem;">
-            Im nächsten Schritt kannst du die Einheiten und Eigentümer erfassen.
-        </p>
-        {% endif %}
     </form>
 </div>
 {% endblock %}

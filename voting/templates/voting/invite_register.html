@@ -1,267 +1,118 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registrierung – STWEG Portal</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Figtree:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg:           #F4F1EC;
-            --surface:      #FFFFFF;
-            --border:       #DDD8CF;
-            --text:         #18150F;
-            --text-muted:   #7C746A;
-            --accent:       #1B5E35;
-            --accent-light: #E6F2EB;
-            --accent-border:#A8D4B5;
-            --red:          #B5302A;
-            --red-light:    #FCECEA;
-            --red-border:   #F0B8B5;
-            --shadow-md:    0 4px 16px rgba(24,21,15,.09),0 2px 4px rgba(24,21,15,.05);
-            --r-md: 10px;
-            --r-lg: 14px;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Figtree', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem 1rem;
-        }
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--r-lg);
-            box-shadow: var(--shadow-md);
-            padding: 2.5rem;
-            width: 100%;
-            max-width: 480px;
-        }
-        .logo {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: var(--accent);
-            letter-spacing: 0.04em;
-            margin-bottom: 0.25rem;
-        }
-        .logo-sub { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2rem; }
-        h1 { font-size: 1.35rem; font-weight: 600; margin-bottom: 0.35rem; }
-        .community-badge {
-            display: inline-block;
-            background: var(--accent-light);
-            color: var(--accent);
-            border: 1px solid var(--accent-border);
-            border-radius: 999px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            padding: 0.25rem 0.75rem;
-            margin-bottom: 1.5rem;
-        }
-        .role-info {
-            background: var(--accent-light);
-            border: 1px solid var(--accent-border);
-            border-radius: var(--r-md);
-            padding: 0.85rem 1rem;
-            font-size: 0.85rem;
-            color: var(--accent);
-            margin-bottom: 1.5rem;
-            line-height: 1.5;
-        }
-        .invalid-box {
-            background: var(--red-light);
-            border: 1px solid var(--red-border);
-            border-radius: var(--r-md);
-            padding: 1.25rem;
-            text-align: center;
-        }
-        .invalid-box h2 { font-size: 1.1rem; color: var(--red); margin-bottom: 0.5rem; }
-        .invalid-box p  { font-size: 0.875rem; color: #7a3f3c; line-height: 1.5; }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 0.35rem;
-            color: var(--text);
-        }
-        .form-group .form-input,
-        .form-group input[type=text],
-        .form-group input[type=email],
-        .form-group input[type=password] {
-            width: 100%;
-            padding: 0.6rem 0.85rem;
-            border: 1.5px solid var(--border);
-            border-radius: var(--r-md);
-            font-size: 0.9rem;
-            font-family: inherit;
-            background: #fff;
-            color: var(--text);
-            transition: border-color 0.15s;
-        }
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-        .help-text { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem; }
-        .error-list { list-style: none; margin-top: 0.35rem; }
-        .error-list li { font-size: 0.8rem; color: var(--red); }
-        .row-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-        }
-        .btn {
-            display: inline-block;
-            width: 100%;
-            padding: 0.7rem 1.25rem;
-            border: none;
-            border-radius: var(--r-md);
-            font-size: 0.9rem;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            text-align: center;
-            transition: background 0.15s;
-        }
-        .btn-primary { background: var(--accent); color: #fff; }
-        .btn-primary:hover { background: #154B2A; }
-        .divider {
-            border: none;
-            border-top: 1px solid var(--border);
-            margin: 1.5rem 0;
-        }
-        .already-login {
-            text-align: center;
-            font-size: 0.83rem;
-            color: var(--text-muted);
-        }
-        .already-login a { color: var(--accent); font-weight: 600; text-decoration: none; }
-        @media (max-width: 480px) {
-            .card { padding: 1.75rem 1.25rem; }
-            .row-2 { grid-template-columns: 1fr; }
-        }
-    </style>
-</head>
-<body>
-<div class="card">
-    <div class="logo">STWEG</div>
-    <div class="logo-sub">Abstimmungsportal</div>
+{% extends "voting/base.html" %}
+{% block title %}Einladung – STWEG{% endblock %}
 
-    {% if invalid %}
-    <!-- ── Invalid / expired token ──────────────────────────────────────── -->
-    <div class="invalid-box">
-        <h2>❌ Link ungültig</h2>
-        <p>
-            Dieser Einladungslink ist nicht mehr gültig.<br>
-            Mögliche Gründe: bereits verwendet, widerrufen oder abgelaufen.<br><br>
-            Bitte wende dich an den Administrator deiner Gemeinschaft.
-        </p>
-    </div>
-    <hr class="divider">
-    <div class="already-login">
-        Bereits ein Konto? <a href="{% url 'login' %}">Anmelden</a>
-    </div>
+{% block content %}
+<div class="invite-page">
+    <div class="invite-card">
+        <div class="invite-logo">STWEG</div>
+        <div class="invite-logo-sub">Abstimmungsportal</div>
 
-    {% else %}
-    <!-- ── Valid token → registration form ──────────────────────────────── -->
-    <h1>Willkommen</h1>
-    <span class="community-badge">📍 {{ invite.community.name }}</span>
+        {% if invalid %}
+        <!-- ── Ungültiger / abgelaufener Token ──────────────────────── -->
+        <div class="invalid-box">
+            <h2>❌ Link ungültig</h2>
+            <p>
+                Dieser Einladungslink ist nicht mehr gültig.<br>
+                Mögliche Gründe: bereits verwendet, widerrufen oder abgelaufen.<br><br>
+                Bitte wende dich an den Administrator deiner Gemeinschaft.
+            </p>
+        </div>
+        <hr>
+        <div class="invite-already-login">
+            Bereits ein Konto? <a href="{% url 'login' %}">Anmelden</a>
+        </div>
 
-    <div class="role-info">
-        {% if invite.role == 'owner' %}
-            🏠 Du wirst als <strong>Eigentümer</strong>
-            {% if invite.unit %}der Einheit <strong>{{ invite.unit.unit_number }}</strong>{% endif %}
-            in dieser Gemeinschaft registriert.
-        {% elif invite.role == 'manager' %}
-            🔑 Du wirst als <strong>Verwalter</strong> dieser Gemeinschaft registriert.
         {% else %}
-            👁 Du wirst als <strong>Beirat</strong> dieser Gemeinschaft registriert.
+        <!-- ── Gültiger Token → Registrierungsformular ──────────────── -->
+        <h1>Willkommen</h1>
+        <span class="community-badge">📍 {{ invite.community.name }}</span>
+
+        <div class="role-info">
+            {% if invite.role == 'owner' %}
+                🏠 Du wirst als <strong>Eigentümer</strong>
+                {% if invite.unit %}der Einheit <strong>{{ invite.unit.unit_number }}</strong>{% endif %}
+                in dieser Gemeinschaft registriert.
+            {% elif invite.role == 'manager' %}
+                🔑 Du wirst als <strong>Verwalter</strong> dieser Gemeinschaft registriert.
+            {% else %}
+                👁 Du wirst als <strong>Beirat</strong> dieser Gemeinschaft registriert.
+            {% endif %}
+            Du erhältst ausschliesslich Zugang zu dieser Gemeinschaft.
+        </div>
+
+        {% if form.non_field_errors %}
+        <div class="form-errors-banner">
+            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+        </div>
         {% endif %}
-        Du erhältst ausschliesslich Zugang zu dieser Gemeinschaft.
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="grid-2 mb-1">
+                <div class="form-group form-group--flush">
+                    <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}
+                    <ul class="error-list">{% for e in form.first_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                    {% endif %}
+                </div>
+                <div class="form-group form-group--flush">
+                    <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}
+                    <ul class="error-list">{% for e in form.last_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                <ul class="error-list">{% for e in form.email.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+                {{ form.username }}
+                {% if form.username.help_text %}
+                <div class="help-text">{{ form.username.help_text }}</div>
+                {% endif %}
+                {% if form.username.errors %}
+                <ul class="error-list">{% for e in form.username.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                {% endif %}
+            </div>
+
+            <div class="grid-2 mb-1">
+                <div class="form-group form-group--flush">
+                    <label for="{{ form.password1.id_for_label }}">{{ form.password1.label }}</label>
+                    {{ form.password1 }}
+                    {% if form.password1.errors %}
+                    <ul class="error-list">{% for e in form.password1.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                    {% endif %}
+                </div>
+                <div class="form-group form-group--flush">
+                    <label for="{{ form.password2.id_for_label }}">{{ form.password2.label }}</label>
+                    {{ form.password2 }}
+                    {% if form.password2.errors %}
+                    <ul class="error-list">{% for e in form.password2.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="help-text mb-2">Mindestens 8 Zeichen.</div>
+
+            <button type="submit" class="btn btn-primary btn-full">Konto erstellen &amp; beitreten</button>
+        </form>
+
+        <hr>
+        <div class="invite-already-login">
+            Bereits ein Konto?
+            <a href="{% url 'login' %}?next={% url 'voting:invite_register' invite.token %}">Anmelden</a>
+        </div>
+        {% endif %}
     </div>
-
-    {% if form.non_field_errors %}
-    <div style="background:var(--red-light);border:1px solid var(--red-border);border-radius:var(--r-md);padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.85rem;color:var(--red);">
-        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
-    </div>
-    {% endif %}
-
-    <form method="post">
-        {% csrf_token %}
-
-        <div class="row-2">
-            <div class="form-group">
-                <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
-                {{ form.first_name }}
-                {% if form.first_name.errors %}
-                <ul class="error-list">{% for e in form.first_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>
-                {% endif %}
-            </div>
-            <div class="form-group">
-                <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
-                {{ form.last_name }}
-                {% if form.last_name.errors %}
-                <ul class="error-list">{% for e in form.last_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
-            {{ form.email }}
-            {% if form.email.errors %}
-            <ul class="error-list">{% for e in form.email.errors %}<li>{{ e }}</li>{% endfor %}</ul>
-            {% endif %}
-        </div>
-
-        <div class="form-group">
-            <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
-            {{ form.username }}
-            {% if form.username.help_text %}
-            <div class="help-text">{{ form.username.help_text }}</div>
-            {% endif %}
-            {% if form.username.errors %}
-            <ul class="error-list">{% for e in form.username.errors %}<li>{{ e }}</li>{% endfor %}</ul>
-            {% endif %}
-        </div>
-
-        <div class="row-2">
-            <div class="form-group">
-                <label for="{{ form.password1.id_for_label }}">{{ form.password1.label }}</label>
-                {{ form.password1 }}
-                {% if form.password1.errors %}
-                <ul class="error-list">{% for e in form.password1.errors %}<li>{{ e }}</li>{% endfor %}</ul>
-                {% endif %}
-            </div>
-            <div class="form-group">
-                <label for="{{ form.password2.id_for_label }}">{{ form.password2.label }}</label>
-                {{ form.password2 }}
-                {% if form.password2.errors %}
-                <ul class="error-list">{% for e in form.password2.errors %}<li>{{ e }}</li>{% endfor %}</ul>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="help-text" style="margin-bottom:1.25rem;">
-            Mindestens 8 Zeichen.
-        </div>
-
-        <button type="submit" class="btn btn-primary">Konto erstellen &amp; beitreten</button>
-    </form>
-
-    <hr class="divider">
-    <div class="already-login">
-        Bereits ein Konto? <a href="{% url 'login' %}?next={% url 'voting:invite_register' invite.token %}">Anmelden</a>
-    </div>
-    {% endif %}
 </div>
-</body>
-</html>
+{% endblock %}

@@ -12,7 +12,7 @@
     <a href="{% url 'voting:invite_manage' community.id %}" class="btn btn-primary btn-sm">✉ Einladungen</a>
 </div>
 
-<!-- Verwalter / Beirat -->
+<!-- ── Verwalter / Beirat ────────────────────────────────────────────────── -->
 {% if memberships %}
 <div class="table-card">
     <table>
@@ -30,11 +30,11 @@
             <tr>
                 <td>
                     <strong>{{ community.created_by.get_full_name|default:community.created_by.username }}</strong>
-                    <div style="font-size:0.75rem;color:var(--text-muted);">{{ community.created_by.username }}</div>
+                    <div class="user-line">{{ community.created_by.username }}</div>
                 </td>
                 <td><span class="badge badge-open">Ersteller</span></td>
-                <td style="color:var(--text-muted);">—</td>
-                <td style="color:var(--text-muted);font-size:0.8rem;">{{ community.created_at|date:"d.m.Y" }}</td>
+                <td class="td-muted">—</td>
+                <td class="td-muted td-sm">{{ community.created_at|date:"d.m.Y" }}</td>
                 <td></td>
             </tr>
             {% endif %}
@@ -43,20 +43,20 @@
             <tr>
                 <td>
                     <strong>{{ membership.user.get_full_name|default:membership.user.username }}</strong>
-                    <div style="font-size:0.75rem;color:var(--text-muted);">{{ membership.user.username }}</div>
+                    <div class="user-line">{{ membership.user.username }}</div>
                 </td>
                 <td>
                     {% if membership.role == 'manager' %}
-                        <span class="badge" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue);">Verwalter</span>
+                        <span class="badge badge--manager">Verwalter</span>
                     {% else %}
                         <span class="badge badge-pending">Beirat</span>
                     {% endif %}
                 </td>
-                <td style="color:var(--text-muted);font-size:0.85rem;">
+                <td class="td-muted td-sm">
                     {{ membership.added_by.get_full_name|default:membership.added_by.username|default:"—" }}
                 </td>
-                <td style="color:var(--text-muted);font-size:0.8rem;">{{ membership.added_at|date:"d.m.Y" }}</td>
-                <td style="text-align:right;">
+                <td class="td-muted td-sm">{{ membership.added_at|date:"d.m.Y" }}</td>
+                <td class="td-right">
                     <form method="post"
                           action="{% url 'voting:community_member_remove' community.id membership.pk %}"
                           onsubmit="return confirm('{{ membership.user.get_full_name|default:membership.user.username }} aus der Gemeinschaft entfernen?')">
@@ -79,9 +79,9 @@
 </div>
 {% endif %}
 
-<!-- Eigentümer (read-only, aus Einheiten abgeleitet) -->
+<!-- ── Eigentümer (read-only) ────────────────────────────────────────────── -->
 {% if owners %}
-<div class="section-label mt-3" style="margin-bottom:0.75rem;">Eigentümer</div>
+<div class="section-label mt-3 mb-md">Eigentümer</div>
 <div class="table-card">
     <table>
         <thead>
@@ -97,18 +97,18 @@
             <tr>
                 <td>
                     <strong>{{ entry.user.get_full_name|default:entry.user.username }}</strong>
-                    <div style="font-size:0.75rem;color:var(--text-muted);">{{ entry.user.username }}</div>
+                    <div class="user-line">{{ entry.user.username }}</div>
                 </td>
                 <td>
-                    <span class="badge" style="background:var(--accent-light);color:var(--accent);border-color:var(--accent-border);">Eigentümer</span>
+                    <span class="badge badge--owner">Eigentümer</span>
                 </td>
-                <td style="font-size:0.85rem;color:var(--text-muted);">
+                <td class="td-muted td-sm">
                     {% for unit in entry.units %}
                         <span title="{{ unit.description }}">{{ unit.unit_number }} ({{ unit.quota }}‰)</span>{% if not forloop.last %}, {% endif %}
                     {% endfor %}
                 </td>
-                <td style="text-align:right;font-size:0.8rem;color:var(--text-muted);">
-                    <a href="{% url 'voting:unit_manage' community.id %}" style="color:var(--accent);">→ Einheiten</a>
+                <td class="td-right td-sm">
+                    <a href="{% url 'voting:unit_manage' community.id %}" class="text-accent">→ Einheiten</a>
                 </td>
             </tr>
             {% endfor %}
@@ -117,46 +117,23 @@
 </div>
 {% endif %}
 
-<!-- Add member -->
-<div class="card mt-3" style="padding:1.75rem;">
+<!-- ── Add member ────────────────────────────────────────────────────────── -->
+<div class="card card--padded mt-3">
     <div class="section-label">Verwalter / Beirat hinzufügen</div>
     <form method="post">
         {% csrf_token %}
-        <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:1rem;align-items:end;">
-            <div class="form-group" style="margin:0;">
-                <label>Person (muss bereits ein Konto haben)</label>
+        <div class="grid-2 mb-2">
+            <div class="form-group form-group--flush">
+                <label>{{ form.user.label }}</label>
                 {{ form.user }}
             </div>
-            <div class="form-group" style="margin:0;">
-                <label>Rolle</label>
+            <div class="form-group form-group--flush">
+                <label>{{ form.role.label }}</label>
                 {{ form.role }}
             </div>
-            <button type="submit" class="btn btn-primary" style="align-self:end;">Hinzufügen</button>
         </div>
+        <button type="submit" class="btn btn-primary">Mitglied hinzufügen</button>
     </form>
-
-    <div class="card-inset" style="margin-top:1.25rem;">
-        <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;">
-            <strong style="color:var(--text);">Verwalter</strong> — vollständiger Administratorzugang:
-            Stimmen zurücksetzen, Briefwahlstimmen erfassen, Mitglieder verwalten, Gemeinschaft löschen.<br>
-            <strong style="color:var(--text);">Beirat</strong> — Lesezugang zu Ergebnissen und Protokollen,
-            kann aber nicht abstimmen oder administrieren.
-        </div>
-    </div>
 </div>
 
-<!-- Eigentümer info -->
-<div class="card mt-2" style="padding:1.25rem;">
-    <div style="font-size:0.82rem;color:var(--text-muted);">
-        <strong style="color:var(--text);">Eigentümer</strong> erhalten Zugang, indem sie sich über
-        einen Einladungslink registrieren oder indem ihnen eine Einheit direkt zugewiesen wird.<br>
-        <a href="{% url 'voting:invite_manage' community.id %}" style="color:var(--accent);font-weight:500;">
-            → Einladungslinks verwalten
-        </a>
-        &nbsp;·&nbsp;
-        <a href="{% url 'voting:unit_manage' community.id %}" style="color:var(--accent);font-weight:500;">
-            → Einheiten verwalten
-        </a>
-    </div>
-</div>
 {% endblock %}
