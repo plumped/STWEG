@@ -730,6 +730,18 @@ def community_members(request, community_id):
 
     memberships = community.memberships.select_related('user', 'added_by').all()
 
+    # Eigentümer: pro Benutzer alle seine Einheiten in dieser Gemeinschaft
+    owner_units_qs = (
+        community.units
+        .filter(owner__isnull=False)
+        .select_related('owner')
+        .order_by('owner__last_name', 'owner__first_name', 'unit_number')
+    )
+    owners_map = {}
+    for unit in owner_units_qs:
+        owners_map.setdefault(unit.owner, []).append(unit)
+    owners = [{'user': user, 'units': units} for user, units in owners_map.items()]
+
     if request.method == 'POST':
         form = MembershipForm(request.POST)
         if form.is_valid():
@@ -758,6 +770,7 @@ def community_members(request, community_id):
     return render(request, 'voting/community_members.html', {
         'community':   community,
         'memberships': memberships,
+        'owners':      owners,
         'form':        form,
     })
 

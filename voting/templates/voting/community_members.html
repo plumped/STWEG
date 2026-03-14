@@ -12,7 +12,7 @@
     <a href="{% url 'voting:invite_manage' community.id %}" class="btn btn-primary btn-sm">✉ Einladungen</a>
 </div>
 
-<!-- Existing memberships -->
+<!-- Verwalter / Beirat -->
 {% if memberships %}
 <div class="table-card">
     <table>
@@ -26,7 +26,6 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Creator row (always first) -->
             {% if community.created_by %}
             <tr>
                 <td>
@@ -80,7 +79,45 @@
 </div>
 {% endif %}
 
-<!-- Add member (Verwalter / Beirat) -->
+<!-- Eigentümer (read-only, aus Einheiten abgeleitet) -->
+{% if owners %}
+<div class="section-label mt-3" style="margin-bottom:0.75rem;">Eigentümer</div>
+<div class="table-card">
+    <table>
+        <thead>
+            <tr>
+                <th>Person</th>
+                <th>Rolle</th>
+                <th>Einheiten</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in owners %}
+            <tr>
+                <td>
+                    <strong>{{ entry.user.get_full_name|default:entry.user.username }}</strong>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">{{ entry.user.username }}</div>
+                </td>
+                <td>
+                    <span class="badge" style="background:var(--accent-light);color:var(--accent);border-color:var(--accent-border);">Eigentümer</span>
+                </td>
+                <td style="font-size:0.85rem;color:var(--text-muted);">
+                    {% for unit in entry.units %}
+                        <span title="{{ unit.description }}">{{ unit.unit_number }} ({{ unit.quota }}‰)</span>{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+                <td style="text-align:right;font-size:0.8rem;color:var(--text-muted);">
+                    <a href="{% url 'voting:unit_manage' community.id %}" style="color:var(--accent);">→ Einheiten</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Add member -->
 <div class="card mt-3" style="padding:1.75rem;">
     <div class="section-label">Verwalter / Beirat hinzufügen</div>
     <form method="post">
