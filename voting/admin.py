@@ -42,12 +42,17 @@ class UnitOwnerInline(admin.TabularInline):
 
 
 class UnitForCommunityInline(admin.TabularInline):
-    """Bei der Gemeinschaft: alle Einheiten."""
-    model   = Unit
-    fk_name = 'community'
-    extra   = 0
-    fields  = ['unit_number', 'description', 'quota', 'owner']
-    verbose_name_plural = "Einheiten"
+    model           = Unit
+    fk_name         = 'community'
+    extra           = 0
+    fields          = ['unit_number', 'description', 'quota', 'owner']
+    readonly_fields = ['unit_number', 'description', 'quota', 'owner']
+    can_delete      = False
+    show_change_link = True   # Link zur vollen Einheiten-Bearbeitungsseite
+    verbose_name_plural = "Einheiten & Eigentümer"
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 # ── User (erweitert) ──────────────────────────────────────────────────────────
