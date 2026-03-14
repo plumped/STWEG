@@ -5,7 +5,7 @@ app_name = 'voting'
 
 urlpatterns = [
     # ── Dashboard ─────────────────────────────────────────────────────────
-    path('', views.dashboard, name='dashboard'),
+    path('dashboard/', views.dashboard, name='dashboard'),
 
     # ── Gemeinschaften ────────────────────────────────────────────────────
     path('community/neu/',

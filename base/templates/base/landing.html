@@ -1,0 +1,1400 @@
+{% comment %}
+voting/templates/voting/landing.html
+Place this at the root URL ("/") – replaces any existing home view.
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STWEG — Digitale Abstimmungen für Stockwerkeigentum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:        #1C1A17;
+    --ink-light:  #4A4640;
+    --ink-faint:  #8C877F;
+    --gold:       #B5924C;
+    --gold-light: #D4AF72;
+    --cream:      #F8F5F0;
+    --cream-mid:  #EDE8DF;
+    --white:      #FDFCFB;
+    --border:     #DDD7CC;
+
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans:  'DM Sans', sans-serif;
+
+    --max: 1160px;
+    --ease: cubic-bezier(.4,0,.2,1);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--white);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ───────────────────────────────────────────── */
+  nav {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 100;
+    background: rgba(253,252,251,.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-inner {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 2rem;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: var(--serif);
+    font-size: 1.45rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--ink);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+
+  .logo-dot {
+    width: 6px; height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: inline-block;
+    margin-bottom: 2px;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-size: .85rem;
+    font-weight: 500;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    text-decoration: none;
+    transition: color .2s;
+  }
+
+  .nav-links a:hover { color: var(--gold); }
+
+  .nav-cta {
+    background: var(--ink) !important;
+    color: var(--white) !important;
+    padding: .55rem 1.35rem;
+    border-radius: 2px;
+  }
+
+  .nav-cta:hover { background: var(--gold) !important; color: var(--white) !important; }
+
+  /* ── HERO ───────────────────────────────────────────── */
+  .hero {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding-top: 64px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 8rem 4rem 8rem 6rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  .hero-eyebrow {
+    font-family: var(--sans);
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+  }
+
+  .hero-eyebrow::before {
+    content: '';
+    display: block;
+    width: 32px;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  .hero-title {
+    font-family: var(--serif);
+    font-size: clamp(2.8rem, 5vw, 4.2rem);
+    font-weight: 300;
+    line-height: 1.12;
+    letter-spacing: -.01em;
+    color: var(--ink);
+    margin-bottom: 1.75rem;
+  }
+
+  .hero-title em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .hero-sub {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--ink-light);
+    max-width: 420px;
+    margin-bottom: 2.75rem;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--white);
+    padding: .9rem 2.2rem;
+    font-family: var(--sans);
+    font-size: .85rem;
+    font-weight: 500;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-radius: 2px;
+    transition: background .25s var(--ease), transform .2s;
+    display: inline-block;
+  }
+
+  .btn-primary:hover {
+    background: var(--gold);
+    transform: translateY(-1px);
+  }
+
+  .btn-outline {
+    border: 1px solid var(--border);
+    color: var(--ink-light);
+    padding: .9rem 2.2rem;
+    font-family: var(--sans);
+    font-size: .85rem;
+    font-weight: 500;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-radius: 2px;
+    transition: border-color .25s, color .25s, transform .2s;
+    display: inline-block;
+  }
+
+  .btn-outline:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+    transform: translateY(-1px);
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 2.5rem;
+    margin-top: 4rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .hero-stat-num {
+    font-family: var(--serif);
+    font-size: 2.2rem;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1;
+    margin-bottom: .3rem;
+  }
+
+  .hero-stat-label {
+    font-size: .75rem;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* hero right: architectural visual */
+  .hero-right {
+    position: relative;
+    background: var(--ink);
+    overflow: hidden;
+  }
+
+  .hero-right::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(160deg, rgba(181,146,76,.15) 0%, transparent 50%),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 59px,
+        rgba(255,255,255,.04) 60px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 59px,
+        rgba(255,255,255,.04) 60px
+      );
+  }
+
+  .hero-visual-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem;
+  }
+
+  /* Floating "ballot card" mockup */
+  .ballot-card {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 6px;
+    padding: 2rem 2.5rem;
+    width: 340px;
+    backdrop-filter: blur(4px);
+    animation: float 5s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-10px); }
+  }
+
+  .ballot-label {
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--gold-light);
+    margin-bottom: 1rem;
+  }
+
+  .ballot-title {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #fff;
+    margin-bottom: .4rem;
+    line-height: 1.4;
+  }
+
+  .ballot-meta {
+    font-size: .75rem;
+    color: rgba(255,255,255,.45);
+    margin-bottom: 1.5rem;
+  }
+
+  .ballot-progress {
+    margin-bottom: 1.5rem;
+  }
+
+  .ballot-progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: .7rem;
+    color: rgba(255,255,255,.5);
+    margin-bottom: .4rem;
+  }
+
+  .ballot-bar {
+    height: 4px;
+    background: rgba(255,255,255,.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .ballot-fill {
+    height: 100%;
+    background: var(--gold-light);
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+
+  .ballot-votes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .ballot-vote-box {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 4px;
+    padding: .75rem;
+    text-align: center;
+  }
+
+  .ballot-vote-num {
+    font-family: var(--serif);
+    font-size: 1.4rem;
+    font-weight: 500;
+    line-height: 1;
+    margin-bottom: .2rem;
+  }
+
+  .ballot-vote-yes .ballot-vote-num { color: #6DD09A; }
+  .ballot-vote-no  .ballot-vote-num { color: #E87878; }
+
+  .ballot-vote-text {
+    font-size: .65rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.4);
+  }
+
+  .ballot-status {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    background: rgba(109,208,154,.15);
+    border: 1px solid rgba(109,208,154,.25);
+    color: #6DD09A;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: .35rem .75rem;
+    border-radius: 2px;
+  }
+
+  .ballot-status::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: #6DD09A;
+    border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .4; }
+  }
+
+  /* second floating card (background) */
+  .ballot-card-bg {
+    position: absolute;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 6px;
+    width: 280px;
+    height: 160px;
+    top: 30%;
+    right: 15%;
+    transform: rotate(-8deg);
+    animation: float2 7s ease-in-out infinite;
+  }
+
+  @keyframes float2 {
+    0%, 100% { transform: rotate(-8deg) translateY(0); }
+    50%       { transform: rotate(-8deg) translateY(-8px); }
+  }
+
+  .ballot-card-bg2 {
+    position: absolute;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 6px;
+    width: 200px;
+    height: 120px;
+    bottom: 28%;
+    left: 12%;
+    transform: rotate(6deg);
+    animation: float3 9s ease-in-out infinite;
+  }
+
+  @keyframes float3 {
+    0%, 100% { transform: rotate(6deg) translateY(0); }
+    50%       { transform: rotate(6deg) translateY(6px); }
+  }
+
+  /* ── SECTION SHARED ──────────────────────────────────── */
+  section { padding: 7rem 2rem; }
+
+  .container {
+    max-width: var(--max);
+    margin: 0 auto;
+  }
+
+  .section-eyebrow {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+  }
+
+  .section-eyebrow::before {
+    content: '';
+    display: block;
+    width: 24px; height: 1px;
+    background: var(--gold);
+  }
+
+  .section-title {
+    font-family: var(--serif);
+    font-size: clamp(2rem, 3.5vw, 2.8rem);
+    font-weight: 300;
+    line-height: 1.2;
+    color: var(--ink);
+    margin-bottom: 1rem;
+  }
+
+  .section-title em { font-style: italic; color: var(--gold); }
+
+  .section-lead {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: var(--ink-light);
+    max-width: 560px;
+  }
+
+  /* ── PROBLEM / INTRO ─────────────────────────────────── */
+  .intro { background: var(--cream); }
+
+  .intro-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5rem;
+    align-items: center;
+  }
+
+  .intro-list {
+    list-style: none;
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .intro-list li {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    font-size: .92rem;
+    line-height: 1.6;
+    color: var(--ink-light);
+  }
+
+  .intro-icon {
+    width: 32px; height: 32px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: .9rem;
+  }
+
+  /* Problem side */
+  .problem-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2.5rem;
+  }
+
+  .problem-item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: .9rem 0;
+    border-bottom: 1px solid var(--cream-mid);
+    font-size: .88rem;
+    line-height: 1.5;
+    color: var(--ink-light);
+  }
+
+  .problem-item:last-child { border-bottom: none; }
+
+  .problem-x {
+    width: 20px; height: 20px;
+    background: #FCECEA;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: .65rem;
+    color: #C0392B;
+    font-weight: 700;
+    margin-top: 1px;
+  }
+
+  /* ── FEATURES ─────────────────────────────────────────── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 4rem;
+  }
+
+  .feature-card {
+    background: var(--white);
+    padding: 2.5rem 2rem;
+    position: relative;
+    transition: background .25s;
+  }
+
+  .feature-card:hover { background: var(--cream); }
+
+  .feature-num {
+    font-family: var(--serif);
+    font-size: 3rem;
+    font-weight: 300;
+    color: var(--cream-mid);
+    line-height: 1;
+    margin-bottom: 1rem;
+    transition: color .25s;
+  }
+
+  .feature-card:hover .feature-num { color: var(--gold-light); }
+
+  .feature-name {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: .6rem;
+    line-height: 1.3;
+  }
+
+  .feature-desc {
+    font-size: .85rem;
+    line-height: 1.7;
+    color: var(--ink-faint);
+  }
+
+  .feature-tag {
+    display: inline-block;
+    margin-top: 1.25rem;
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    background: rgba(181,146,76,.08);
+    border: 1px solid rgba(181,146,76,.2);
+    padding: .25rem .6rem;
+    border-radius: 2px;
+  }
+
+  /* ── HOW IT WORKS ─────────────────────────────────────── */
+  .how { background: var(--ink); }
+
+  .how .section-title { color: var(--white); }
+  .how .section-lead  { color: rgba(255,255,255,.55); }
+  .how .section-eyebrow { color: var(--gold-light); }
+  .how .section-eyebrow::before { background: var(--gold-light); }
+
+  .steps {
+    margin-top: 4.5rem;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    position: relative;
+  }
+
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 22px;
+    left: calc(12.5% + 0px);
+    right: calc(12.5% + 0px);
+    height: 1px;
+    background: rgba(255,255,255,.12);
+  }
+
+  .step {
+    padding: 0 1.5rem;
+    text-align: center;
+    position: relative;
+  }
+
+  .step-dot {
+    width: 44px; height: 44px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2rem;
+    font-family: var(--serif);
+    font-size: 1rem;
+    color: var(--gold-light);
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-title {
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: var(--white);
+    margin-bottom: .5rem;
+  }
+
+  .step-desc {
+    font-size: .82rem;
+    line-height: 1.65;
+    color: rgba(255,255,255,.45);
+  }
+
+  /* ── LEGAL / ZGB ──────────────────────────────────────── */
+  .legal { background: var(--cream); }
+
+  .legal-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 5rem;
+    align-items: start;
+    margin-top: 0;
+  }
+
+  .majority-cards {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+  }
+
+  .majority-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: 4px;
+    padding: 1.1rem 1.4rem;
+    transition: border-left-color .2s, transform .2s;
+    cursor: default;
+  }
+
+  .majority-card:hover {
+    border-left-color: var(--gold);
+    transform: translateX(4px);
+  }
+
+  .majority-name {
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: .25rem;
+  }
+
+  .majority-law {
+    font-size: .72rem;
+    color: var(--gold);
+    font-weight: 600;
+    margin-bottom: .4rem;
+    letter-spacing: .04em;
+  }
+
+  .majority-desc {
+    font-size: .82rem;
+    line-height: 1.55;
+    color: var(--ink-faint);
+  }
+
+  /* ── REGISTRATION ─────────────────────────────────────── */
+  .register {
+    background: var(--white);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .register::before {
+    content: '';
+    position: absolute;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(181,146,76,.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .register-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6rem;
+    align-items: start;
+  }
+
+  /* Form styles */
+  .reg-form {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2.5rem;
+  }
+
+  .reg-form-title {
+    font-family: var(--serif);
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: .4rem;
+  }
+
+  .reg-form-sub {
+    font-size: .82rem;
+    color: var(--ink-faint);
+    margin-bottom: 2rem;
+    line-height: 1.55;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+    margin-bottom: .75rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    margin-bottom: .75rem;
+  }
+
+  .form-label {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+  }
+
+  .form-input {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: .7rem 1rem;
+    font-family: var(--sans);
+    font-size: .88rem;
+    color: var(--ink);
+    transition: border-color .2s;
+    width: 100%;
+    outline: none;
+  }
+
+  .form-input:focus { border-color: var(--gold); }
+
+  .form-input::placeholder { color: var(--ink-faint); }
+
+  .form-submit {
+    width: 100%;
+    background: var(--ink);
+    color: var(--white);
+    border: none;
+    padding: .95rem;
+    font-family: var(--sans);
+    font-size: .83rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background .25s;
+    margin-top: .5rem;
+  }
+
+  .form-submit:hover { background: var(--gold); }
+
+  .form-hint {
+    font-size: .74rem;
+    color: var(--ink-faint);
+    text-align: center;
+    margin-top: 1rem;
+    line-height: 1.5;
+  }
+
+  .form-hint a { color: var(--gold); text-decoration: none; }
+
+  /* Benefits list beside form */
+  .reg-benefits { padding-top: .5rem; }
+
+  .reg-benefit {
+    display: flex;
+    gap: 1.25rem;
+    margin-bottom: 2.25rem;
+    align-items: flex-start;
+  }
+
+  .reg-benefit-icon {
+    width: 40px; height: 40px;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .reg-benefit-title {
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: .25rem;
+  }
+
+  .reg-benefit-desc {
+    font-size: .83rem;
+    line-height: 1.6;
+    color: var(--ink-faint);
+  }
+
+  /* ── FOOTER ───────────────────────────────────────────── */
+  footer {
+    background: var(--ink);
+    padding: 3rem 2rem;
+  }
+
+  .footer-inner {
+    max-width: var(--max);
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+
+  .footer-logo {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: rgba(255,255,255,.85);
+    letter-spacing: .04em;
+  }
+
+  .footer-tagline {
+    font-size: .78rem;
+    color: rgba(255,255,255,.3);
+    margin-top: .25rem;
+    letter-spacing: .04em;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 1.75rem;
+    list-style: none;
+  }
+
+  .footer-links a {
+    font-size: .78rem;
+    color: rgba(255,255,255,.35);
+    text-decoration: none;
+    letter-spacing: .04em;
+    transition: color .2s;
+  }
+
+  .footer-links a:hover { color: var(--gold-light); }
+
+  /* ── SCROLL ANIMATIONS ────────────────────────────────── */
+  .fade-in {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity .7s var(--ease), transform .7s var(--ease);
+  }
+
+  .fade-in.visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* delay helpers */
+  .d1 { transition-delay: .1s; }
+  .d2 { transition-delay: .2s; }
+  .d3 { transition-delay: .3s; }
+  .d4 { transition-delay: .4s; }
+
+  /* ── RESPONSIVE ───────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; min-height: auto; }
+    .hero-right { height: 360px; }
+    .hero-left { padding: 4rem 2rem 3rem; }
+    .intro-grid, .legal-grid, .register-inner { grid-template-columns: 1fr; gap: 3rem; }
+    .features-grid { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr 1fr; gap: 2.5rem; }
+    .steps::before { display: none; }
+    .nav-links { display: none; }
+    .form-row { grid-template-columns: 1fr; }
+    section { padding: 5rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── NAVIGATION ─────────────────────────────────────────────── -->
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="logo">
+      STWEG<span class="logo-dot"></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Funktionen</a></li>
+      <li><a href="#rechtssicherheit">Rechtssicherheit</a></li>
+      <li><a href="#so-funktionierts">So funktioniert's</a></li>
+      <li><a href="{% url 'voting:login' %}" class="nav-cta">Anmelden</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ── HERO ───────────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="hero-left">
+    <div class="hero-eyebrow">Digitale Abstimmungen · Schweiz</div>
+    <h1 class="hero-title">
+      Stockwerkeigentum<br>
+      <em>rechtskonform</em><br>
+      abstimmen lassen
+    </h1>
+    <p class="hero-sub">
+      Das professionelle Portal für Stockwerkeigentümergemeinschaften in der Schweiz.
+      Rechtssichere Abstimmungen nach ZGB, transparente Ergebnisse, papierlos.
+    </p>
+    <div class="hero-actions">
+      <a href="#registrieren" class="btn-primary">Jetzt registrieren</a>
+      <a href="#so-funktionierts" class="btn-outline">Mehr erfahren</a>
+    </div>
+    <div class="hero-stats">
+      <div>
+        <div class="hero-stat-num">4</div>
+        <div class="hero-stat-label">Mehrheitsarten nach ZGB</div>
+      </div>
+      <div>
+        <div class="hero-stat-num">100%</div>
+        <div class="hero-stat-label">Papierlos & digital</div>
+      </div>
+      <div>
+        <div class="hero-stat-num">∞</div>
+        <div class="hero-stat-label">Eigentümer pro Gemeinschaft</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="ballot-card-bg"></div>
+    <div class="ballot-card-bg2"></div>
+    <div class="hero-visual-content">
+      <div class="ballot-card">
+        <div class="ballot-label">Offene Abstimmung</div>
+        <div class="ballot-title">Erneuerung Flachdach Hauptgebäude</div>
+        <div class="ballot-meta">STWEG Musterstrasse 12, Zürich · Absolutes Mehr</div>
+        <div class="ballot-progress">
+          <div class="ballot-progress-label">
+            <span>Beteiligung</span>
+            <span>7 / 10 Eigentümer</span>
+          </div>
+          <div class="ballot-bar"><div class="ballot-fill" style="width:70%"></div></div>
+        </div>
+        <div class="ballot-votes">
+          <div class="ballot-vote-box ballot-vote-yes">
+            <div class="ballot-vote-num">6</div>
+            <div class="ballot-vote-text">Ja</div>
+          </div>
+          <div class="ballot-vote-box ballot-vote-no">
+            <div class="ballot-vote-num">1</div>
+            <div class="ballot-vote-text">Nein</div>
+          </div>
+        </div>
+        <div class="ballot-status">Abstimmung läuft</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ── PROBLEM / INTRO ─────────────────────────────────────────── -->
+<section class="intro" id="features">
+  <div class="container">
+    <div class="intro-grid">
+      <div class="fade-in">
+        <div class="section-eyebrow">Das Problem</div>
+        <h2 class="section-title">Schluss mit <em>Papier,<br>Fax und Unsicherheit</em></h2>
+        <p class="section-lead">
+          Traditionelle STWEG-Abstimmungen sind aufwändig, fehleranfällig und
+          rechtlich unsicher. Wir lösen das — einfach, digital, nachweisbar.
+        </p>
+        <ul class="intro-list">
+          <li>
+            <span class="intro-icon">✓</span>
+            <span><strong>Vollständige Protokollierung</strong> — jede Stimme mit Zeitstempel, Wertquote und Mehrheitsnachweis</span>
+          </li>
+          <li>
+            <span class="intro-icon">✓</span>
+            <span><strong>Automatische E-Mail-Benachrichtigungen</strong> — Eigentümer werden informiert, wenn eine Abstimmung geöffnet wird</span>
+          </li>
+          <li>
+            <span class="intro-icon">✓</span>
+            <span><strong>PDF-Export</strong> — rechtssichere Dokumentation für die Ablage oder den Notar</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="fade-in d2">
+        <div class="problem-card">
+          <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:1.25rem;">Ohne STWEG-Portal</div>
+          <div class="problem-item">
+            <div class="problem-x">✕</div>
+            <span>Briefpost und Fax — tagelange Wartezeiten, kein Überblick</span>
+          </div>
+          <div class="problem-item">
+            <div class="problem-x">✕</div>
+            <span>Manuelle Auszählung der Wertquoten — fehleranfällig</span>
+          </div>
+          <div class="problem-item">
+            <div class="problem-x">✕</div>
+            <span>Unklare Rechtslage bei fehlenden Stimmen oder Quorum</span>
+          </div>
+          <div class="problem-item">
+            <div class="problem-x">✕</div>
+            <span>Kein revisionssicheres Protokoll für Beweiszwecke</span>
+          </div>
+          <div class="problem-item">
+            <div class="problem-x">✕</div>
+            <span>Vollmachten (Proxies) werden vergessen oder fehlerhaft erfasst</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ──────────────────────────────────────────────── -->
+<section id="funktionen">
+  <div class="container">
+    <div class="fade-in" style="max-width:600px;">
+      <div class="section-eyebrow">Funktionen</div>
+      <h2 class="section-title">Alles was ein <em>Verwalter<br>wirklich braucht</em></h2>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card fade-in">
+        <div class="feature-num">01</div>
+        <div class="feature-name">Gemeinschaften verwalten</div>
+        <div class="feature-desc">Legen Sie beliebig viele Stockwerkeigentümergemeinschaften an. Definieren Sie Einheiten, Wertquoten und Quorum gemäss Begründungsakt.</div>
+        <span class="feature-tag">Mehrere STWEG</span>
+      </div>
+      <div class="feature-card fade-in d1">
+        <div class="feature-num">02</div>
+        <div class="feature-name">Eigentümer einladen</div>
+        <div class="feature-desc">Erstellen Sie einmalig gültige Einladungslinks für jeden Eigentümer. Einfache Selbstregistrierung — kein manueller Admin-Aufwand.</div>
+        <span class="feature-tag">Einladungslinks</span>
+      </div>
+      <div class="feature-card fade-in d2">
+        <div class="feature-num">03</div>
+        <div class="feature-name">Anträge erstellen & freigeben</div>
+        <div class="feature-desc">Eigentümer können Anträge als Entwurf einreichen. Der Verwalter prüft und gibt sie zur Abstimmung frei — gemäss ZGB Art. 712m.</div>
+        <span class="feature-tag">Traktandierungsrecht</span>
+      </div>
+      <div class="feature-card fade-in d3">
+        <div class="feature-num">04</div>
+        <div class="feature-name">Rechtskonforme Mehrheiten</div>
+        <div class="feature-desc">Einfaches, absolutes, qualifiziertes Mehr und Einstimmigkeit — alles nach ZGB automatisch berechnet, mit Kopf- und Wertquoten-Auswertung.</div>
+        <span class="feature-tag">ZGB-konform</span>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-num">05</div>
+        <div class="feature-name">Vollmachten (Proxy)</div>
+        <div class="feature-desc">Eigentümer können einer Vertrauensperson eine Vollmacht erteilen. Vollmacht-Stimmen werden korrekt in der Auswertung ausgewiesen.</div>
+        <span class="feature-tag">Proxy-Voting</span>
+      </div>
+      <div class="feature-card fade-in d1">
+        <div class="feature-num">06</div>
+        <div class="feature-name">PDF-Protokoll & CSV-Export</div>
+        <div class="feature-desc">Jede Abstimmung erzeugt ein druckbares, rechtssicheres Protokoll als PDF. Einheiten können per CSV importiert und exportiert werden.</div>
+        <span class="feature-tag">Dokumentation</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ──────────────────────────────────────────── -->
+<section class="how" id="so-funktionierts">
+  <div class="container">
+    <div class="fade-in" style="max-width:560px;">
+      <div class="section-eyebrow">Ablauf</div>
+      <h2 class="section-title" style="color:#fff;">In 4 Schritten zur <em>rechtsgültigen</em> Abstimmung</h2>
+      <p class="section-lead">Von der Registrierung bis zum Beschluss — vollständig digital und nachweisbar.</p>
+    </div>
+
+    <div class="steps fade-in d1">
+      <div class="step">
+        <div class="step-dot">1</div>
+        <div class="step-title">Gemeinschaft anlegen</div>
+        <div class="step-desc">Verwalter registriert sich und erfasst die STWEG mit Einheiten und Wertquoten.</div>
+      </div>
+      <div class="step">
+        <div class="step-dot">2</div>
+        <div class="step-title">Eigentümer einladen</div>
+        <div class="step-desc">Per Einladungslink erhalten alle Eigentümer Zugang zu ihrer Gemeinschaft.</div>
+      </div>
+      <div class="step">
+        <div class="step-dot">3</div>
+        <div class="step-title">Antrag stellen & abstimmen</div>
+        <div class="step-desc">Verwalter oder Eigentümer stellen Anträge. Per E-Mail werden alle zur Abstimmung aufgefordert.</div>
+      </div>
+      <div class="step">
+        <div class="step-dot">4</div>
+        <div class="step-title">Beschluss & Protokoll</div>
+        <div class="step-desc">Ergebnis wird rechtssicher berechnet und als PDF-Protokoll zum Download bereitgestellt.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── LEGAL / ZGB ───────────────────────────────────────────── -->
+<section class="legal" id="rechtssicherheit">
+  <div class="container">
+    <div class="legal-grid">
+      <div>
+        <div class="section-eyebrow fade-in">Rechtssicherheit</div>
+        <h2 class="section-title fade-in">Alle Mehrheitsarten<br>nach <em>Schweizer ZGB</em></h2>
+        <p class="section-lead fade-in" style="margin-bottom: 2.5rem;">
+          Das Portal kennt jede Abstimmungsart nach Schweizer Recht und berechnet das Ergebnis nach Köpfen <em>und</em> Wertquoten — vollständig automatisch.
+        </p>
+
+        <div class="majority-cards fade-in d1">
+          <div class="majority-card">
+            <div class="majority-name">Einfaches Mehr</div>
+            <div class="majority-law">Nur bei Regelung im Reglement</div>
+            <div class="majority-desc">Mehr Ja- als Nein-Stimmen nach Köpfen. Enthaltungen bleiben neutral. Nur für Ordnungsgeschäfte.</div>
+          </div>
+          <div class="majority-card">
+            <div class="majority-name">Absolutes Mehr</div>
+            <div class="majority-law">ZGB Art. 712m Abs. 1 · Gesetzlicher Standard</div>
+            <div class="majority-desc">Mehr Ja- als Nein-Stimmen nach Köpfen <em>und</em> Wertquoten. Standard für normale Beschlüsse.</div>
+          </div>
+          <div class="majority-card">
+            <div class="majority-name">Qualifiziertes Mehr</div>
+            <div class="majority-law">ZGB Art. 712g Abs. 2 · Grössere Massnahmen</div>
+            <div class="majority-desc">Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen und Wertquoten. Für grössere bauliche Massnahmen.</div>
+          </div>
+          <div class="majority-card">
+            <div class="majority-name">Einstimmigkeit</div>
+            <div class="majority-law">ZGB Art. 648 / 712g Abs. 3</div>
+            <div class="majority-desc">Alle Eigentümer müssen Ja stimmen. Fehlende Stimmen gelten als fehlende Zustimmung.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fade-in d2" style="padding-top:1rem;">
+        <div style="background:var(--ink);border-radius:4px;padding:2.5rem;color:#fff;">
+          <div style="font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-light);margin-bottom:1.5rem;">Beispiel-Auswertung</div>
+
+          <div style="font-family:var(--serif);font-size:1rem;color:rgba(255,255,255,.8);margin-bottom:1.5rem;line-height:1.5;">
+            Sanierung Lift — Absolutes Mehr
+          </div>
+
+          <!-- Bar chart mockup -->
+          <div style="margin-bottom:1.5rem;">
+            <div style="display:flex;justify-content:space-between;font-size:.7rem;color:rgba(255,255,255,.4);margin-bottom:.4rem;">
+              <span>Ja-Stimmen (Köpfe)</span><span>7 / 10</span>
+            </div>
+            <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-bottom:.8rem;">
+              <div style="width:70%;height:100%;background:#6DD09A;border-radius:3px;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:.7rem;color:rgba(255,255,255,.4);margin-bottom:.4rem;">
+              <span>Ja-Stimmen (Wertquoten)</span><span>724‰ / 1000‰</span>
+            </div>
+            <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-bottom:.8rem;">
+              <div style="width:72.4%;height:100%;background:#6DD09A;border-radius:3px;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:.7rem;color:rgba(255,255,255,.4);margin-bottom:.4rem;">
+              <span>Quorum (Beteiligung)</span><span>910‰ ≥ 500‰</span>
+            </div>
+            <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;">
+              <div style="width:91%;height:100%;background:var(--gold-light);border-radius:3px;"></div>
+            </div>
+          </div>
+
+          <div style="background:rgba(109,208,154,.1);border:1px solid rgba(109,208,154,.2);border-radius:3px;padding:1rem;text-align:center;">
+            <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6DD09A;margin-bottom:.3rem;">✓ Antrag angenommen</div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.4);">Absolutes Mehr in Köpfen und Wertquoten erreicht</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── REGISTRATION ───────────────────────────────────────────── -->
+<section class="register" id="registrieren">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:4rem;" class="fade-in">
+      <div class="section-eyebrow" style="justify-content:center;">Für Verwalter</div>
+      <h2 class="section-title">Jetzt kostenlos <em>starten</em></h2>
+      <p class="section-lead" style="margin:0 auto;text-align:center;">
+        Registrieren Sie sich als Verwalter und legen Sie Ihre erste Gemeinschaft sofort an.
+      </p>
+    </div>
+
+    <div class="register-inner">
+      <div class="reg-benefits fade-in">
+        <div class="reg-benefit">
+          <div class="reg-benefit-icon">🏢</div>
+          <div>
+            <div class="reg-benefit-title">Mehrere Gemeinschaften</div>
+            <div class="reg-benefit-desc">Verwalten Sie beliebig viele Stockwerkeigentümergemeinschaften in einem einzigen Account.</div>
+          </div>
+        </div>
+        <div class="reg-benefit">
+          <div class="reg-benefit-icon">📋</div>
+          <div>
+            <div class="reg-benefit-title">CSV-Import für Einheiten</div>
+            <div class="reg-benefit-desc">Importieren Sie alle Wohneinheiten und Wertquoten direkt aus Ihrer bestehenden Tabelle per CSV.</div>
+          </div>
+        </div>
+        <div class="reg-benefit">
+          <div class="reg-benefit-icon">🔒</div>
+          <div>
+            <div class="reg-benefit-title">Vollständige Kontrolle</div>
+            <div class="reg-benefit-desc">Nur Sie als Verwalter können Abstimmungen öffnen und schliessen. Eigentümer haben Einsicht, aber kein Administrationsrecht.</div>
+          </div>
+        </div>
+        <div class="reg-benefit">
+          <div class="reg-benefit-icon">✉️</div>
+          <div>
+            <div class="reg-benefit-title">Automatische Benachrichtigungen</div>
+            <div class="reg-benefit-desc">Alle Eigentümer werden bei neuen Abstimmungen und Ergebnissen automatisch per E-Mail informiert.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reg-form fade-in d2">
+        <div class="reg-form-title">Konto erstellen</div>
+        <div class="reg-form-sub">Als Verwalter registrieren und sofort loslegen.</div>
+
+        <form method="post" action="{% url 'voting:register' %}" novalidate>
+          {% csrf_token %}
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Vorname</label>
+              <input type="text" name="first_name" class="form-input" placeholder="Hans" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nachname</label>
+              <input type="text" name="last_name" class="form-input" placeholder="Muster" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">E-Mail-Adresse</label>
+            <input type="email" name="email" class="form-input" placeholder="hans.muster@verwaltung.ch" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Benutzername</label>
+            <input type="text" name="username" class="form-input" placeholder="h.muster" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Passwort</label>
+              <input type="password" name="password1" class="form-input" placeholder="••••••••" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Bestätigen</label>
+              <input type="password" name="password2" class="form-input" placeholder="••••••••" required>
+            </div>
+          </div>
+          <button type="submit" class="form-submit">Jetzt registrieren</button>
+          <div class="form-hint">
+            Bereits registriert? <a href="{% url 'voting:login' %}">Anmelden →</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ──────────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-logo">STWEG<span style="color:var(--gold);">·</span></div>
+      <div class="footer-tagline">Digitale Abstimmungen für Stockwerkeigentümergemeinschaften</div>
+    </div>
+    <ul class="footer-links">
+      <li><a href="{% url 'voting:login' %}">Anmelden</a></li>
+      <li><a href="#registrieren">Registrieren</a></li>
+      <li><a href="#rechtssicherheit">ZGB-Grundlagen</a></li>
+      <li><a href="{% url 'voting:dashboard' %}">Dashboard</a></li>
+    </ul>
+  </div>
+</footer>
+
+<!-- ── SCROLL ANIMATION ───────────────────────────────────────── -->
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: .12 });
+
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+  // Animated ballot fill on load
+  window.addEventListener('load', () => {
+    document.querySelectorAll('.ballot-fill').forEach(el => {
+      const w = el.style.width;
+      el.style.width = '0';
+      setTimeout(() => { el.style.width = w; }, 400);
+    });
+  });
+</script>
+</body>
+</html>
