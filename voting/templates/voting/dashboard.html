@@ -90,6 +90,39 @@
 {% endif %}
 {% endif %}
 
+<!-- ── Offene Mängel (nur für Verwalter sichtbar) ─────────────────────── -->
+{% if open_tickets %}
+<div class="section-label mt-lg">
+    Offene Mängel
+    <span class="badge badge-pending ml-sm">{{ open_tickets|length }}</span>
+</div>
+
+{% for ticket in open_tickets %}
+<a href="{% url 'maintenance:ticket_detail' ticket.pk %}" class="card-link">
+    <div class="card card-interactive {% if ticket.priority_is_urgent %}card--red-left{% endif %}">
+        <div class="flex-between items-center">
+            <div class="flex-1">
+                <div class="flex items-center gap-xs mb-sm flex-wrap">
+                    {% if ticket.priority_is_urgent %}
+                        <span class="badge badge-urgent">🔴 Dringend</span>
+                    {% endif %}
+                    <span class="badge {{ ticket.status_css }}">{{ ticket.get_status_display }}</span>
+                    <span class="badge badge-draft">{{ ticket.get_area_display }}</span>
+                </div>
+                <div class="card-title">{{ ticket.title }}</div>
+                <div class="card-meta mt-xs">
+                    Betrifft Gemeinschaft: {{ ticket.community.name }}
+                    · {{ ticket.created_at|date:"d.m.Y" }}
+                    {% if ticket.reported_by %} · gemeldet von {{ ticket.reported_by.get_full_name|default:ticket.reported_by.username }}{% endif %}
+                </div>
+            </div>
+            <span class="chevron">›</span>
+        </div>
+    </div>
+</a>
+{% endfor %}
+{% endif %}
+
 <!-- ── Gemeinschaften ──────────────────────────────────────────────────── -->
 {% if communities %}
 <div class="section-label mt-xl">Meine Gemeinschaften</div>

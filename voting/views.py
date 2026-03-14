@@ -20,6 +20,8 @@ from .models import (
     Community, CommunityMembership, InviteToken, Proposal,
     ProposalDocument, Proxy, Unit, Vote,
 )
+from maintenance.models import Ticket
+
 from .notifications import notify_proposal_closed, notify_proposal_opened, notify_reminder
 
 
@@ -27,7 +29,6 @@ from .notifications import notify_proposal_closed, notify_proposal_opened, notif
 
 @login_required
 def dashboard(request):
-    # Only communities the current user belongs to
     communities = Community.objects.filter(
         Q(units__owner=request.user)
         | Q(created_by=request.user)
@@ -62,8 +63,6 @@ def dashboard(request):
         ).count()
         unit_counts[proposal.id] = len(all_ids)
 
-    # Für Verwalter: Entwürfe die von Eigentümern eingereicht wurden und auf Freigabe warten.
-    # Nur Entwürfe die NICHT vom Verwalter selbst erstellt wurden (fremde Anträge).
     admin_community_ids = set(
         c.id for c in communities if c.is_admin(request.user)
     )
@@ -74,6 +73,13 @@ def dashboard(request):
         created_by=request.user,
     ).select_related('community', 'created_by').order_by('created_at')
 
+    # Für Verwalter: Offene Mängel (status != done/archived) in verwalteten Gemeinschaften
+    open_tickets = Ticket.objects.filter(
+        community__id__in=admin_community_ids,
+    ).exclude(
+        status__in=[Ticket.Status.DONE, Ticket.Status.ARCHIVED],
+    ).select_related('community').order_by('-created_at')
+
     return render(request, 'voting/dashboard.html', {
         'communities':         communities,
         'open_proposals':      open_proposals,
@@ -81,6 +87,7 @@ def dashboard(request):
         'unit_counts':         unit_counts,
         'pending_drafts':      pending_drafts,
         'admin_community_ids': admin_community_ids,
+        'open_tickets':        open_tickets,
     })
 
 
