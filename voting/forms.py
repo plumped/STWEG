@@ -308,10 +308,6 @@ class ProxyForm(forms.Form):
 class MembershipForm(forms.Form):
     """
     Add an existing system user to a community as Verwalter or Beirat.
-
-    This form is only reachable by community admins. Showing all system users
-    here is acceptable (admin use case), but for self-registration of regular
-    owners the InviteToken flow must be used instead.
     """
     user = forms.ModelChoiceField(
         queryset=User.objects.all().order_by('last_name', 'first_name', 'username'),
@@ -324,6 +320,20 @@ class MembershipForm(forms.Form):
         label='Rolle',
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
+
+    def __init__(self, *args, community=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if community is not None:
+            # Bereits-Mitglieder und Creator aus der Auswahl ausblenden
+            existing_ids = set(
+                community.memberships.values_list('user_id', flat=True)
+            )
+            if community.created_by_id:
+                existing_ids.add(community.created_by_id)
+            self.fields['user'].queryset = (
+                User.objects.exclude(id__in=existing_ids)
+                    .order_by('last_name', 'first_name', 'username')
+            )
 
 
 # ── Unit CSV import ───────────────────────────────────────────────────────────

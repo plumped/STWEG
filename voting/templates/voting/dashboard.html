@@ -162,8 +162,10 @@
 {% for community in communities %}
 <div style="margin-bottom:1rem;">
     <a href="{% url 'voting:proposal_list' community.id %}" class="card-link">
-        <div class="card card-interactive">
-            <div class="flex-between items-center">
+        <div class="card card-interactive" style="padding:0;overflow:hidden;">
+
+            <!-- Hauptinhalt -->
+            <div class="flex-between items-center" style="padding:1rem 1.25rem;">
                 <div class="flex-1">
                     <div class="flex items-center gap-xs mb-xs flex-wrap">
                         {% if community.id in admin_community_ids %}
@@ -175,19 +177,34 @@
                     <div class="card-title">{{ community.name }}</div>
                     <div class="card-meta mt-xs">{{ community.address }}</div>
                 </div>
-                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;">
-                    <span class="chevron">›</span>
-                    {# NEU: Direktlink zur Mängel-Übersicht #}
-                    {% if community.id in admin_community_ids %}
-                    <a href="{% url 'maintenance:ticket_list' community.id %}"
-                       class="btn btn-outline btn-sm"
-                       style="font-size:.7rem;padding:.15rem .55rem;white-space:nowrap;"
-                       onclick="event.stopPropagation();">
-                        🔧 Mängel
-                    </a>
-                    {% endif %}
-                </div>
+                <span class="chevron">›</span>
             </div>
+
+            {% if community.id in admin_community_ids %}
+            <!-- Aktionsleiste -->
+            <div style="border-top:1px solid var(--border);padding:.55rem 1.25rem;display:flex;gap:.5rem;flex-wrap:wrap;background:var(--bg-subtle,#fafaf8);">
+                <a href="{% url 'voting:unit_manage' community.id %}"
+                   class="btn btn-outline btn-sm"
+                   style="font-size:.72rem;padding:.2rem .65rem;white-space:nowrap;"
+                   onclick="event.stopPropagation();">
+                    🏠 Einheiten
+                    <span style="margin-left:.25rem;opacity:.5;font-weight:400;">{{ community.units.count }}</span>
+                </a>
+                <a href="{% url 'voting:community_members' community.id %}"
+                   class="btn btn-outline btn-sm"
+                   style="font-size:.72rem;padding:.2rem .65rem;white-space:nowrap;"
+                   onclick="event.stopPropagation();">
+                    👥 Mitglieder
+                </a>
+                <a href="{% url 'maintenance:ticket_list' community.id %}"
+                   class="btn btn-outline btn-sm"
+                   style="font-size:.72rem;padding:.2rem .65rem;white-space:nowrap;"
+                   onclick="event.stopPropagation();">
+                    🔧 Mängel
+                </a>
+            </div>
+            {% endif %}
+
         </div>
     </a>
 </div>
