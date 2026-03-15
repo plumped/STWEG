@@ -1,0 +1,634 @@
+{% extends "voting/base.html" %}
+{% block title %}Gemeinschaft einrichten – {{ community.name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Wizard-Stepper ───────────────────────────────────────── */
+.wizard-stepper {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 0;
+}
+.wz-step {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    flex: 1;
+}
+.wz-step:last-child { flex: none; }
+.wz-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .8rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    transition: background .2s, color .2s;
+}
+.wz-dot--done    { background: var(--accent); color: #fff; }
+.wz-dot--active  { background: var(--text); color: var(--surface); }
+.wz-dot--todo    { background: var(--surface-alt); color: var(--text-muted); border: 1px solid var(--border); }
+.wz-label        { font-size: .82rem; color: var(--text-muted); white-space: nowrap; }
+.wz-label--active{ color: var(--text); font-weight: 600; }
+.wz-line         { flex: 1; height: 1px; background: var(--border); margin: 0 .75rem; }
+.wz-line--done   { background: var(--accent); }
+
+/* ── Step cards ──────────────────────────────────────────── */
+.step-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    transition: opacity .2s;
+}
+.step-card--locked {
+    opacity: .55;
+    pointer-events: none;
+}
+.step-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+}
+.step-card__num {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: .15rem;
+}
+.step-card__title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+}
+.step-card__summary {
+    font-size: .82rem;
+    color: var(--text-muted);
+    margin-top: .15rem;
+}
+.step-card__body {
+    border-top: 1px solid var(--border);
+    padding: 1.25rem;
+}
+
+/* ── Unit table ──────────────────────────────────────────── */
+.wz-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+    font-size: .875rem;
+}
+.wz-table th {
+    text-align: left;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: .5rem .75rem;
+    border-bottom: 1px solid var(--border);
+}
+.wz-table td {
+    padding: .65rem .75rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+.wz-table tr:last-child td { border-bottom: none; }
+.wz-table tr:hover td { background: var(--surface-alt); }
+
+/* ── Invite rows ─────────────────────────────────────────── */
+.invite-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .65rem .75rem;
+    border-bottom: 1px solid var(--border);
+    font-size: .875rem;
+}
+.invite-row:last-child { border-bottom: none; }
+.invite-unit-label {
+    min-width: 90px;
+    font-weight: 600;
+    color: var(--text);
+}
+.invite-link-box {
+    flex: 1;
+    font-size: .75rem;
+    font-family: var(--font-mono, monospace);
+    color: var(--text-muted);
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: .3rem .6rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.invite-actions { display: flex; gap: .4rem; flex-shrink: 0; }
+
+/* ── Quota total bar ─────────────────────────────────────── */
+.quota-bar-wrap { margin-bottom: 1.25rem; }
+.quota-bar-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: .35rem;
+}
+.quota-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--accent);
+    transition: width .4s ease;
+}
+.quota-bar-fill--over { background: var(--red, #c0392b); }
+.quota-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: .78rem;
+    color: var(--text-muted);
+}
+.quota-info strong { color: var(--text); }
+
+/* ── Tab switcher ────────────────────────────────────────── */
+.tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.25rem;
+    gap: 0;
+}
+.tab-btn {
+    padding: .55rem 1rem;
+    font-size: .82rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    margin-bottom: -1px;
+    transition: color .15s, border-color .15s;
+}
+.tab-btn.active {
+    color: var(--text);
+    border-bottom-color: var(--text);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Add-unit inline form ────────────────────────────────── */
+.unit-add-grid {
+    display: grid;
+    grid-template-columns: 120px 1fr 100px auto;
+    gap: .6rem;
+    align-items: end;
+    margin-bottom: .75rem;
+}
+@media (max-width: 600px) {
+    .unit-add-grid { grid-template-columns: 1fr 1fr; }
+    .unit-add-grid .btn { grid-column: span 2; }
+}
+
+/* ── Invite quick-form ───────────────────────────────────── */
+.invite-quick-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: .6rem;
+    align-items: end;
+}
+@media (max-width: 640px) {
+    .invite-quick-grid { grid-template-columns: 1fr 1fr; }
+    .invite-quick-grid .btn { grid-column: span 2; }
+}
+
+/* ── Misc ────────────────────────────────────────────────── */
+.section-hint {
+    font-size: .82rem;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+    line-height: 1.5;
+}
+.finish-bar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: .75rem;
+    margin-top: 1.5rem;
+}
+.badge-owner { background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-border); border-radius: 99px; font-size: .7rem; font-weight: 700; padding: .15rem .55rem; }
+.badge-pending { background: var(--amber-light); color: var(--amber); border: 1px solid var(--amber-border); border-radius: 99px; font-size: .7rem; font-weight: 700; padding: .15rem .55rem; }
+.badge-no-invite { background: var(--surface-alt); color: var(--text-muted); border: 1px solid var(--border); border-radius: 99px; font-size: .7rem; font-weight: 600; padding: .15rem .55rem; }
+.copy-btn { cursor: pointer; }
+.quota-ok { color: var(--accent); font-weight: 700; }
+.quota-warn { color: var(--amber); font-weight: 700; }
+.quota-over { color: var(--red, #c0392b); font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<nav class="breadcrumb">
+    <a href="{% url 'voting:dashboard' %}">Dashboard</a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">{{ community.name }} einrichten</span>
+</nav>
+
+<div class="page-header">
+    <h1>Gemeinschaft einrichten</h1>
+    <p>{{ community.name }}</p>
+</div>
+
+<!-- ══ STEPPER ══════════════════════════════════════════════════════════════ -->
+<div class="wizard-stepper">
+    <div class="wz-step">
+        <div class="wz-dot {% if step > 1 %}wz-dot--done{% elif step == 1 %}wz-dot--active{% else %}wz-dot--todo{% endif %}">
+            {% if step > 1 %}✓{% else %}1{% endif %}
+        </div>
+        <span class="wz-label {% if step == 1 %}wz-label--active{% endif %}">Gemeinschaft</span>
+    </div>
+    <div class="wz-line {% if step > 1 %}wz-line--done{% endif %}"></div>
+    <div class="wz-step">
+        <div class="wz-dot {% if step > 2 %}wz-dot--done{% elif step == 2 %}wz-dot--active{% else %}wz-dot--todo{% endif %}">
+            {% if step > 2 %}✓{% else %}2{% endif %}
+        </div>
+        <span class="wz-label {% if step == 2 %}wz-label--active{% endif %}">Einheiten</span>
+    </div>
+    <div class="wz-line {% if step > 2 %}wz-line--done{% endif %}"></div>
+    <div class="wz-step">
+        <div class="wz-dot {% if step == 3 %}wz-dot--active{% else %}wz-dot--todo{% endif %}">3</div>
+        <span class="wz-label {% if step == 3 %}wz-label--active{% endif %}">Einladungen</span>
+    </div>
+</div>
+
+<!-- ══ SCHRITT 1: GEMEINSCHAFT ══════════════════════════════════════════════ -->
+<div class="step-card {% if step == 1 %}step-card--active{% endif %}">
+    <div class="step-card__head">
+        <div>
+            <div class="step-card__num">Schritt 1</div>
+            <div class="step-card__title">Gemeinschaftsdaten</div>
+            {% if step > 1 %}
+            <div class="step-card__summary">{{ community.name }} · Quorum {{ community.quorum }}‰</div>
+            {% endif %}
+        </div>
+        {% if step != 1 %}
+        <a href="?step=1" class="btn btn-outline btn-sm">Bearbeiten</a>
+        {% endif %}
+    </div>
+
+    {% if step == 1 %}
+    <div class="step-card__body">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_community">
+            <div class="grid-2 mb-md">
+                <div class="form-group form-group--flush">
+                    <label for="id_name">Name der Gemeinschaft *</label>
+                    <input type="text" name="name" id="id_name" class="form-input"
+                           value="{{ community_form.name.value|default:'' }}" required
+                           placeholder="z.B. STWEG Musterstrasse 12">
+                    {% if community_form.name.errors %}<div class="form-error">{{ community_form.name.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="form-group form-group--flush">
+                    <label for="id_quorum">Quorum (‰)</label>
+                    <input type="number" name="quorum" id="id_quorum" class="form-input"
+                           value="{{ community_form.quorum.value|default:'0' }}"
+                           step="0.1" min="0" max="1000" placeholder="0 = kein Quorum">
+                    <div class="form-hint">Mindest-Beteiligung nach Wertquoten (0 = kein Quorum)</div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="id_address">Adresse</label>
+                <textarea name="address" id="id_address" class="form-textarea" rows="2"
+                          placeholder="Musterstrasse 12&#10;8000 Zürich">{{ community_form.address.value|default:'' }}</textarea>
+            </div>
+            <div class="flex gap-1 mt-md">
+                <button type="submit" class="btn btn-primary">Speichern &amp; weiter →</button>
+                <a href="?step=2" class="btn btn-outline">Überspringen</a>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ══ SCHRITT 2: EINHEITEN ═════════════════════════════════════════════════ -->
+<div class="step-card {% if step == 2 %}step-card--active{% elif step < 2 %}step-card--locked{% endif %}">
+    <div class="step-card__head">
+        <div>
+            <div class="step-card__num">Schritt 2</div>
+            <div class="step-card__title">Einheiten erfassen</div>
+            {% if step > 2 %}
+            <div class="step-card__summary">{{ units|length }} Einheit{{ units|length|pluralize:",en" }} · {{ total_quota|floatformat:1 }}‰ total</div>
+            {% endif %}
+        </div>
+        {% if step != 2 and step > 2 %}
+        <a href="?step=2" class="btn btn-outline btn-sm">Bearbeiten</a>
+        {% endif %}
+    </div>
+
+    {% if step == 2 %}
+    <div class="step-card__body">
+        <p class="section-hint">
+            Erfassen Sie alle Einheiten mit Einheitsnummer und Wertquote. Die Zuweisung an Eigentümer
+            erfolgt automatisch, sobald diese den Einladungslink in Schritt 3 verwenden.
+        </p>
+
+        <!-- Quota-Anzeige -->
+        {% if units %}
+        <div class="quota-bar-wrap">
+            {% with pct=total_quota|floatformat:1 %}
+            <div class="quota-bar-track">
+                <div class="quota-bar-fill {% if total_quota > 1000 %}quota-bar-fill--over{% endif %}"
+                     style="width: {% if total_quota > 1000 %}100{% else %}{{ total_quota|floatformat:0 }}{% endif %}%"></div>
+            </div>
+            <div class="quota-info">
+                <span>Total Wertquoten</span>
+                <span>
+                    <strong class="{% if total_quota == 1000 %}quota-ok{% elif total_quota > 1000 %}quota-over{% else %}quota-warn{% endif %}">
+                        {{ total_quota|floatformat:1 }}‰
+                    </strong>
+                    / 1000‰
+                    {% if total_quota == 1000 %}&nbsp;✓{% elif total_quota > 1000 %}&nbsp;— zu viel!{% else %}&nbsp;— {{ 1000|add:total_quota|floatformat:1 }}‰ fehlen{% endif %}
+                </span>
+            </div>
+            {% endwith %}
+        </div>
+        {% endif %}
+
+        <!-- Tab-Switcher -->
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="showTab('manual', this)">Manuell eingeben</button>
+            <button class="tab-btn" onclick="showTab('csv', this)">CSV importieren</button>
+        </div>
+
+        <!-- Tab: Manuell -->
+        <div id="tab-manual" class="tab-panel active">
+
+            <!-- Bestehende Einheiten -->
+            {% if units %}
+            <table class="wz-table">
+                <thead>
+                    <tr>
+                        <th style="width:110px">Einheitsnummer</th>
+                        <th>Beschreibung</th>
+                        <th style="width:90px">Quote (‰)</th>
+                        <th style="width:120px">Status</th>
+                        <th style="width:32px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for unit in units %}
+                    <tr>
+                        <td><strong>{{ unit.unit_number }}</strong></td>
+                        <td style="color:var(--text-muted)">{{ unit.description|default:"—" }}</td>
+                        <td>{{ unit.quota|floatformat:1 }}</td>
+                        <td>
+                            {% if unit.owner %}
+                                <span class="badge-owner">✓ {{ unit.owner.get_full_name|default:unit.owner.username }}</span>
+                            {% elif unit.id in token_unit_ids %}
+                                <span class="badge-pending">Einladung ausstehend</span>
+                            {% else %}
+                                <span class="badge-no-invite">Kein Eigentümer</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="post" style="display:inline"
+                                  onsubmit="return confirm('Einheit {{ unit.unit_number }} löschen?')">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_unit">
+                                <input type="hidden" name="unit_id" value="{{ unit.id }}">
+                                <button type="submit" class="btn-icon-del" title="Einheit löschen"
+                                        style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;padding:.2rem .4rem;">×</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+
+            <!-- Neue Einheit hinzufügen -->
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_unit">
+                <div class="unit-add-grid">
+                    <div class="form-group form-group--flush">
+                        <label>Einheitsnummer *</label>
+                        <input type="text" name="unit_number" class="form-input"
+                               placeholder="z.B. EG links"
+                               value="{{ unit_form.unit_number.value|default:'' }}" required>
+                        {% if unit_form.unit_number.errors %}<div class="form-error">{{ unit_form.unit_number.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="form-group form-group--flush">
+                        <label>Beschreibung</label>
+                        <input type="text" name="description" class="form-input"
+                               placeholder="z.B. 3.5-Zi-Wohnung (optional)"
+                               value="{{ unit_form.description.value|default:'' }}">
+                    </div>
+                    <div class="form-group form-group--flush">
+                        <label>Wertquote (‰) *</label>
+                        <input type="number" name="quota" class="form-input"
+                               placeholder="250.0" step="0.1" min="0.1" required
+                               value="{{ unit_form.quota.value|default:'' }}">
+                        {% if unit_form.quota.errors %}<div class="form-error">{{ unit_form.quota.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="form-group form-group--flush">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn btn-outline" style="width:100%">+ Hinzufügen</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tab: CSV -->
+        <div id="tab-csv" class="tab-panel">
+            <div class="section-hint">
+                Importieren Sie alle Einheiten auf einmal. Bestehende Einheiten werden anhand der
+                Einheitsnummer aktualisiert.<br>
+                Spaltenformat: <code>Einheit;Beschreibung;Wertquote</code> (Semikolon-getrennt)
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="import_csv">
+                <div class="flex gap-sm items-end">
+                    <div class="flex-1">
+                        <input type="file" name="csv_file" class="form-input" accept=".csv" required>
+                    </div>
+                    <button type="submit" class="btn btn-outline btn-sm flex-shrink-0">Importieren</button>
+                </div>
+            </form>
+            <div class="mt-md">
+                <a href="{% url 'voting:unit_export' community.id %}" class="btn btn-outline btn-sm">
+                    CSV-Vorlage herunterladen
+                </a>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="finish-bar">
+            <a href="?step=1" class="btn btn-outline">← Zurück</a>
+            {% if units %}
+            <form method="post" style="display:inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="goto_step3">
+                <button type="submit" class="btn btn-primary">Weiter zu Einladungen →</button>
+            </form>
+            {% else %}
+            <span style="font-size:.82rem;color:var(--text-muted)">Mindestens eine Einheit erfassen, um fortzufahren</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ══ SCHRITT 3: EINLADUNGEN ════════════════════════════════════════════════ -->
+<div class="step-card {% if step == 3 %}step-card--active{% elif step < 3 %}step-card--locked{% endif %}">
+    <div class="step-card__head">
+        <div>
+            <div class="step-card__num">Schritt 3</div>
+            <div class="step-card__title">Eigentümer einladen</div>
+            {% if step < 3 %}
+            <div class="step-card__summary">Wird freigeschaltet nach Schritt 2</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if step == 3 %}
+    <div class="step-card__body">
+        <p class="section-hint">
+            Erstellen Sie für jede Einheit einen Einladungslink. Der Eigentümer öffnet den Link,
+            registriert sich und erhält automatisch Zugang zur Gemeinschaft.
+            Jeder Link ist einmalig gültig.
+        </p>
+
+        <!-- Bestehende Tokens -->
+        {% if tokens %}
+        <div style="border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:1.25rem;">
+            <div style="padding:.5rem .75rem;background:var(--surface-alt);font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);">
+                Aktive Einladungslinks
+            </div>
+            {% for token in tokens %}
+            <div class="invite-row">
+                <div class="invite-unit-label">
+                    {% if token.unit %}{{ token.unit.unit_number }}{% else %}<em>Allgemein</em>{% endif %}
+                </div>
+                <div style="font-size:.78rem;color:var(--text-muted);min-width:80px;">
+                    {% if token.unit and token.unit.owner %}
+                        <span class="badge-owner">✓ Registriert</span>
+                    {% elif token.used_at %}
+                        <span class="badge-owner">✓ Verwendet</span>
+                    {% else %}
+                        <span class="badge-pending">Ausstehend</span>
+                    {% endif %}
+                </div>
+                <div class="invite-link-box" id="link-{{ token.pk }}" title="{% url 'voting:invite_register' token.token %}">
+                    {{ request.scheme }}://{{ request.get_host }}{% url 'voting:invite_register' token.token %}
+                </div>
+                <div class="invite-actions">
+                    <button class="btn btn-outline btn-sm copy-btn"
+                            onclick="copyLink('link-{{ token.pk }}', this)"
+                            title="Link kopieren">Kopieren</button>
+                    {% if not token.used_at %}
+                    <form method="post" style="display:inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="revoke_invite">
+                        <input type="hidden" name="token_pk" value="{{ token.pk }}">
+                        <button type="submit" class="btn btn-outline btn-sm"
+                                style="color:var(--red,#c0392b)"
+                                onclick="return confirm('Link widerrufen?')"
+                                title="Link widerrufen">×</button>
+                    </form>
+                    {% else %}
+                    <form method="post" style="display:inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="renew_invite">
+                        <input type="hidden" name="token_pk" value="{{ token.pk }}">
+                        <button type="submit" class="btn btn-outline btn-sm" title="Neuen Link erstellen">↻</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Neuen Link erstellen -->
+        <div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1.25rem;">
+            <div style="font-size:.82rem;font-weight:600;margin-bottom:.75rem;">Neuen Einladungslink erstellen</div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_invite">
+                <div class="invite-quick-grid">
+                    <div class="form-group form-group--flush">
+                        <label>Einheit</label>
+                        {{ invite_form.unit }}
+                    </div>
+                    <div class="form-group form-group--flush">
+                        <label>Rolle</label>
+                        {{ invite_form.role }}
+                    </div>
+                    <div class="form-group form-group--flush">
+                        <label>E-Mail (optional)</label>
+                        {{ invite_form.email }}
+                    </div>
+                    <div class="form-group form-group--flush">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn btn-outline" style="width:100%">Link erstellen</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Hinweis: Einheiten ohne Link -->
+        {% if units_without_invite %}
+        <div style="background:var(--amber-light,#fefce8);border:1px solid var(--amber-border,#fde68a);border-radius:6px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.82rem;color:var(--amber,#b45309);">
+            <strong>{{ units_without_invite|length }} Einheit{{ units_without_invite|length|pluralize:"en" }} ohne Einladungslink:</strong>
+            {% for u in units_without_invite %}{{ u.unit_number }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Fertig-Button -->
+        <div class="finish-bar">
+            <a href="?step=2" class="btn btn-outline">← Zurück</a>
+            <form method="post" style="display:inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="finish">
+                <button type="submit" class="btn btn-primary">
+                    Einrichtung abschliessen → Zur Gemeinschaft
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function showTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+}
+
+function copyLink(elemId, btn) {
+    const text = document.getElementById(elemId).textContent.trim();
+    navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Kopiert';
+        btn.disabled = true;
+        setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
+    });
+}
+</script>
+{% endblock %}

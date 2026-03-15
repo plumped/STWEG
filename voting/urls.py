@@ -79,4 +79,5 @@ urlpatterns = [
          views.proxy_grant, name='proxy_grant'),
     path('antrag/<int:proposal_pk>/vollmacht/<int:proxy_pk>/widerrufen/',
          views.proxy_revoke, name='proxy_revoke'),
+    path('community/<int:community_id>/setup/', views.community_setup_wizard, name='community_setup'),
 ]

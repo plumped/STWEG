@@ -762,6 +762,175 @@ def community_create(request):
         form = CommunityForm()
     return render(request, 'voting/community_form.html', {'form': form})
 
+# ── Community Setup Wizard ────────────────────────────────────────────────────
+# Füge diesen View in voting/views.py ein (nach community_create)
+# Ändere außerdem community_create so dass es nach dem Speichern zum Wizard leitet:
+#
+#   return redirect('voting:community_setup', community_id=community.id)
+#
+# (anstatt: return redirect('voting:unit_manage', community_id=community.id))
+
+@login_required
+def community_setup_wizard(request, community_id):
+    """
+    3-Schritt-Wizard für den Erst-Setup einer Gemeinschaft.
+
+    Schritt 1 – Gemeinschaftsdaten  (GET ?step=1)
+    Schritt 2 – Einheiten           (GET ?step=2)
+    Schritt 3 – Einladungen         (GET ?step=3)
+
+    POST-actions (hidden field 'action'):
+        save_community  → Schritt-1-Formular speichern
+        add_unit        → Einzelne Einheit hinzufügen
+        delete_unit     → Einheit löschen
+        import_csv      → CSV-Import
+        create_invite   → Einladungslink erstellen
+        revoke_invite   → Einladungslink widerrufen
+        renew_invite    → Neuen Token für selbe Einheit ausstellen
+        finish          → Zum Proposal-Dashboard wechseln
+    """
+    community = get_object_or_404(Community, id=community_id)
+    if not community.is_admin(request.user):
+        messages.error(request, "Keine Berechtigung.")
+        return redirect('voting:dashboard')
+
+    # Standardmäßig auf Schritt 2 (Schritt 1 wurde bereits beim Erstellen ausgefüllt)
+    try:
+        step = int(request.GET.get('step', 2))
+    except (ValueError, TypeError):
+        step = 2
+    step = max(1, min(3, step))
+
+    community_form = CommunityForm(instance=community)
+    unit_form      = UnitForm()
+    csv_form       = UnitImportForm()
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+        wizard_url = request.path  # /community/<id>/setup/
+
+        # ── Schritt 1: Gemeinschaft speichern ──────────────────────────────
+        if action == 'save_community':
+            community_form = CommunityForm(request.POST, instance=community)
+            if community_form.is_valid():
+                community_form.save()
+                messages.success(request, "Gemeinschaft aktualisiert.")
+                return redirect(f"{wizard_url}?step=2")
+            step = 1
+
+        # ── Schritt 2: Einheit hinzufügen ──────────────────────────────────
+        elif action == 'add_unit':
+            unit_form = UnitForm(request.POST)
+            if unit_form.is_valid():
+                unit = unit_form.save(commit=False)
+                unit.community = community
+                unit.save()
+                return redirect(f"{wizard_url}?step=2")
+            step = 2
+
+        # ── Schritt 2: Einheit löschen ─────────────────────────────────────
+        elif action == 'delete_unit':
+            unit_id_del = request.POST.get('unit_id')
+            Unit.objects.filter(id=unit_id_del, community=community).delete()
+            return redirect(f"{wizard_url}?step=2")
+
+        # ── Schritt 2: CSV-Import ──────────────────────────────────────────
+        elif action == 'import_csv':
+            csv_form = UnitImportForm(request.POST, request.FILES)
+            if csv_form.is_valid():
+                csv_file = request.FILES['csv_file']
+                decoded  = csv_file.read().decode('utf-8-sig')
+                reader   = csv.DictReader(io.StringIO(decoded), delimiter=';')
+                created  = 0
+                errors   = []
+                for i, row in enumerate(reader, start=2):
+                    try:
+                        unit_number = row.get('Einheit', '').strip()
+                        quota_str   = row.get('Wertquote', '0').strip().replace(',', '.')
+                        description = row.get('Beschreibung', '').strip()
+                        if not unit_number:
+                            continue
+                        Unit.objects.update_or_create(
+                            community=community,
+                            unit_number=unit_number,
+                            defaults={'quota': float(quota_str), 'description': description},
+                        )
+                        created += 1
+                    except Exception as e:
+                        errors.append(f"Zeile {i}: {e}")
+                for err in errors[:5]:
+                    messages.warning(request, err)
+                messages.success(request, f"{created} Einheiten importiert.")
+            return redirect(f"{wizard_url}?step=2")
+
+        # ── Schritt 2 → 3 weiterleiten ─────────────────────────────────────
+        elif action == 'goto_step3':
+            return redirect(f"{wizard_url}?step=3")
+
+        # ── Schritt 3: Einladungslink erstellen ────────────────────────────
+        elif action == 'create_invite':
+            invite_form_post = InviteTokenForm(request.POST, community=community)
+            if invite_form_post.is_valid():
+                token            = invite_form_post.save(commit=False)
+                token.community  = community
+                token.created_by = request.user
+                token.save()
+            return redirect(f"{wizard_url}?step=3")
+
+        # ── Schritt 3: Einladungslink widerrufen ───────────────────────────
+        elif action == 'revoke_invite':
+            token_pk = request.POST.get('token_pk')
+            InviteToken.objects.filter(pk=token_pk, community=community).update(is_active=False)
+            return redirect(f"{wizard_url}?step=3")
+
+        # ── Schritt 3: Token erneuern ──────────────────────────────────────
+        elif action == 'renew_invite':
+            token_pk  = request.POST.get('token_pk')
+            old_token = get_object_or_404(InviteToken, pk=token_pk, community=community)
+            InviteToken.objects.create(
+                community  = community,
+                email      = old_token.email,
+                unit       = old_token.unit,
+                role       = old_token.role,
+                created_by = request.user,
+            )
+            return redirect(f"{wizard_url}?step=3")
+
+        # ── Fertig: zum Dashboard ──────────────────────────────────────────
+        elif action == 'finish':
+            messages.success(request, f"Setup abgeschlossen. Gemeinschaft «{community.name}» ist bereit.")
+            return redirect('voting:proposal_list', community_id=community.id)
+
+    # ── GET: Daten für alle Schritte laden ─────────────────────────────────
+    units       = community.units.select_related('owner').order_by('unit_number')
+    total_quota = sum(u.quota for u in units)
+
+    # Alle aktiven Invite-Tokens (neuester pro Einheit zuerst)
+    tokens = (
+        community.invite_tokens
+        .select_related('unit', 'used_by', 'created_by')
+        .filter(is_active=True)
+        .order_by('unit__unit_number', '-created_at')
+    )
+
+    # Einheiten ohne aktiven Token → für Schritt-3-Hinweis
+    token_unit_ids    = set(t.unit_id for t in tokens if t.unit_id)
+    units_without_invite = [u for u in units if u.id not in token_unit_ids and not u.owner]
+
+    return render(request, 'voting/community_setup.html', {
+        'community':            community,
+        'community_form':       community_form,
+        'unit_form':            unit_form,
+        'csv_form':             csv_form,
+        'invite_form':          InviteTokenForm(community=community),
+        'units':                units,
+        'total_quota':          total_quota,
+        'tokens':               tokens,
+        'token_unit_ids':       token_unit_ids,
+        'units_without_invite': units_without_invite,
+        'step':                 step,
+        'request':              request,
+    })
 
 @login_required
 def community_edit(request, community_id):
