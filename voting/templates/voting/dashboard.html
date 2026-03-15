@@ -9,8 +9,8 @@
         <p>Deine laufenden Abstimmungen auf einen Blick</p>
     </div>
     {% if user.is_staff %}
-    <a href="{% url 'voting:community_create' %}" class="btn btn-outline">
-        <span>+</span> Neue Gemeinschaft
+    <a href="{% url 'voting:community_create' %}" class="btn btn-primary">
+        + Neue Gemeinschaft
     </a>
     {% endif %}
 </div>
@@ -73,10 +73,8 @@
                 <!-- Fortschrittsbalken -->
                 {% if total > 0 %}
                 <div class="progress-bar mt-sm">
-                    {% with pct=voted|floatformat:0 %}
                     <div class="progress-bar__fill {% if voted == total %}progress-bar__fill--complete{% elif voted > 0 %}progress-bar__fill--partial{% else %}progress-bar__fill--empty{% endif %}"
-                         style="width: {% if total > 0 %}{% widthratio voted total 100 %}{% else %}0{% endif %}%"></div>
-                    {% endwith %}
+                         style="width: {% widthratio voted total 100 %}%"></div>
                 </div>
                 <div class="progress-label">{{ voted }} von {{ total }} Einheit{{ total|pluralize:"en" }} abgestimmt</div>
                 {% endif %}
@@ -90,7 +88,7 @@
 
 {% else %}
 {% if not pending_drafts %}
-<div class="card {% if pending_drafts %}mt-lg{% endif %}">
+<div class="card">
     <div class="empty-state">
         <span class="empty-state-icon">🗳</span>
         <div class="empty-state-title">Keine offenen Abstimmungen</div>
@@ -161,6 +159,39 @@
 
 {% for community in communities %}
 <div style="margin-bottom:1rem;">
+
+    {% if community.id in setup_incomplete_ids %}
+    <!-- ── Setup noch nicht abgeschlossen ── -->
+    <div class="card" style="padding:0;overflow:hidden;border-color:var(--amber-border,#f0c04a);">
+        <a href="{% url 'voting:proposal_list' community.id %}" class="card-link" style="display:block;">
+            <div class="flex-between items-center" style="padding:1rem 1.25rem;">
+                <div class="flex-1">
+                    <div class="flex items-center gap-xs mb-xs flex-wrap">
+                        <span class="badge badge--manager">Verwalter</span>
+                        <span class="badge badge-pending">⚙ Setup ausstehend</span>
+                    </div>
+                    <div class="card-title">{{ community.name }}</div>
+                    <div class="card-meta mt-xs">{{ community.address|default:"Noch keine Adresse erfasst" }}</div>
+                </div>
+                <span class="chevron">›</span>
+            </div>
+        </a>
+        <!-- Prominenter Setup-Hinweis -->
+        <div style="border-top:1px solid var(--amber-border,#f0c04a);padding:.75rem 1.25rem;background:var(--amber-light,#fffbeb);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+            <span style="font-size:.82rem;color:var(--amber,#b45309);">
+                Noch keine Einheiten erfasst — Setup abschliessen, damit Abstimmungen möglich sind.
+            </span>
+            <a href="{% url 'voting:community_setup' community.id %}?step=2"
+               class="btn btn-primary btn-sm"
+               style="white-space:nowrap;flex-shrink:0;"
+               onclick="event.stopPropagation();">
+                ⚙ Einrichten →
+            </a>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- ── Reguläre Gemeinschaftskarte ── -->
     <a href="{% url 'voting:proposal_list' community.id %}" class="card-link">
         <div class="card card-interactive" style="padding:0;overflow:hidden;">
 
@@ -173,6 +204,9 @@
                         {% else %}
                             <span class="badge badge--owner">Eigentümer</span>
                         {% endif %}
+                        <span class="badge badge-closed" style="font-weight:500;">
+                            {{ community.units.count }} Einheit{{ community.units.count|pluralize:",en" }}
+                        </span>
                     </div>
                     <div class="card-title">{{ community.name }}</div>
                     <div class="card-meta mt-xs">{{ community.address }}</div>
@@ -181,14 +215,25 @@
             </div>
 
             {% if community.id in admin_community_ids %}
-            <!-- Aktionsleiste -->
-            <div style="border-top:1px solid var(--border);padding:.55rem 1.25rem;display:flex;gap:.5rem;flex-wrap:wrap;background:var(--bg-subtle,#fafaf8);">
+            <!-- Aktionsleiste für Verwalter -->
+            <div style="border-top:1px solid var(--border);padding:.5rem 1.25rem;display:flex;gap:.5rem;flex-wrap:wrap;background:var(--bg-subtle,#fafaf8);">
+                <a href="{% url 'voting:community_setup' community.id %}?step=2"
+                   class="btn btn-outline btn-sm"
+                   style="font-size:.72rem;padding:.2rem .65rem;white-space:nowrap;"
+                   onclick="event.stopPropagation();">
+                    ⚙ Setup
+                </a>
                 <a href="{% url 'voting:unit_manage' community.id %}"
                    class="btn btn-outline btn-sm"
                    style="font-size:.72rem;padding:.2rem .65rem;white-space:nowrap;"
                    onclick="event.stopPropagation();">
                     🏠 Einheiten
-                    <span style="margin-left:.25rem;opacity:.5;font-weight:400;">{{ community.units.count }}</span>
+                </a>
+                <a href="{% url 'voting:invite_manage' community.id %}"
+                   class="btn btn-outline btn-sm"
+                   style="font-size:.72rem;padding:.2rem .65rem;white-space:nowrap;"
+                   onclick="event.stopPropagation();">
+                    ✉ Einladungen
                 </a>
                 <a href="{% url 'voting:community_members' community.id %}"
                    class="btn btn-outline btn-sm"
@@ -207,6 +252,8 @@
 
         </div>
     </a>
+    {% endif %}
+
 </div>
 {% endfor %}
 

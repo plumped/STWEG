@@ -2,6 +2,7 @@ import csv
 import io
 import os
 import uuid
+from collections import defaultdict
 
 from django.contrib import messages
 from django.contrib.auth import login as auth_login
@@ -58,8 +59,6 @@ def dashboard(request):
     )
 
     # ── N+1 FIX: Preload all proxy and vote data in bulk queries ─────────────
-    # Instead of 3 DB queries per proposal, we do 3 total.
-
     # 1. All proxies for this user across all open proposals
     proxy_map_by_proposal: dict[int, set[int]] = {}  # proposal_id → set of unit_ids
     for p in Proxy.objects.filter(
@@ -68,7 +67,7 @@ def dashboard(request):
     ).values('proposal_id', 'unit_id'):
         proxy_map_by_proposal.setdefault(p['proposal_id'], set()).add(p['unit_id'])
 
-    # 2. All votes for open proposals (for all units — we filter per proposal below)
+    # 2. All votes for open proposals
     voted_unit_by_proposal: dict[int, set[int]] = {}  # proposal_id → set of voted unit_ids
     for v in Vote.objects.filter(
         proposal__in=open_proposals,
@@ -104,15 +103,27 @@ def dashboard(request):
     # Notification badge count for nav
     pending_count = pending_drafts.count()
 
+    # ── Setup-Status: Gemeinschaften ohne Einheiten (für Admin-Hinweis) ──────
+    communities_with_units_ids = set(
+        Unit.objects.filter(community__in=communities)
+        .values_list('community_id', flat=True)
+        .distinct()
+    )
+    setup_incomplete_ids = {
+        c.id for c in communities
+        if c.id in admin_community_ids and c.id not in communities_with_units_ids
+    }
+
     return render(request, 'voting/dashboard.html', {
-        'communities':         communities,
-        'open_proposals':      open_proposals,
-        'voted_counts':        voted_counts,
-        'unit_counts':         unit_counts,
-        'pending_drafts':      pending_drafts,
-        'admin_community_ids': admin_community_ids,
-        'open_tickets':        open_tickets,
-        'pending_count':       pending_count,
+        'communities':            communities,
+        'open_proposals':         open_proposals,
+        'voted_counts':           voted_counts,
+        'unit_counts':            unit_counts,
+        'pending_drafts':         pending_drafts,
+        'admin_community_ids':    admin_community_ids,
+        'open_tickets':           open_tickets,
+        'pending_count':          pending_count,
+        'setup_incomplete_ids':   setup_incomplete_ids,
     })
 
 
@@ -154,10 +165,11 @@ def proposal_list(request, community_id):
     unit_count = user_units.count()
     fully_voted_ids: set[int] = set()
     if unit_count > 0:
+        from django.db.models import Count
         for v in (
             Vote.objects.filter(unit__in=user_units)
             .values('proposal_id')
-            .annotate(cnt=__import__('django.db.models', fromlist=['Count']).Count('id'))
+            .annotate(cnt=Count('id'))
         ):
             if v['cnt'] >= unit_count:
                 fully_voted_ids.add(v['proposal_id'])
@@ -237,9 +249,9 @@ def proposal_detail(request, pk):
     }
 
     # ── Umlaufbeschluss status ────────────────────────────────────────────────
-    total_units_count = community.units.count()
-    voted_units_count = proposal.votes.count()
-    all_units_voted   = (total_units_count > 0 and voted_units_count >= total_units_count)
+    total_units_count   = community.units.count()
+    voted_units_count   = proposal.votes.count()
+    all_units_voted     = (total_units_count > 0 and voted_units_count >= total_units_count)
     missing_votes_count = max(0, total_units_count - voted_units_count)
 
     # ── Handle POST actions ───────────────────────────────────────────────────
@@ -309,17 +321,13 @@ def proposal_detail(request, pk):
                     messages.warning(request, f"Einheit {unit.unit_number} hat bereits abgestimmt.")
                     return redirect('voting:proposal_detail', pk=pk)
 
-                Vote.objects.create(
-                    proposal      = proposal,
-                    unit          = unit,
-                    choice        = form.cleaned_data['choice'],
-                    comment       = form.cleaned_data.get('comment', ''),
-                    cast_by       = request.user,
-                    is_manual     = True,
-                    manual_source = form.cleaned_data.get('manual_source', ''),
-                )
-                messages.success(request, f"Schriftliche Stimme für Einheit {unit.unit_number} erfasst.")
-                return redirect('voting:proposal_detail', pk=pk)
+                vote          = form.save(commit=False)
+                vote.proposal = proposal
+                vote.unit     = unit
+                vote.cast_by  = request.user
+                vote.save()
+                messages.success(request, f"Manuelle Stimme für Einheit {unit.unit_number} erfasst.")
+            return redirect('voting:proposal_detail', pk=pk)
 
     # ── Build display lists ───────────────────────────────────────────────────
     units_with_votes = []
@@ -347,7 +355,6 @@ def proposal_detail(request, pk):
 
     documents  = proposal.documents.all().select_related('uploaded_by')
     doc_form   = ProposalDocumentForm()
-
     proxy_form = ProxyForm(community=community)
 
     return render(request, 'voting/proposal_detail.html', {
@@ -426,9 +433,9 @@ def proposal_create(request, community_id):
     if request.method == 'POST':
         form = ProposalForm(request.POST)
         if form.is_valid():
-            proposal             = form.save(commit=False)
-            proposal.community   = community
-            proposal.created_by  = request.user
+            proposal            = form.save(commit=False)
+            proposal.community  = community
+            proposal.created_by = request.user
             proposal.save()
             if is_admin:
                 messages.success(request, "Antrag erstellt.")
@@ -478,7 +485,6 @@ def proposal_open(request, pk):
         proposal.open()
         notify_proposal_opened(proposal)
 
-        # Notify the draft author if they are NOT the admin who opened it
         if original_creator and original_creator != request.user:
             notify_draft_approved(proposal)
 
@@ -570,53 +576,31 @@ def export_results_csv(request, pk):
         messages.error(request, "Export nur für offene oder abgeschlossene Abstimmungen.")
         return redirect('voting:proposal_detail', pk=pk)
 
+    results  = proposal.get_results()
     response = HttpResponse(content_type='text/csv; charset=utf-8')
-    safe_title = "".join(c for c in proposal.title if c.isalnum() or c in ' -_')[:40]
-    response['Content-Disposition'] = (
-        f'attachment; filename="abstimmung_{proposal.pk}_{safe_title}.csv"'
-    )
+    response['Content-Disposition'] = f'attachment; filename="ergebnis_{proposal.id}.csv"'
     response.write('\ufeff')
 
     writer = csv.writer(response, delimiter=';')
-    writer.writerow([
-        'Einheit', 'Beschreibung', 'Eigentümer', 'Wertquote (‰)',
-        'Stimme', 'Zeitpunkt', 'Manuell', 'Quellenangabe', 'Kommentar', 'Erfasst durch',
-    ])
+    writer.writerow(['Einheit', 'Beschreibung', 'Eigentümer', 'Wertquote (‰)', 'Stimme', 'Abgestimmt am'])
 
-    all_units = community.units.select_related('owner').order_by('unit_number')
-    votes_map = {v.unit_id: v for v in proposal.votes.select_related('unit', 'cast_by')}
+    for unit in community.units.select_related('owner').order_by('unit_number'):
+        vote       = proposal.votes.filter(unit=unit).first()
+        owner_name = unit.owner.get_full_name() or unit.owner.username if unit.owner else '—'
+        writer.writerow([
+            unit.unit_number,
+            unit.description,
+            owner_name,
+            unit.quota,
+            vote.get_choice_display() if vote else '—',
+            vote.voted_at.strftime('%d.%m.%Y %H:%M') if vote and hasattr(vote, 'voted_at') else '—',
+        ])
 
-    for unit in all_units:
-        owner_name = unit.owner.get_full_name() or unit.owner.username if unit.owner else '(unbesetzt)'
-        vote = votes_map.get(unit.id)
-        if vote:
-            writer.writerow([
-                unit.unit_number, unit.description, owner_name, unit.quota,
-                vote.get_choice_display(),
-                vote.voted_at.strftime('%d.%m.%Y %H:%M'),
-                'Ja' if vote.is_manual else 'Nein',
-                vote.manual_source, vote.comment,
-                vote.cast_by.get_full_name() if vote.cast_by else '',
-            ])
-        else:
-            writer.writerow([
-                unit.unit_number, unit.description, owner_name, unit.quota,
-                '(nicht abgestimmt)', '', '', '', '', '',
-            ])
-
-    results = proposal.get_results()
     writer.writerow([])
-    writer.writerow(['Zusammenfassung'])
-    writer.writerow(['Ja (Köpfe)',              results['yes_count']])
-    writer.writerow(['Nein (Köpfe)',             results['no_count']])
-    writer.writerow(['Enthaltungen (Köpfe)',     results['abstain_count']])
-    writer.writerow(['Ja (Wertquoten ‰)',        results['yes_quota']])
-    writer.writerow(['Nein (Wertquoten ‰)',      results['no_quota']])
-    writer.writerow(['Enthaltungen (Wertq. ‰)',  results['abstain_quota']])
-    writer.writerow(['Beteiligung (Köpfe)',      f"{results['total_voted']}/{results['total_units']}"])
-    writer.writerow(['Beteiligung (Wertq. ‰)',   results['voted_quota']])
-    writer.writerow(['Quorum erfüllt',           'Ja' if results['quorum_met'] else 'Nein'])
-    writer.writerow(['Ergebnis',                 'Angenommen' if results['passed'] else 'Abgelehnt'])
+    writer.writerow(['Gesamtquoten (‰)',        results['total_quota']])
+    writer.writerow(['Abgestimmte Quoten (‰)',  results['voted_quota']])
+    writer.writerow(['Quorum erfüllt',          'Ja' if results['quorum_met'] else 'Nein'])
+    writer.writerow(['Ergebnis',                'Angenommen' if results['passed'] else 'Abgelehnt'])
 
     return response
 
@@ -756,19 +740,15 @@ def community_create(request):
             community            = form.save(commit=False)
             community.created_by = request.user
             community.save()
-            messages.success(request, f"Gemeinschaft «{community.name}» erstellt.")
-            return redirect('voting:unit_manage', community_id=community.id)
+            messages.success(request, f"Gemeinschaft «{community.name}» erstellt. Jetzt Einheiten erfassen.")
+            # Direkt zum Setup-Wizard, Schritt 2 (Gemeinschaftsdaten bereits ausgefüllt)
+            return redirect(f"/community/{community.id}/setup/?step=2")
     else:
         form = CommunityForm()
     return render(request, 'voting/community_form.html', {'form': form})
 
+
 # ── Community Setup Wizard ────────────────────────────────────────────────────
-# Füge diesen View in voting/views.py ein (nach community_create)
-# Ändere außerdem community_create so dass es nach dem Speichern zum Wizard leitet:
-#
-#   return redirect('voting:community_setup', community_id=community.id)
-#
-# (anstatt: return redirect('voting:unit_manage', community_id=community.id))
 
 @login_required
 def community_setup_wizard(request, community_id):
@@ -784,6 +764,7 @@ def community_setup_wizard(request, community_id):
         add_unit        → Einzelne Einheit hinzufügen
         delete_unit     → Einheit löschen
         import_csv      → CSV-Import
+        goto_step3      → Weiter zu Schritt 3
         create_invite   → Einladungslink erstellen
         revoke_invite   → Einladungslink widerrufen
         renew_invite    → Neuen Token für selbe Einheit ausstellen
@@ -794,11 +775,10 @@ def community_setup_wizard(request, community_id):
         messages.error(request, "Keine Berechtigung.")
         return redirect('voting:dashboard')
 
-    # Standardmäßig auf Schritt 2 (Schritt 1 wurde bereits beim Erstellen ausgefüllt)
     try:
-        step = int(request.GET.get('step', 2))
+        step = int(request.GET.get('step', 1))
     except (ValueError, TypeError):
-        step = 2
+        step = 1
     step = max(1, min(3, step))
 
     community_form = CommunityForm(instance=community)
@@ -806,7 +786,7 @@ def community_setup_wizard(request, community_id):
     csv_form       = UnitImportForm()
 
     if request.method == 'POST':
-        action = request.POST.get('action', '')
+        action     = request.POST.get('action', '')
         wizard_url = request.path  # /community/<id>/setup/
 
         # ── Schritt 1: Gemeinschaft speichern ──────────────────────────────
@@ -814,7 +794,7 @@ def community_setup_wizard(request, community_id):
             community_form = CommunityForm(request.POST, instance=community)
             if community_form.is_valid():
                 community_form.save()
-                messages.success(request, "Gemeinschaft aktualisiert.")
+                messages.success(request, "Gemeinschaftsdaten gespeichert.")
                 return redirect(f"{wizard_url}?step=2")
             step = 1
 
@@ -822,9 +802,10 @@ def community_setup_wizard(request, community_id):
         elif action == 'add_unit':
             unit_form = UnitForm(request.POST)
             if unit_form.is_valid():
-                unit = unit_form.save(commit=False)
+                unit           = unit_form.save(commit=False)
                 unit.community = community
                 unit.save()
+                messages.success(request, f"Einheit {unit.unit_number} hinzugefügt.")
                 return redirect(f"{wizard_url}?step=2")
             step = 2
 
@@ -875,12 +856,16 @@ def community_setup_wizard(request, community_id):
                 token.community  = community
                 token.created_by = request.user
                 token.save()
+                messages.success(request, "Einladungslink erstellt.")
+            else:
+                messages.error(request, "Fehler beim Erstellen des Einladungslinks.")
             return redirect(f"{wizard_url}?step=3")
 
         # ── Schritt 3: Einladungslink widerrufen ───────────────────────────
         elif action == 'revoke_invite':
             token_pk = request.POST.get('token_pk')
             InviteToken.objects.filter(pk=token_pk, community=community).update(is_active=False)
+            messages.success(request, "Einladungslink widerrufen.")
             return redirect(f"{wizard_url}?step=3")
 
         # ── Schritt 3: Token erneuern ──────────────────────────────────────
@@ -894,9 +879,10 @@ def community_setup_wizard(request, community_id):
                 role       = old_token.role,
                 created_by = request.user,
             )
+            messages.success(request, "Neuer Einladungslink erstellt.")
             return redirect(f"{wizard_url}?step=3")
 
-        # ── Fertig: zum Dashboard ──────────────────────────────────────────
+        # ── Fertig: zum Proposal-Dashboard ────────────────────────────────
         elif action == 'finish':
             messages.success(request, f"Setup abgeschlossen. Gemeinschaft «{community.name}» ist bereit.")
             return redirect('voting:proposal_list', community_id=community.id)
@@ -913,8 +899,8 @@ def community_setup_wizard(request, community_id):
         .order_by('unit__unit_number', '-created_at')
     )
 
-    # Einheiten ohne aktiven Token → für Schritt-3-Hinweis
-    token_unit_ids    = set(t.unit_id for t in tokens if t.unit_id)
+    # Einheiten ohne aktiven Token und ohne Eigentümer → für Schritt-3-Hinweis
+    token_unit_ids       = {t.unit_id for t in tokens if t.unit_id}
     units_without_invite = [u for u in units if u.id not in token_unit_ids and not u.owner]
 
     return render(request, 'voting/community_setup.html', {
@@ -929,8 +915,8 @@ def community_setup_wizard(request, community_id):
         'token_unit_ids':       token_unit_ids,
         'units_without_invite': units_without_invite,
         'step':                 step,
-        'request':              request,
     })
+
 
 @login_required
 def community_edit(request, community_id):
@@ -988,9 +974,17 @@ def community_members(request, community_id):
         form = MembershipForm(community=community)
 
     memberships = community.memberships.select_related('user', 'added_by').order_by('role', 'user__last_name')
+
+    # Build owner list grouped by user
+    owner_map = defaultdict(list)
+    for unit in community.units.filter(owner__isnull=False).select_related('owner').order_by('unit_number'):
+        owner_map[unit.owner].append(unit)
+    owners = [{'user': user, 'units': units} for user, units in owner_map.items()]
+
     return render(request, 'voting/community_members.html', {
         'community':   community,
         'memberships': memberships,
+        'owners':      owners,
         'form':        form,
     })
 
@@ -1024,7 +1018,7 @@ def unit_manage(request, community_id):
         if action == 'add':
             form = UnitForm(request.POST)
             if form.is_valid():
-                unit = form.save(commit=False)
+                unit           = form.save(commit=False)
                 unit.community = community
                 unit.save()
                 messages.success(request, f"Einheit {unit.unit_number} hinzugefügt.")
@@ -1040,7 +1034,7 @@ def unit_manage(request, community_id):
     else:
         form = UnitForm()
 
-    units = community.units.select_related('owner').order_by('unit_number')
+    units       = community.units.select_related('owner').order_by('unit_number')
     total_quota = sum(u.quota for u in units)
 
     return render(request, 'voting/unit_manage.html', {
@@ -1078,8 +1072,8 @@ def unit_import_csv(request, community_id):
             csv_file = request.FILES['file']
             decoded  = csv_file.read().decode('utf-8-sig')
             reader   = csv.DictReader(io.StringIO(decoded), delimiter=';')
-            created = 0
-            errors  = []
+            created  = 0
+            errors   = []
             for i, row in enumerate(reader, start=2):
                 try:
                     unit_number = row.get('Einheit', '').strip()
@@ -1149,7 +1143,6 @@ def invite_manage(request, community_id):
     else:
         form = InviteTokenForm(community=community)
 
-    # Filter: by default show only active tokens; 'all' shows everything
     show_all = request.GET.get('show_all') == '1'
     tokens   = community.invite_tokens.select_related('unit', 'used_by', 'created_by')
     if not show_all:
@@ -1185,10 +1178,7 @@ def invite_revoke(request, community_id, token_pk):
 
 @login_required
 def invite_renew(request, community_id, token_pk):
-    """
-    Create a fresh token with the same configuration as an expired/unused token.
-    Useful when a token expired before the recipient could register.
-    """
+    """Create a fresh token with the same configuration as an expired/unused token."""
     community = get_object_or_404(Community, id=community_id)
     old_token = get_object_or_404(InviteToken, pk=token_pk, community=community)
     if not community.is_admin(request.user):
@@ -1201,7 +1191,6 @@ def invite_renew(request, community_id, token_pk):
             unit       = old_token.unit,
             role       = old_token.role,
             created_by = request.user,
-            # No expires_at — new token is valid indefinitely by default
         )
         messages.success(request, "Neuer Einladungslink mit gleicher Konfiguration erstellt.")
     return redirect('voting:invite_manage', community_id=community_id)

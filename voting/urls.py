@@ -5,7 +5,8 @@ app_name = 'voting'
 
 urlpatterns = [
     # ── Dashboard ─────────────────────────────────────────────────────────
-    path('dashboard/', views.dashboard, name='dashboard'),
+    path('dashboard/',
+         views.dashboard, name='dashboard'),
 
     # ── Gemeinschaften ────────────────────────────────────────────────────
     path('community/neu/',
@@ -20,6 +21,8 @@ urlpatterns = [
          views.community_members, name='community_members'),
     path('community/<int:community_id>/mitglieder/<int:membership_pk>/entfernen/',
          views.community_member_remove, name='community_member_remove'),
+    path('community/<int:community_id>/setup/',
+         views.community_setup_wizard, name='community_setup'),
     path('community/<int:community_id>/neu/',
          views.proposal_create, name='proposal_create'),
 
@@ -33,12 +36,11 @@ urlpatterns = [
     path('community/<int:community_id>/einheiten/exportieren/',
          views.unit_export_csv, name='unit_export'),
 
-    # ── Einladungen (Invite System) ───────────────────────────────────────
+    # ── Einladungen ───────────────────────────────────────────────────────
     path('community/<int:community_id>/einladungen/',
          views.invite_manage, name='invite_manage'),
     path('community/<int:community_id>/einladungen/<int:token_pk>/widerrufen/',
          views.invite_revoke, name='invite_revoke'),
-    # NEU: Abgelaufenen/ungenutzten Token mit gleicher Konfiguration erneuern
     path('community/<int:community_id>/einladungen/<int:token_pk>/erneuern/',
          views.invite_renew, name='invite_renew'),
     path('einladen/<uuid:token>/',
@@ -79,5 +81,4 @@ urlpatterns = [
          views.proxy_grant, name='proxy_grant'),
     path('antrag/<int:proposal_pk>/vollmacht/<int:proxy_pk>/widerrufen/',
          views.proxy_revoke, name='proxy_revoke'),
-    path('community/<int:community_id>/setup/', views.community_setup_wizard, name='community_setup'),
 ]
