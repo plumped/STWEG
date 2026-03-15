@@ -91,20 +91,18 @@
             <!-- Link / Copy Button -->
             <td>
                 {% if not token.used_by and not token.is_expired and token.is_active %}
-                {% with link_url=request.scheme|add:"://"|add:request.get_host|add:"/einladen/"|add:token.token|stringformat:"s"|add:"/" %}
                 <div class="flex items-center gap-sm">
                     <code class="text-xs" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;"
-                          title="{{ link_url }}">
+                          title="{{ request.scheme }}://{{ request.get_host }}{% url 'voting:invite_register' token.token %}">
                         …/{{ token.token|stringformat:"s"|slice:"-8:" }}
                     </code>
                     <button class="btn-copy"
-                            data-url="{{ link_url }}"
+                            data-url="{{ request.scheme }}://{{ request.get_host }}{% url 'voting:invite_register' token.token %}"
                             onclick="copyInviteLink(this)"
                             title="Link in Zwischenablage kopieren">
                         📋 Kopieren
                     </button>
                 </div>
-                {% endwith %}
                 {% else %}
                 <span class="text-muted text-xs">—</span>
                 {% endif %}
@@ -154,7 +152,7 @@
                     {% endif %}
 
                     {% if not token.used_by %}
-                    <!-- Erneuern (abgelaufen, widerrufen oder nie benutzt) -->
+                    <!-- Erneuern -->
                     <form method="post" action="{% url 'voting:invite_renew' community.id token.pk %}">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-outline btn-sm" title="Neuen Link mit gleicher Konfiguration erstellen">
@@ -201,11 +199,11 @@ function copyInviteLink(btn) {
             btn.classList.remove('copied');
         }, 2500);
     }).catch(function () {
-        /* Fallback für ältere Browser */
+        /* Fallback für ältere Browser / unsicherer Kontext */
         const ta = document.createElement('textarea');
         ta.value = url;
         ta.style.position = 'fixed';
-        ta.style.opacity = '0';
+        ta.style.opacity  = '0';
         document.body.appendChild(ta);
         ta.focus();
         ta.select();
