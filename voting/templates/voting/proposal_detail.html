@@ -1,5 +1,216 @@
 {% extends "voting/base.html" %}
+{% load voting_extras %}
 {% block title %}{{ proposal.title }} – STWEG{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Stats grid ──────────────────────────────────────── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: .6rem;
+    margin-bottom: 1.25rem;
+}
+.stat-box {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: .65rem .85rem;
+}
+.stat-label {
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: .2rem;
+}
+.stat-value {
+    font-size: .88rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* ── Majority hint box ───────────────────────────────── */
+.majority-hint-box {
+    font-size: .83rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: .75rem 1rem;
+}
+
+/* ── Info banners ────────────────────────────────────── */
+.info-banner {
+    border-radius: var(--r-md);
+    padding: .75rem 1rem;
+    font-size: .83rem;
+    font-weight: 500;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+}
+.info-banner-success { background: var(--accent-light); color: var(--accent); border-color: var(--accent-border); }
+.info-banner-warning { background: var(--amber-light);  color: var(--amber);  border-color: var(--amber-border); }
+.info-banner-error   { background: var(--red-light);    color: var(--red);    border-color: var(--red-border); }
+
+/* ── Vote unit cards ─────────────────────────────────── */
+.vote-unit-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 1.1rem 1.25rem;
+    margin-bottom: .75rem;
+}
+.vote-unit-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .85rem;
+    flex-wrap: wrap;
+}
+.vote-unit-name {
+    font-weight: 600;
+    font-size: .95rem;
+    color: var(--text);
+}
+.vote-unit-meta {
+    font-size: .75rem;
+    color: var(--text-muted);
+    margin-top: .2rem;
+}
+.vote-status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: .3rem .85rem;
+    border-radius: var(--r-pill);
+    font-size: .8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.vote-status-pill--yes     { background: var(--accent-light); color: var(--accent);      border: 1px solid var(--accent-border); }
+.vote-status-pill--no      { background: var(--red-light);    color: var(--red);          border: 1px solid var(--red-border); }
+.vote-status-pill--abstain { background: var(--surface-alt);  color: var(--text-muted);   border: 1px solid var(--border); }
+
+/* ── Vote buttons ────────────────────────────────────── */
+.vote-buttons {
+    display: flex;
+    gap: .6rem;
+    flex-wrap: wrap;
+}
+.vote-btn {
+    flex: 1;
+    min-width: 90px;
+    padding: .7rem 1rem;
+    border-radius: var(--r-md);
+    font-family: var(--sans);
+    font-size: .85rem;
+    font-weight: 600;
+    border: 1.5px solid;
+    cursor: pointer;
+    transition: all var(--t-base);
+    text-align: center;
+}
+.vote-btn--yes     { background: var(--accent-light); color: var(--accent); border-color: var(--accent-border); }
+.vote-btn--yes:hover { background: var(--accent); color: #fff; }
+.vote-btn--no      { background: var(--red-light); color: var(--red); border-color: var(--red-border); }
+.vote-btn--no:hover { background: var(--red); color: #fff; }
+.vote-btn--abstain { background: var(--surface-alt); color: var(--text-muted); border-color: var(--border-mid); }
+.vote-btn--abstain:hover { background: var(--surface); border-color: var(--border-strong); color: var(--text); }
+
+/* ── Card inset ──────────────────────────────────────── */
+.card-inset {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: .75rem 1rem;
+    font-size: .85rem;
+}
+
+/* ── Results ─────────────────────────────────────────── */
+.verdict {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: var(--r-lg);
+    border: 1.5px solid;
+}
+.verdict-passed { background: var(--accent-light); border-color: var(--accent-border); }
+.verdict-failed { background: var(--red-light);    border-color: var(--red-border); }
+.verdict-icon   { font-size: 1.4rem; flex-shrink: 0; line-height: 1; }
+.verdict-title  { font-weight: 700; font-size: 1rem; margin-bottom: .35rem; }
+.verdict-sub    { font-size: .75rem; color: var(--text-muted); }
+
+.criteria-tags  { display: flex; gap: .4rem; flex-wrap: wrap; }
+.tag            { display: inline-flex; align-items: center; gap: .2rem; padding: .2rem .6rem; border-radius: var(--r-pill); font-size: .72rem; font-weight: 600; }
+.tag-ok         { background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-border); }
+.tag-fail       { background: var(--red-light);    color: var(--red);    border: 1px solid var(--red-border); }
+
+/* ── Admin table ─────────────────────────────────────── */
+.admin-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+.admin-table th {
+    background: var(--surface-alt);
+    text-align: left;
+    padding: .45rem .75rem;
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+.admin-table td { padding: .5rem .75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.admin-table tr:last-child td { border-bottom: none; }
+.fw-600   { font-weight: 600; }
+.td-muted { color: var(--text-muted); }
+.td-xs    { font-size: .75rem; }
+.td-right { text-align: right; }
+.user-line { font-size: .72rem; color: var(--text-muted); margin-top: .1rem; }
+.vote-result-chip {
+    display: inline-flex; align-items: center;
+    padding: .15rem .55rem; border-radius: var(--r-pill);
+    font-size: .72rem; font-weight: 700;
+}
+.vote-result-chip--yes     { background: var(--accent-light); color: var(--accent); }
+.vote-result-chip--no      { background: var(--red-light);    color: var(--red); }
+.vote-result-chip--abstain { background: var(--surface-alt);  color: var(--text-muted); }
+.vote-tag-manual { font-size: .68rem; color: var(--text-muted); background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--r-pill); padding: .1rem .45rem; }
+.overflow-x-auto { overflow-x: auto; }
+
+/* ── Vote confirm overlay ────────────────────────────── */
+.vote-confirm-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.vote-confirm-dialog {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 1.75rem;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: var(--shadow-md);
+}
+.vote-confirm-dialog h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: .5rem; }
+.vote-confirm-dialog p  { font-size: .83rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.55; }
+.vote-confirm-actions { display: flex; gap: .6rem; justify-content: flex-end; }
+
+/* ── Proxy section ───────────────────────────────────── */
+.proxy-toggle-wrap { margin-top: .75rem; }
+.proxy-info { margin-top: .75rem; font-size: .78rem; color: var(--text-muted); }
+</style>
+{% endblock %}
 
 {% block content %}
 
@@ -45,18 +256,15 @@
     {% endif %}
 </div>
 
-{# ═══════════════════════════════════════════════════════════════════════════
-   BESCHREIBUNG — IMMER SICHTBAR, ÜBER DEN TABS
-   Ein Abstimmender soll den Kontext kennen BEVOR er die Stimme abgibt.
-══════════════════════════════════════════════════════════════════════════════ #}
+{# ══ BESCHREIBUNG — immer sichtbar, über den Tabs ═══════════════════════════ #}
 <div class="card mb-md">
     <div class="section-label">Beschreibung</div>
     <div class="description-block">{{ proposal.description }}</div>
 </div>
 
-{# Kurzinfo-Kacheln — ebenfalls immer sichtbar #}
+{# Kurzinfo-Kacheln #}
 {% if proposal.area or proposal.proposal_type or proposal.cost_estimate or proposal.deadline or proposal.created_by %}
-<div class="stats-grid mb-md">
+<div class="stats-grid">
     {% if proposal.area %}
     <div class="stat-box">
         <div class="stat-label">Bereich</div>
@@ -81,7 +289,7 @@
     </div>
     {% if proposal.deadline %}
     <div class="stat-box">
-        <div class="stat-label">Abstimmungsfrist</div>
+        <div class="stat-label">Frist</div>
         <div class="stat-value">{{ proposal.deadline|date:"d.m.Y, H:i" }}</div>
     </div>
     {% endif %}
@@ -118,27 +326,20 @@
     </div>
 </div>
 
-{# ══ Umlaufbeschluss-Banner — NUR bei Einstimmigkeit relevant ══════════════ #}
+{# Umlaufbeschluss-Banner — NUR bei Einstimmigkeit #}
 {% if proposal.majority_type == 'unanimous' and proposal.status != 'draft' %}
 <div class="info-banner {% if all_units_voted %}info-banner-success{% else %}info-banner-warning{% endif %} mb-2">
     {% if all_units_voted %}
         ✅ Alle {{ total_units_count }} Eigentümer haben abgestimmt. Einstimmigkeit möglich.
     {% else %}
         ⚠ <strong>Einstimmigkeit:</strong>
-        Noch <strong>{{ missing_votes_count }}</strong> von {{ total_units_count }} Eigentümer{% if missing_votes_count != 1 %}n{% endif %} ausstehend.
-        <span class="tooltip-wrap">
-            Bei Einstimmigkeit müssen alle Eigentümer Ja stimmen.
-            <span class="tooltip-icon">?</span>
-            <span class="tooltip-text">ZGB Art. 648 — fehlende Stimme gilt als fehlende Zustimmung.</span>
-        </span>
+        Noch <strong>{{ missing_votes_count }}</strong> von {{ total_units_count }}
+        Eigentümer{% if missing_votes_count != 1 %}n{% endif %} ausstehend.
     {% endif %}
 </div>
 {% endif %}
 
-{# ════════════════════════════════════════════════════════════════════════════
-   TABS: Abstimmen | Ergebnis | Beilagen | Verwaltung
-   (Details-Tab entfernt — Inhalt jetzt immer sichtbar oben)
-══════════════════════════════════════════════════════════════════════════════ #}
+{# ══ TABS ═══════════════════════════════════════════════════════════════════ #}
 <div class="tabs" id="detail-tabs">
     {% if units_with_votes and proposal.status == 'open' %}
     <button class="tab-btn active" data-tab="tab-abstimmen">
@@ -148,14 +349,12 @@
     {% endif %}
 
     {% if show_results %}
-    <button class="tab-btn {% if not units_with_votes or proposal.status != 'open' %}active{% endif %}" data-tab="tab-ergebnis">
+    <button class="tab-btn {% if not units_with_votes %}active{% elif proposal.status != 'open' %}active{% endif %}" data-tab="tab-ergebnis">
         📊 Ergebnis
     </button>
     {% endif %}
 
-    <button class="tab-btn
-        {% if not units_with_votes and not show_results %}active{% endif %}"
-        data-tab="tab-dokumente">
+    <button class="tab-btn {% if not units_with_votes and not show_results %}active{% endif %}" data-tab="tab-dokumente">
         📎 Beilagen
         {% if documents.count > 0 %}<span class="tab-badge">{{ documents.count }}</span>{% endif %}
     </button>
@@ -192,42 +391,60 @@
                 </div>
             </div>
 
-            {# Bereits abgestimmt #}
             {% if item.vote %}
             <div class="vote-status-pill vote-status-pill--{{ item.vote.choice }}">
-                {% if item.vote.choice == 'yes' %}✓ Ja{% elif item.vote.choice == 'no' %}✗ Nein{% else %}— Enthaltung{% endif %}
+                {% if item.vote.choice == 'yes' %}✓ Ja
+                {% elif item.vote.choice == 'no' %}✗ Nein
+                {% else %}— Enthaltung{% endif %}
             </div>
             {% endif %}
         </div>
 
-        {% if not item.vote %}
-        {# Voting-Buttons #}
-        <div class="vote-buttons">
-            <button type="button" class="vote-btn vote-btn--yes"
-                    onclick="openVoteConfirm({{ proposal.pk }}, {{ item.unit.id }}, 'yes', 'Ja', '{{ item.unit.unit_number }}')">
-                ✓ Ja
-            </button>
-            <button type="button" class="vote-btn vote-btn--no"
-                    onclick="openVoteConfirm({{ proposal.pk }}, {{ item.unit.id }}, 'no', 'Nein', '{{ item.unit.unit_number }}')">
-                ✗ Nein
-            </button>
-            <button type="button" class="vote-btn vote-btn--abstain"
-                    onclick="openVoteConfirm({{ proposal.pk }}, {{ item.unit.id }}, 'abstain', 'Enthaltung', '{{ item.unit.unit_number }}')">
-                — Enthaltung
-            </button>
-        </div>
+        {% if item.vote %}
+            {# Bereits abgestimmt — Adminreset #}
+            {% if is_community_admin %}
+            <form method="post" action="{% url 'voting:vote_reset' proposal.pk item.vote.pk %}"
+                  onsubmit="return confirm('Stimme zurücksetzen?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline btn-sm">↺ Zurücksetzen</button>
+            </form>
+            {% endif %}
 
-        {# Vollmacht erteilen (nur eigene Einheiten, nicht bei Proxy) #}
-        {% if not item.is_proxy %}
-            {% with granted=my_granted_proxies|default:{} %}
-            {% if item.unit.id|stringformat:"s" in granted|default:{} or item.unit.id in my_granted_proxies %}
-            <div class="proxy-info mt-sm">
-                <span class="text-sm text-muted">Vollmacht erteilt an:
-                    {{ my_granted_proxies|default:{}}}
-                </span>
+        {% elif item.granted_proxy %}
+            {# Vollmacht erteilt #}
+            <div class="card-inset">
+                <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:.5rem;">
+                    Vollmacht erteilt an
+                    <strong>{{ item.granted_proxy.delegate.get_full_name|default:item.granted_proxy.delegate.username }}</strong>.
+                    {% if item.granted_proxy.note %}<br>Bemerkung: {{ item.granted_proxy.note }}{% endif %}
+                </div>
+                <form method="post" action="{% url 'voting:proxy_revoke' proposal.pk item.granted_proxy.pk %}"
+                      onsubmit="return confirm('Vollmacht widerrufen?')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline btn-sm">Vollmacht widerrufen</button>
+                </form>
             </div>
-            {% else %}
-            <div class="proxy-toggle-wrap mt-sm">
+
+        {% else %}
+            {# Noch nicht abgestimmt — Voting-Buttons #}
+            <div class="vote-buttons">
+                <button type="button" class="vote-btn vote-btn--yes"
+                        onclick="openVoteConfirm({{ proposal.pk }}, {{ item.unit.id }}, 'yes', 'Ja', '{{ item.unit.unit_number }}')">
+                    ✓ Ja
+                </button>
+                <button type="button" class="vote-btn vote-btn--no"
+                        onclick="openVoteConfirm({{ proposal.pk }}, {{ item.unit.id }}, 'no', 'Nein', '{{ item.unit.unit_number }}')">
+                    ✗ Nein
+                </button>
+                <button type="button" class="vote-btn vote-btn--abstain"
+                        onclick="openVoteConfirm({{ proposal.pk }}, {{ item.unit.id }}, 'abstain', 'Enthaltung', '{{ item.unit.unit_number }}')">
+                    — Enthaltung
+                </button>
+            </div>
+
+            {# Vollmacht erteilen (nur eigene Einheiten) #}
+            {% if not item.is_proxy %}
+            <div class="proxy-toggle-wrap">
                 <button type="button" class="btn btn-outline btn-sm"
                         onclick="toggleProxy('proxy-form-{{ item.unit.id }}')">
                     Vollmacht erteilen
@@ -251,19 +468,18 @@
                 </div>
             </div>
             {% endif %}
-            {% endwith %}
         {% endif %}
-        {% endif %}{# not item.vote #}
 
     </div>
     {% endfor %}
 
 {% elif proposal.status == 'open' and proposal.deadline_passed %}
     <div class="card-inset">
-        <div class="text-red fw-600">⏰ Abstimmungsfrist abgelaufen</div>
+        <div style="color:var(--red);font-weight:600;">⏰ Abstimmungsfrist abgelaufen</div>
         <div class="text-sm text-muted mt-xs">Die Abstimmung wurde automatisch geschlossen.</div>
     </div>
 {% endif %}
+
 {% else %}
     <div class="empty-state">
         <span class="empty-state-icon">🗳</span>
@@ -275,8 +491,7 @@
 </div>{# /tab-abstimmen #}
 
 {# ─── TAB: Ergebnis ─────────────────────────────────────────────────────── #}
-<div class="tab-panel {% if show_results and (not units_with_votes or proposal.status != 'open') %}active{% endif %}"
-     id="tab-ergebnis">
+<div class="tab-panel {% if show_results and not units_with_votes %}active{% elif show_results and proposal.status != 'open' %}active{% endif %}" id="tab-ergebnis">
 
 {% if results %}
 <div class="card">
@@ -323,8 +538,7 @@
         {% if results.quorum_met %}
             ✅ Quorum erfüllt — Beteiligung {{ results.voted_quota }}&#8240; ≥ {{ proposal.community.quorum }}&#8240;
         {% else %}
-            ❌ Quorum nicht erfüllt — Beteiligung {{ results.voted_quota }}&#8240; &lt; {{ proposal.community.quorum }}&#8240;
-            — Die Abstimmung ist ungültig.
+            ❌ Quorum nicht erfüllt — Beteiligung {{ results.voted_quota }}&#8240; &lt; {{ proposal.community.quorum }}&#8240; — Die Abstimmung ist ungültig.
         {% endif %}
     </div>
     {% endif %}
@@ -358,7 +572,7 @@
         </div>
     </div>
 
-    {# ── PDF-Download direkt beim Ergebnis — für alle Benutzer sichtbar ─── #}
+    {# PDF-Download direkt beim Ergebnis — für alle sichtbar #}
     {% if proposal.status != 'draft' %}
     <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border);display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;">
         <a href="{% url 'voting:proposal_pdf' proposal.pk %}" target="_blank" class="btn btn-outline">
@@ -369,11 +583,12 @@
             ↓ CSV-Export
         </a>
         {% endif %}
-        <span class="form-hint" style="margin:0;">Drucken Sie das Protokoll über Strg+P / Cmd+P und wählen Sie «Als PDF speichern».</span>
+        <span class="form-hint" style="margin:0;">Strg+P / Cmd+P → «Als PDF speichern»</span>
     </div>
     {% endif %}
 </div>
 
+{# Verwalterübersicht: alle Stimmen #}
 {% if is_community_admin and admin_units_overview %}
 <div class="card mt-2">
     <div class="section-label">Alle Stimmen (Verwalterübersicht)</div>
@@ -383,7 +598,12 @@
                 <tr>
                     <th>Einheit</th>
                     <th>Eigentümer</th>
-                    <th><span class="tooltip-wrap">Wertq. &#8240;<span class="tooltip-icon">?</span><span class="tooltip-text">Wertquote in Promille</span></span></th>
+                    <th>
+                        <span class="tooltip-wrap">Wertq. &#8240;
+                            <span class="tooltip-icon">?</span>
+                            <span class="tooltip-text">Wertquote in Promille</span>
+                        </span>
+                    </th>
                     <th>Stimme</th>
                     <th>Zeitpunkt</th>
                     {% if proposal.status == 'open' %}<th></th>{% endif %}
@@ -398,18 +618,20 @@
                         {{ item.unit.owner.get_full_name|default:item.unit.owner.username }}
                         <div class="user-line">{{ item.unit.owner.username }}</div>
                     {% else %}
-                        <span class="text-muted">unbesetzt</span>
+                        <span class="td-muted">unbesetzt</span>
                     {% endif %}
                 </td>
                 <td class="td-muted">{{ item.unit.quota }}</td>
                 <td>
                     {% if item.vote %}
                         <span class="vote-result-chip vote-result-chip--{{ item.vote.choice }}">
-                            {% if item.vote.choice == 'yes' %}✓ Ja{% elif item.vote.choice == 'no' %}✗ Nein{% else %}— Enthaltung{% endif %}
+                            {% if item.vote.choice == 'yes' %}✓ Ja
+                            {% elif item.vote.choice == 'no' %}✗ Nein
+                            {% else %}— Enthaltung{% endif %}
                         </span>
                         {% if item.vote.is_manual %}<span class="vote-tag-manual ml-sm">Schriftlich</span>{% endif %}
                     {% else %}
-                        <span class="text-muted text-xs">ausstehend</span>
+                        <span class="td-muted td-xs">ausstehend</span>
                     {% endif %}
                 </td>
                 <td class="td-muted td-xs">
@@ -418,8 +640,7 @@
                 {% if proposal.status == 'open' %}
                 <td class="td-right">
                     {% if item.vote %}
-                    <form method="post"
-                          action="{% url 'voting:vote_reset' proposal.pk item.vote.pk %}"
+                    <form method="post" action="{% url 'voting:vote_reset' proposal.pk item.vote.pk %}"
                           onsubmit="return confirm('Stimme für Einheit {{ item.unit.unit_number }} zurücksetzen?')">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-outline btn-sm">↺</button>
@@ -436,7 +657,7 @@
 {% endif %}
 
 {% elif proposal.status == 'open' and not show_results %}
-<div class="card card-inset text-sm text-muted">
+<div class="card-inset" style="margin:.5rem 0;">
     🔒 Das Ergebnis wird nach Abschluss der Abstimmung veröffentlicht.
 </div>
 {% endif %}
@@ -453,18 +674,17 @@
         {% for doc in documents %}
         <div class="flex-between items-center card-inset">
             <div>
-                <a href="{{ doc.file.url }}" target="_blank" class="fw-600 text-base text-accent">
+                <a href="{{ doc.file.url }}" target="_blank" style="font-weight:600;color:var(--accent);">
                     📎 {{ doc.name }}
                 </a>
-                <div class="text-xs text-muted mt-xs">
-                    Hochgeladen von {{ doc.uploaded_by.get_full_name|default:doc.uploaded_by.username }}
-                    am {{ doc.uploaded_at|date:"d.m.Y" }}
+                <div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem;">
+                    {{ doc.uploaded_by.get_full_name|default:doc.uploaded_by.username }}
+                    · {{ doc.uploaded_at|date:"d.m.Y" }}
                 </div>
             </div>
             {% if is_creator or is_community_admin %}
-            <form method="post"
-                  action="{% url 'voting:document_delete' proposal.pk doc.pk %}"
-                  onsubmit="return confirm('Dokument «{{ doc.name }}» wirklich löschen?')">
+            <form method="post" action="{% url 'voting:document_delete' proposal.pk doc.pk %}"
+                  onsubmit="return confirm('Dokument löschen?')">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline btn-sm">✕</button>
             </form>
@@ -473,7 +693,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="text-base text-muted mb-2">Noch keine Beilagen vorhanden.</div>
+    <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem;">Noch keine Beilagen vorhanden.</p>
     {% endif %}
 
     {% if is_creator or is_community_admin %}
@@ -482,12 +702,12 @@
         {% csrf_token %}
         <div class="grid-2 mb-md">
             <div class="form-group form-group--flush">
-                <label class="text-sm">Bezeichnung</label>
-                <input type="text" name="name" class="form-input text-sm" placeholder="z.B. Offerte Sanitär AG">
+                <label style="font-size:.8rem;">Bezeichnung</label>
+                <input type="text" name="name" class="form-input" placeholder="z.B. Offerte Sanitär AG">
             </div>
             <div class="form-group form-group--flush">
-                <label class="text-sm">Datei</label>
-                <input type="file" name="file" class="form-input text-sm" accept=".pdf,.docx,.xlsx,.jpg,.png">
+                <label style="font-size:.8rem;">Datei</label>
+                <input type="file" name="file" class="form-input" accept=".pdf,.docx,.xlsx,.jpg,.png">
             </div>
         </div>
         <button type="submit" class="btn btn-outline btn-sm">Beilage hochladen</button>
@@ -530,39 +750,32 @@
         </div>
     </div>
 
-    <!-- Bearbeiten / Löschen -->
     {% if proposal.status == 'draft' %}
     <div class="card">
         <div class="section-label">Bearbeiten</div>
         <div class="flex gap-sm flex-wrap">
-            <a href="{% url 'voting:proposal_edit' proposal.pk %}" class="btn btn-outline">✎ Antrag bearbeiten</a>
+            <a href="{% url 'voting:proposal_edit' proposal.pk %}" class="btn btn-outline">✎ Bearbeiten</a>
             <a href="{% url 'voting:proposal_delete' proposal.pk %}" class="btn btn-danger"
-               onclick="return confirm('Antrag «{{ proposal.title }}» wirklich löschen?')">
-                Löschen
-            </a>
+               onclick="return confirm('Antrag wirklich löschen?')">Löschen</a>
         </div>
     </div>
     {% endif %}
 
-    <!-- Export -->
     {% if proposal.status != 'draft' %}
     <div class="card">
-        <div class="section-label">Export & Protokoll</div>
+        <div class="section-label">Export &amp; Protokoll</div>
         <div class="flex gap-sm flex-wrap">
             <a href="{% url 'voting:proposal_pdf' proposal.pk %}" target="_blank" class="btn btn-outline">
-                🖨 Protokoll drucken / als PDF speichern
+                🖨 Protokoll drucken / PDF
             </a>
             <a href="{% url 'voting:export_results_csv' proposal.pk %}" class="btn btn-outline">
                 ↓ CSV-Export
             </a>
         </div>
-        <p class="form-hint mt-sm">
-            Das Protokoll öffnet sich in einem neuen Tab — Strg+P / Cmd+P → «Als PDF speichern».
-        </p>
+        <p class="form-hint mt-sm">Strg+P / Cmd+P → «Als PDF speichern».</p>
     </div>
     {% endif %}
 
-    <!-- Schriftliche Stimme erfassen -->
     {% if proposal.status == 'open' %}
     <div class="card">
         <div class="section-label">Schriftliche / telefonische Stimme erfassen</div>
@@ -583,7 +796,7 @@
                 <div class="form-group form-group--flush">
                     <label>{{ manual_vote_form.manual_source.label }}</label>
                     {{ manual_vote_form.manual_source }}
-                    <span class="form-hint">z.B. «Briefpost 12.3.2026», «E-Mail», «Telefonisch bestätigt»</span>
+                    <span class="form-hint">z.B. «Briefpost 12.3.2026», «E-Mail»</span>
                 </div>
                 <div class="form-group form-group--flush">
                     <label>{{ manual_vote_form.comment.label }}</label>
@@ -598,11 +811,11 @@
 </div>
 {% endif %}{# /tab-verwaltung #}
 
-{# ── Vote Confirmation Dialog ──────────────────────────────────────────────── #}
-<div class="vote-confirm-overlay" id="vote-confirm-overlay" onclick="closeVoteConfirm(event)">
+{# ── Vote Confirmation Dialog ────────────────────────────────────────────── #}
+<div class="vote-confirm-overlay" id="vote-confirm-overlay">
     <div class="vote-confirm-dialog">
         <h3 id="confirm-title">Stimme bestätigen</h3>
-        <p id="confirm-subtitle">Bitte bestätigen Sie Ihre Stimmabgabe.</p>
+        <p id="confirm-subtitle">Ihre Stimme wird nach der Bestätigung gespeichert und kann nur vom Verwalter zurückgesetzt werden.</p>
         <form method="post" action="" id="vote-confirm-form">
             {% csrf_token %}
             <input type="hidden" name="action" value="vote">
@@ -621,7 +834,6 @@
 (function () {
     var tabs   = document.querySelectorAll('.tab-btn');
     var panels = document.querySelectorAll('.tab-panel');
-
     tabs.forEach(function (btn) {
         btn.addEventListener('click', function () {
             tabs.forEach(function (t) { t.classList.remove('active'); });
@@ -632,11 +844,9 @@
             history.replaceState(null, '', '#' + btn.dataset.tab);
         });
     });
-
-    /* Restore tab from URL hash */
     if (window.location.hash) {
-        var btn = document.querySelector('[data-tab="' + window.location.hash.slice(1) + '"]');
-        if (btn) btn.click();
+        var hashBtn = document.querySelector('[data-tab="' + window.location.hash.slice(1) + '"]');
+        if (hashBtn) hashBtn.click();
     }
 })();
 
@@ -650,31 +860,25 @@ function toggleProxy(id) {
 function openVoteConfirm(proposalPk, unitId, choice, choiceLabel, unitNumber) {
     document.getElementById('confirm-unit-id').value = unitId;
     document.getElementById('confirm-choice').value  = choice;
-    document.getElementById('confirm-title').textContent =
-        'Einheit ' + unitNumber + ': ' + choiceLabel;
-    document.getElementById('confirm-subtitle').textContent =
-        'Ihre Stimme wird nach der Bestätigung gespeichert und kann nur vom Verwalter zurückgesetzt werden.';
+    document.getElementById('confirm-title').textContent = 'Einheit ' + unitNumber + ': ' + choiceLabel;
 
     var btn = document.getElementById('confirm-submit-btn');
-    btn.className = 'btn btn-sm ' +
-        (choice === 'yes' ? 'btn-primary' : choice === 'no' ? 'btn-danger' : 'btn-outline');
+    btn.className = choice === 'yes' ? 'btn btn-primary'
+                  : choice === 'no'  ? 'btn btn-danger'
+                  : 'btn btn-outline';
     btn.textContent = choiceLabel + ' bestätigen';
 
-    var form = document.getElementById('vote-confirm-form');
-    form.action = '/antrag/' + proposalPk + '/';
-
+    document.getElementById('vote-confirm-form').action = '/antrag/' + proposalPk + '/';
     document.getElementById('vote-confirm-overlay').style.display = 'flex';
-}
-
-function closeVoteConfirm(e) {
-    if (e.target === document.getElementById('vote-confirm-overlay')) {
-        closeVoteConfirmDirect();
-    }
 }
 
 function closeVoteConfirmDirect() {
     document.getElementById('vote-confirm-overlay').style.display = 'none';
 }
+
+document.getElementById('vote-confirm-overlay').addEventListener('click', function (e) {
+    if (e.target === this) closeVoteConfirmDirect();
+});
 
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeVoteConfirmDirect();
