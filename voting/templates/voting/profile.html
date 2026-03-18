@@ -1,0 +1,165 @@
+{% extends "voting/base.html" %}
+{% block title %}Mein Profil – STWEG Portal{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1>Mein Profil</h1>
+    <p>Persönliche Angaben und Sicherheit</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;max-width:900px;">
+
+    {# ── PERSÖNLICHE ANGABEN ──────────────────────────────────────────── #}
+    <div class="card">
+        <div class="section-label mb-md">Persönliche Angaben</div>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_profile">
+
+            <div class="form-group">
+                <label for="first_name">Vorname</label>
+                <input type="text" name="first_name" id="first_name"
+                       class="form-input"
+                       value="{{ user.first_name }}"
+                       placeholder="Vorname">
+            </div>
+
+            <div class="form-group">
+                <label for="last_name">Nachname</label>
+                <input type="text" name="last_name" id="last_name"
+                       class="form-input"
+                       value="{{ user.last_name }}"
+                       placeholder="Nachname">
+            </div>
+
+            <div class="form-group">
+                <label for="email">E-Mail-Adresse</label>
+                <input type="email" name="email" id="email"
+                       class="form-input"
+                       value="{{ user.email }}"
+                       placeholder="ihre@email.ch">
+                <div class="form-hint">Wird für Benachrichtigungen verwendet.</div>
+            </div>
+
+            <div class="form-group">
+                <label>Benutzername</label>
+                <input type="text" class="form-input"
+                       value="{{ user.username }}" disabled
+                       style="opacity:.6;cursor:not-allowed;">
+                <div class="form-hint">Benutzername kann nicht geändert werden.</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Angaben speichern</button>
+        </form>
+    </div>
+
+    {# ── PASSWORT ÄNDERN ──────────────────────────────────────────────── #}
+    <div class="card">
+        <div class="section-label mb-md">Passwort ändern</div>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="change_password">
+
+            {% if password_form.errors %}
+            <div class="form-errors-banner mb-md" style="background:var(--red-light);border:1px solid var(--red-border);border-radius:var(--r-md);padding:.75rem 1rem;font-size:.85rem;color:var(--red);">
+                {% for field in password_form %}
+                    {% for error in field.errors %}
+                        <div>{{ error }}</div>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in password_form.non_field_errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="{{ password_form.old_password.id_for_label }}">
+                    {{ password_form.old_password.label }}
+                </label>
+                {{ password_form.old_password }}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ password_form.new_password1.id_for_label }}">
+                    {{ password_form.new_password1.label }}
+                </label>
+                {{ password_form.new_password1 }}
+                <div class="form-hint">Mindestens 8 Zeichen, nicht zu einfach.</div>
+            </div>
+
+            <div class="form-group">
+                <label for="{{ password_form.new_password2.id_for_label }}">
+                    {{ password_form.new_password2.label }}
+                </label>
+                {{ password_form.new_password2 }}
+            </div>
+
+            <button type="submit" class="btn btn-outline">Passwort ändern</button>
+        </form>
+    </div>
+
+</div>
+
+{# ── MEINE GEMEINSCHAFTEN ─────────────────────────────────────────────── #}
+{% if communities %}
+<div class="card" style="margin-top:1.5rem;max-width:900px;">
+    <div class="section-label mb-md">Meine Gemeinschaften</div>
+    {% for community in communities %}
+    <div class="card card--alt card--compact" style="margin-bottom:.75rem;">
+        <div class="flex-between items-center">
+            <div>
+                <div style="font-weight:600;font-size:.95rem;">{{ community.name }}</div>
+                {% if community.address %}
+                <div class="card-meta mt-xs">{{ community.address }}</div>
+                {% endif %}
+                {# Einheiten des Users in dieser Gemeinschaft #}
+                {% with my_units=community.units.all %}
+                {% if my_units %}
+                <div class="flex flex-wrap gap-sm mt-xs">
+                    {% for unit in my_units %}
+                    {% if unit.owner == user %}
+                    <span class="unit-chip unit-chip--sm">
+                        <span class="unit-chip__number">{{ unit.unit_number }}</span>
+                        {% if unit.description %}<span class="unit-chip__desc">{{ unit.description }}</span>{% endif %}
+                        <span class="unit-chip__quota">{{ unit.quota }}&#8240;</span>
+                    </span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+            </div>
+            <div class="flex gap-1">
+                <a href="{% url 'voting:proposal_list' community.id %}"
+                   class="btn btn-outline btn-sm">Abstimmungen</a>
+                <a href="{% url 'maintenance:ticket_list' community.id %}"
+                   class="btn btn-outline btn-sm">🔧 Mängel</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# ── KONTO-INFORMATIONEN ──────────────────────────────────────────────── #}
+<div class="card" style="margin-top:1.5rem;max-width:900px;">
+    <div class="section-label mb-md">Konto-Informationen</div>
+    <div class="flex gap-lg flex-wrap" style="font-size:.85rem;color:var(--text-secondary);">
+        <div>
+            <span class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;">Mitglied seit</span>
+            <div style="margin-top:.2rem;">{{ user.date_joined|date:"d.m.Y" }}</div>
+        </div>
+        <div>
+            <span class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;">Letzter Login</span>
+            <div style="margin-top:.2rem;">{{ user.last_login|date:"d.m.Y, H:i"|default:"—" }}</div>
+        </div>
+        <div>
+            <span class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;">Gemeinschaften</span>
+            <div style="margin-top:.2rem;">{{ communities|length }}</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

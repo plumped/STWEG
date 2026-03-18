@@ -15,12 +15,14 @@
         <p>{{ community.address }}</p>
     </div>
     <div class="flex gap-1 flex-wrap">
+        {# Verwaltungs-Buttons: nur für Admins #}
         {% if is_admin %}
         <a href="{% url 'voting:unit_manage' community.id %}" class="btn btn-outline btn-sm">Einheiten</a>
         <a href="{% url 'voting:community_members' community.id %}" class="btn btn-outline btn-sm">Mitglieder</a>
         <a href="{% url 'voting:invite_manage' community.id %}" class="btn btn-outline btn-sm">Einladungen</a>
-        <a href="{% url 'maintenance:ticket_list' community.id %}" class="btn btn-outline btn-sm">🔧 Mängel</a>
         {% endif %}
+        {# Mängel: für ALLE Community-Mitglieder sichtbar #}
+        <a href="{% url 'maintenance:ticket_list' community.id %}" class="btn btn-outline btn-sm">🔧 Mängel</a>
         <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary">+ Antrag einreichen</a>
     </div>
 </div>
@@ -48,15 +50,18 @@
            class="filter-pill {% if not status_filter %}active{% endif %}">Alle</a>
         <a href="?status=open{% if search_query %}&q={{ search_query }}{% endif %}"
            class="filter-pill {% if status_filter == 'open' %}active{% endif %}">🟢 Offen</a>
+        {% if is_admin %}
         <a href="?status=draft{% if search_query %}&q={{ search_query }}{% endif %}"
            class="filter-pill {% if status_filter == 'draft' %}active{% endif %}">📝 Entwürfe</a>
+        {% endif %}
         <a href="?status=closed{% if search_query %}&q={{ search_query }}{% endif %}"
            class="filter-pill {% if status_filter == 'closed' %}active{% endif %}">✓ Abgeschlossen</a>
 
         <div class="search-box">
             <input type="text" name="q" value="{{ search_query }}"
                    class="search-input"
-                   placeholder="Antrag suchen …">
+                   placeholder="Antrag suchen …"
+                   oninput="document.getElementById('filter-form').submit()">
             {% if status_filter %}
             <input type="hidden" name="status" value="{{ status_filter }}">
             {% endif %}
@@ -90,17 +95,26 @@
                         {% elif proposal.pk in voted_ids %}
                             <span class="badge badge-pending">Teilweise abgestimmt</span>
                         {% elif my_units %}
-                            <span class="badge badge-pending">! Ausstehend</span>
+                            <span class="badge badge-pending">! Noch nicht abgestimmt</span>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if proposal.deadline %}
+                        {% if proposal.deadline_passed %}
+                            <span class="badge badge-urgent">Frist abgelaufen</span>
+                        {% else %}
+                            <span class="badge badge-closed">bis {{ proposal.deadline|date:"d.m.Y" }}</span>
                         {% endif %}
                     {% endif %}
                 </div>
 
                 <div class="card-title">{{ proposal.title }}</div>
-
                 <div class="card-meta mt-xs">
-                    {% if proposal.deadline %}Frist: {{ proposal.deadline|date:"d.m.Y" }} · {% endif %}
-                    {% if proposal.created_by %}{{ proposal.created_by.get_full_name|default:proposal.created_by.username }} · {% endif %}
                     {{ proposal.created_at|date:"d.m.Y" }}
+                    {% if proposal.created_by %} · {{ proposal.created_by.get_full_name|default:proposal.created_by.username }}{% endif %}
+                    {% if is_admin and proposal.status == 'open' %}
+                        · {{ proposal.votes.count }}/{{ community.units.count }} Stimmen
+                    {% endif %}
                 </div>
             </div>
             <span class="chevron">›</span>
@@ -111,70 +125,39 @@
 
 {# Pagination #}
 {% if proposals.has_other_pages %}
-<div class="pagination">
+<div class="pagination" style="margin-top:1.5rem;display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;">
     {% if proposals.has_previous %}
-        <a href="?page={{ proposals.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">← Zurück</a>
-    {% else %}
-        <span class="disabled">← Zurück</span>
+    <a href="?page={{ proposals.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+       class="btn btn-outline btn-sm">← Zurück</a>
     {% endif %}
-    {% for num in proposals.paginator.page_range %}
-        {% if proposals.number == num %}
-            <span class="current">{{ num }}</span>
-        {% elif num > proposals.number|add:'-3' and num < proposals.number|add:'3' %}
-            <a href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">{{ num }}</a>
-        {% endif %}
-    {% endfor %}
+    <span style="padding:.4rem .75rem;font-size:.82rem;color:var(--text-muted);">
+        Seite {{ proposals.number }} von {{ proposals.paginator.num_pages }}
+    </span>
     {% if proposals.has_next %}
-        <a href="?page={{ proposals.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">Weiter →</a>
-    {% else %}
-        <span class="disabled">Weiter →</span>
+    <a href="?page={{ proposals.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+       class="btn btn-outline btn-sm">Weiter →</a>
     {% endif %}
 </div>
 {% endif %}
 
 {% else %}
-{# Leer-Zustand #}
-<div class="card">
-    <div class="empty-state">
-        {% if search_query %}
-            <span class="empty-state-icon">🔍</span>
-            <div class="empty-state-title">Keine Anträge gefunden</div>
-            <div class="empty-state-sub">Keine Ergebnisse für «{{ search_query }}».</div>
-            <div class="empty-state-action">
-                <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline btn-sm">Filter zurücksetzen</a>
-            </div>
-        {% elif status_filter == 'open' %}
-            <span class="empty-state-icon">🗳</span>
-            <div class="empty-state-title">Keine offenen Abstimmungen</div>
-        {% elif status_filter == 'draft' %}
-            <span class="empty-state-icon">📝</span>
-            <div class="empty-state-title">Keine Entwürfe</div>
-        {% elif status_filter == 'closed' %}
-            <span class="empty-state-icon">✓</span>
-            <div class="empty-state-title">Noch keine abgeschlossenen Abstimmungen</div>
-        {% else %}
-            <span class="empty-state-icon">📋</span>
-            <div class="empty-state-title">Noch keine Anträge</div>
-            <div class="empty-state-sub">Reichen Sie den ersten Antrag für diese Gemeinschaft ein.</div>
-            <div class="empty-state-action">
-                <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary btn-sm">+ Antrag einreichen</a>
-            </div>
+<div class="card card--padded" style="text-align:center;color:var(--text-muted);padding:3rem 1rem;">
+    {% if status_filter or search_query %}
+        Keine Anträge mit diesem Filter.
+        <div style="margin-top:.75rem;">
+            <a href="?" class="btn btn-outline btn-sm">Filter zurücksetzen</a>
+        </div>
+    {% else %}
+        Noch keine Anträge vorhanden.
+        {% if is_admin or True %}
+        <div style="margin-top:.75rem;">
+            <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-primary btn-sm">
+                + Ersten Antrag einreichen
+            </a>
+        </div>
         {% endif %}
-    </div>
+    {% endif %}
 </div>
 {% endif %}
 
-<script>
-(function () {
-    var input = document.querySelector('.search-input');
-    if (!input) return;
-    var timer;
-    input.addEventListener('input', function () {
-        clearTimeout(timer);
-        timer = setTimeout(function () {
-            document.getElementById('filter-form').submit();
-        }, 500);
-    });
-})();
-</script>
 {% endblock %}

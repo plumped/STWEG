@@ -46,8 +46,21 @@
         <h1>Mängel</h1>
         <p>{{ community.name }}</p>
     </div>
-    <a href="{% url 'maintenance:ticket_create' community.id %}" class="btn btn-primary">+ Mangel melden</a>
+    <div class="flex gap-1">
+        {% if is_admin %}
+        <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline btn-sm">Abstimmungen</a>
+        {% endif %}
+        {# Mangel melden: für ALLE Community-Mitglieder #}
+        <a href="{% url 'maintenance:ticket_create' community.id %}" class="btn btn-primary">+ Mangel melden</a>
+    </div>
 </div>
+
+{% if not is_admin %}
+<div class="card card--alt card--compact" style="margin-bottom:1.25rem;font-size:.85rem;color:var(--text-secondary);">
+    💡 Sie sehen öffentliche Mängel der Gemeinschaft sowie Ihre eigenen privaten Meldungen.
+    Neue Mängel können Sie jederzeit über «+ Mangel melden» einreichen.
+</div>
+{% endif %}
 
 <!-- Status-Kacheln -->
 <div class="count-grid">
@@ -80,6 +93,7 @@
         {% endfor %}
     </div>
 
+    {% if is_admin %}
     <div class="filter-bar">
         <a href="?{% if status_filter %}status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
            class="filter-btn {% if not scope_filter %}active{% endif %}">Alle</a>
@@ -88,7 +102,7 @@
            class="filter-btn {% if scope_filter == val %}active{% endif %}">{{ lbl }}</a>
         {% endfor %}
 
-        <!-- Suche (NEU) -->
+        <!-- Suche -->
         <div class="search-box" style="margin-left:auto;">
             <input type="text" name="q" value="{{ search_query|default:'' }}"
                    class="search-input" id="ticket-search"
@@ -97,6 +111,16 @@
             {% if scope_filter %}<input type="hidden" name="scope" value="{{ scope_filter }}">{% endif %}
         </div>
     </div>
+    {% else %}
+    <div class="filter-bar">
+        <div class="search-box" style="margin-left:auto;">
+            <input type="text" name="q" value="{{ search_query|default:'' }}"
+                   class="search-input" id="ticket-search"
+                   placeholder="Ticket suchen …">
+            {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+        </div>
+    </div>
+    {% endif %}
 </form>
 
 <!-- Ticket list -->
@@ -128,15 +152,21 @@
         {% if status_filter or scope_filter or search_query %}
             Keine Tickets mit diesem Filter.
             <div style="margin-top:.75rem;">
-                <a href="{% url 'maintenance:ticket_list' community.id %}" class="btn btn-outline btn-sm">Filter zurücksetzen</a>
+                <a href="?" class="btn btn-outline btn-sm">Filter zurücksetzen</a>
             </div>
         {% else %}
             Noch keine Mängel gemeldet.
+            <div style="margin-top:.75rem;">
+                <a href="{% url 'maintenance:ticket_create' community.id %}" class="btn btn-primary btn-sm">
+                    + Ersten Mangel melden
+                </a>
+            </div>
         {% endif %}
     </div>
 {% endif %}
 
 <script>
+/* Live-Suche mit kleinem Debounce */
 (function () {
     var input = document.getElementById('ticket-search');
     if (!input) return;
@@ -145,8 +175,9 @@
         clearTimeout(timer);
         timer = setTimeout(function () {
             document.getElementById('ticket-filter-form').submit();
-        }, 500);
+        }, 400);
     });
 })();
 </script>
+
 {% endblock %}

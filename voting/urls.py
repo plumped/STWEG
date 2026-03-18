@@ -8,6 +8,10 @@ urlpatterns = [
     path('dashboard/',
          views.dashboard, name='dashboard'),
 
+    # ── Profil ────────────────────────────────────────────────────────────
+    path('profil/',
+         views.profile, name='profile'),
+
     # ── Gemeinschaften ────────────────────────────────────────────────────
     path('community/neu/',
          views.community_create, name='community_create'),

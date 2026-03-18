@@ -32,30 +32,49 @@
                 Übersicht
             </a>
 
-            <!-- Mängel: nur für Verwalter sichtbar, Dropdown wenn mehrere Communities -->
-            {% if nav_admin_communities %}
-                {% if nav_admin_communities|length == 1 %}
-                    <a href="{% url 'maintenance:ticket_list' nav_admin_communities.0.id %}"
+            <!-- Gemeinschaften: für ALLE eingeloggten User -->
+            {% if nav_all_communities %}
+                {% if nav_all_communities|length == 1 %}
+                    <a href="{% url 'voting:proposal_list' nav_all_communities.0.id %}"
+                       class="{% if request.resolver_match.url_name == 'proposal_list' %}nav-link--active{% endif %}">
+                        Abstimmungen
+                    </a>
+                    <a href="{% url 'maintenance:ticket_list' nav_all_communities.0.id %}"
                        class="{% if 'maintenance' in request.resolver_match.app_name %}nav-link--active{% endif %}">
                         Mängel
                     </a>
                 {% else %}
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-trigger
-                            {% if 'maintenance' in request.resolver_match.app_name %}nav-link--active{% endif %}"
-                            aria-haspopup="true" aria-expanded="false" id="nav-mangel-btn">
-                            Mängel ▾
+                        <button class="nav-dropdown-trigger {% if request.resolver_match.url_name == 'proposal_list' or 'maintenance' in request.resolver_match.app_name %}nav-link--active{% endif %}"
+                                aria-haspopup="true" aria-expanded="false" id="nav-communities-btn">
+                            Gemeinschaften ▾
                         </button>
-                        <div class="nav-dropdown-menu" id="nav-mangel-menu" role="menu" aria-labelledby="nav-mangel-btn">
-                            {% for c in nav_admin_communities %}
-                            <a href="{% url 'maintenance:ticket_list' c.id %}" class="nav-dropdown-item" role="menuitem">
-                                {{ c.name }}
-                            </a>
+                        <div class="nav-dropdown-menu" id="nav-communities-menu"
+                             role="menu" aria-labelledby="nav-communities-btn">
+                            {% for community in nav_all_communities %}
+                                {% if not forloop.first %}
+                                    <div class="nav-dd-divider"></div>
+                                {% endif %}
+                                <div class="nav-dd-section">{{ community.name }}</div>
+                                <a href="{% url 'voting:proposal_list' community.id %}"
+                                   class="nav-dropdown-item" role="menuitem">
+                                    📋 Abstimmungen
+                                </a>
+                                <a href="{% url 'maintenance:ticket_list' community.id %}"
+                                   class="nav-dropdown-item" role="menuitem">
+                                    🔧 Mängel
+                                </a>
                             {% endfor %}
                         </div>
                     </div>
                 {% endif %}
             {% endif %}
+
+            <!-- Profil -->
+            <a href="{% url 'voting:profile' %}"
+               class="{% if request.resolver_match.url_name == 'profile' %}nav-link--active{% endif %}">
+                Profil
+            </a>
 
             <!-- Django Admin -->
             {% if user.is_staff %}
@@ -64,9 +83,11 @@
 
             <!-- Pending Badge -->
             {% if pending_count %}
-                <span class="nav-badge" title="{{ pending_count }} Antrag/Anträge warten auf Freigabe">
-                    {{ pending_count }}
-                </span>
+                <a href="{% url 'voting:dashboard' %}" style="text-decoration:none;">
+                    <span class="nav-badge" title="{{ pending_count }} Antrag/Anträge warten auf Freigabe">
+                        {{ pending_count }}
+                    </span>
+                </a>
             {% endif %}
 
             <!-- Logout -->
@@ -89,7 +110,8 @@
             <div class="nav-mobile-menu">
                 <div class="nav-mobile-header">
                     <span class="nav-brand-logo">STWEG</span>
-                    <button class="nav-mobile-close" id="nav-mobile-close" aria-label="Menü schliessen">✕</button>
+                    <button class="nav-mobile-close" id="nav-mobile-close"
+                            aria-label="Menü schliessen">✕</button>
                 </div>
 
                 <nav class="nav-mobile-links">
@@ -103,7 +125,7 @@
                         {% endif %}
                     </a>
 
-                    <!-- Gemeinschaften mit direkten Links -->
+                    <!-- Gemeinschaften — für ALLE User -->
                     {% for community in nav_all_communities %}
                     <div class="nav-mobile-community-group">
                         <div class="nav-mobile-community-label">{{ community.name }}</div>
@@ -111,14 +133,18 @@
                            class="nav-mobile-link nav-mobile-link--sub">
                             📋 Abstimmungen
                         </a>
-                        {% if community in nav_admin_communities %}
                         <a href="{% url 'maintenance:ticket_list' community.id %}"
                            class="nav-mobile-link nav-mobile-link--sub">
                             🔧 Mängel
                         </a>
-                        {% endif %}
                     </div>
                     {% endfor %}
+
+                    <!-- Profil -->
+                    <a href="{% url 'voting:profile' %}"
+                       class="nav-mobile-link {% if request.resolver_match.url_name == 'profile' %}nav-mobile-link--active{% endif %}">
+                        👤 Profil
+                    </a>
 
                     {% if user.is_staff %}
                     <a href="{% url 'admin:index' %}" class="nav-mobile-link">⚙ Admin</a>
@@ -146,7 +172,6 @@
 </nav>
 
 <main>
-    <!-- Flash Messages -->
     {% if messages %}
     <div class="messages" role="alert">
         {% for message in messages %}
@@ -160,9 +185,8 @@
 
 <style>
 /* ── Nav Dropdown ──────────────────────────────────── */
-.nav-dropdown {
-    position: relative;
-}
+.nav-dropdown { position: relative; }
+
 .nav-dropdown-trigger {
     background: none;
     border: none;
@@ -175,12 +199,9 @@
     transition: color var(--t-base);
 }
 .nav-dropdown-trigger:hover,
-.nav-dropdown-trigger.nav-link--active {
-    color: var(--accent);
-}
-.nav-dropdown-trigger.nav-link--active {
-    font-weight: 600;
-}
+.nav-dropdown-trigger.nav-link--active { color: var(--accent); }
+.nav-dropdown-trigger.nav-link--active { font-weight: 600; }
+
 .nav-dropdown-menu {
     display: none;
     position: absolute;
@@ -191,13 +212,12 @@
     border: 1px solid var(--border);
     border-radius: var(--r-lg);
     box-shadow: var(--shadow-md);
-    min-width: 180px;
+    min-width: 200px;
     z-index: 200;
     overflow: hidden;
 }
-.nav-dropdown-menu.open {
-    display: block;
-}
+.nav-dropdown-menu.open { display: block; }
+
 .nav-dropdown-item {
     display: block;
     padding: 0.65rem 1rem;
@@ -209,72 +229,116 @@
     border-bottom: 1px solid var(--border);
 }
 .nav-dropdown-item:last-child { border-bottom: none; }
-.nav-dropdown-item:hover {
-    background: var(--accent-light);
-    color: var(--accent);
-}
+.nav-dropdown-item:hover { background: var(--accent-light); color: var(--accent); }
 
-/* ── Mobile Community Group ────────────────────────── */
-.nav-mobile-community-group {
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.25rem;
-}
-.nav-mobile-community-label {
-    padding: 0.6rem 1.25rem 0.25rem;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+/* Gemeinschaftsname als Abschnittstitel im Dropdown */
+.nav-dd-section {
+    padding: .5rem 1rem .25rem;
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .08em;
     text-transform: uppercase;
     color: var(--text-muted);
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+    pointer-events: none;
+}
+.nav-dd-divider {
+    height: 0;
+    border-top: 2px solid var(--border-mid);
+}
+
+/* ── Mobile Community Group ──────────────────────── */
+.nav-mobile-community-group { border-bottom: 1px solid var(--border); }
+.nav-mobile-community-label {
+    padding: .55rem 1.25rem .2rem;
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--surface-alt);
 }
 .nav-mobile-link--sub {
-    padding-left: 2rem;
-    font-size: 0.85rem;
-    opacity: 0.9;
-    border-bottom: none !important;
+    padding-left: 2.25rem;
+    font-size: .87rem;
+    font-weight: 400;
+    border-bottom: none;
+    color: var(--text-secondary);
 }
+.nav-mobile-link--sub:last-child { margin-bottom: .2rem; }
 </style>
 
 <script>
-// ── Hamburger Menu ────────────────────────────────────
-const burger  = document.getElementById('nav-hamburger');
-const overlay = document.getElementById('nav-mobile-overlay');
-const closer  = document.getElementById('nav-mobile-close');
+(function () {
+    /* ── Mobile menu ──────────────────────────────────────────────────── */
+    var hamburger = document.getElementById('nav-hamburger');
+    var overlay   = document.getElementById('nav-mobile-overlay');
+    var closeBtn  = document.getElementById('nav-mobile-close');
 
-function openMenu() {
-    overlay.classList.add('open');
-    overlay.setAttribute('aria-hidden', 'false');
-    burger.classList.add('open');
-    burger.setAttribute('aria-expanded', 'true');
-    document.body.style.overflow = 'hidden';
-}
-function closeMenu() {
-    overlay.classList.remove('open');
-    overlay.setAttribute('aria-hidden', 'true');
-    burger.classList.remove('open');
-    burger.setAttribute('aria-expanded', 'false');
-    document.body.style.overflow = '';
-}
+    function openMenu() {
+        if (!overlay) return;
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        if (hamburger) hamburger.setAttribute('aria-expanded', 'true');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeMenu() {
+        if (!overlay) return;
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+        if (hamburger) hamburger.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+    }
 
-if (burger)  burger.addEventListener('click', openMenu);
-if (closer)  closer.addEventListener('click', closeMenu);
-if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) closeMenu(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
-
-// ── Dropdown (Mängel) ─────────────────────────────────
-const dropBtn  = document.getElementById('nav-mangel-btn');
-const dropMenu = document.getElementById('nav-mangel-menu');
-if (dropBtn && dropMenu) {
-    dropBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        const open = dropMenu.classList.toggle('open');
-        dropBtn.setAttribute('aria-expanded', open);
+    if (hamburger) hamburger.addEventListener('click', openMenu);
+    if (closeBtn)  closeBtn.addEventListener('click', closeMenu);
+    if (overlay)   overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeMenu();
     });
-    document.addEventListener('click', () => {
-        dropMenu.classList.remove('open');
-        dropBtn && dropBtn.setAttribute('aria-expanded', 'false');
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeMenu();
     });
-}
+
+    /* ── Desktop Dropdowns — .open-Klasse (passend zum CSS) ─────────── */
+    document.querySelectorAll('.nav-dropdown').forEach(function (dd) {
+        var trigger = dd.querySelector('.nav-dropdown-trigger');
+        var menu    = dd.querySelector('.nav-dropdown-menu');
+        if (!trigger || !menu) return;
+
+        trigger.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var willOpen = !menu.classList.contains('open');
+            /* Alle anderen Dropdowns schliessen */
+            document.querySelectorAll('.nav-dropdown-menu.open').forEach(function (m) {
+                m.classList.remove('open');
+            });
+            document.querySelectorAll('.nav-dropdown-trigger').forEach(function (t) {
+                t.setAttribute('aria-expanded', 'false');
+            });
+            if (willOpen) {
+                menu.classList.add('open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+        });
+
+        document.addEventListener('click', function () {
+            menu.classList.remove('open');
+            trigger.setAttribute('aria-expanded', 'false');
+        });
+        menu.addEventListener('click', function (e) { e.stopPropagation(); });
+
+        dd.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                menu.classList.remove('open');
+                trigger.setAttribute('aria-expanded', 'false');
+                trigger.focus();
+            }
+        });
+    });
+})();
 </script>
+
+{% block extra_scripts %}{% endblock %}
 </body>
 </html>

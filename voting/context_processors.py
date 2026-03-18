@@ -4,6 +4,7 @@ voting/context_processors.py
 Stellt globale Nav-Daten für alle Templates bereit:
   - pending_count           : Anzahl ausstehender Entwürfe (für Admin-Badge)
   - nav_admin_communities   : Gemeinschaften, bei denen der User Verwalter ist
+  - nav_owner_communities   : Gemeinschaften, bei denen der User nur Eigentümer ist
   - nav_all_communities     : Alle Gemeinschaften des Users
 
 Wird automatisch für jeden Request ausgeführt.
@@ -18,6 +19,7 @@ def stweg_nav(request):
         return {
             'pending_count':          0,
             'nav_admin_communities':  [],
+            'nav_owner_communities':  [],
             'nav_all_communities':    [],
         }
 
@@ -44,7 +46,9 @@ def stweg_nav(request):
         if c.created_by_id == request.user.pk or c.id in manager_community_ids
     }
 
-    admin_communities  = [c for c in communities if c.id in admin_community_ids]
+    admin_communities = [c for c in communities if c.id in admin_community_ids]
+    # NEU: Gemeinschaften, in denen der User nur Eigentümer (kein Verwalter) ist
+    owner_communities = [c for c in communities if c.id not in admin_community_ids]
 
     # ── 3. Ausstehende Entwürfe zählen (von anderen Usern eingereicht) ───────
     pending_count = (
@@ -56,7 +60,8 @@ def stweg_nav(request):
     )
 
     return {
-        'pending_count':         pending_count,
-        'nav_admin_communities': admin_communities,
-        'nav_all_communities':   communities,
+        'pending_count':          pending_count,
+        'nav_admin_communities':  admin_communities,
+        'nav_owner_communities':  owner_communities,   # NEU
+        'nav_all_communities':    communities,
     }

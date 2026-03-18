@@ -112,13 +112,25 @@ def dashboard(request):
         ).select_related('community').order_by('created_at')
     ) if admin_community_ids else []
 
-    # Offene Mängeltickets
+    # Offene Mängeltickets — für ALLE Community-Mitglieder (nicht nur Admins)
+    all_community_ids = {c.id for c in communities}
+    user_unit_ids = set(
+        Unit.objects.filter(owner=request.user, community__in=communities)
+        .values_list('id', flat=True)
+    )
     open_tickets = list(
         Ticket.objects.filter(
-            community__id__in=admin_community_ids,
+            community__id__in=all_community_ids,
         ).exclude(
             status__in=[Ticket.Status.DONE, Ticket.Status.ARCHIVED],
-        ).select_related('community').order_by('-created_at')
+        ).filter(
+            # Admins sehen alle Tickets ihrer Gemeinschaften
+            Q(community__id__in=admin_community_ids)
+            # Eigentümer sehen öffentliche (COMMON) Tickets
+            | Q(scope='common')
+            # Eigentümer sehen private Tickets ihrer eigenen Einheiten
+            | Q(unit__id__in=user_unit_ids)
+        ).select_related('community').order_by('-created_at')[:20]
     )
 
     # NEU: Letzte abgeschlossene Abstimmungen (für alle User sichtbar)
@@ -1312,4 +1324,64 @@ def invite_register(request, token):
     return render(request, 'voting/invite_register.html', {
         'form':   form,
         'invite': invite,
+    })
+
+
+@login_required
+def profile(request):
+    """
+    Profilseite: Eigentümer und Verwalter können hier
+    - ihren Namen und ihre E-Mail aktualisieren
+    - ihr Passwort ändern
+    - ihre Gemeinschaften und Einheiten einsehen
+    """
+    from django.contrib.auth import update_session_auth_hash
+    from django.contrib.auth.forms import PasswordChangeForm
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        # ── Profildaten aktualisieren ─────────────────────────────────────
+        if action == 'update_profile':
+            user = request.user
+            user.first_name = request.POST.get('first_name', '').strip()
+            user.last_name = request.POST.get('last_name', '').strip()
+            user.email = request.POST.get('email', '').strip()
+            user.save(update_fields=['first_name', 'last_name', 'email'])
+            messages.success(request, 'Profil erfolgreich aktualisiert.')
+            return redirect('voting:profile')
+
+        # ── Passwort ändern ───────────────────────────────────────────────
+        elif action == 'change_password':
+            form = PasswordChangeForm(request.user, request.POST)
+            if form.is_valid():
+                user = form.save()
+                update_session_auth_hash(request, user)  # Session gültig halten
+                messages.success(request, 'Passwort erfolgreich geändert.')
+                return redirect('voting:profile')
+            else:
+                # Formular mit Fehler zurückgeben
+                communities = Community.objects.filter(
+                    Q(units__owner=request.user)
+                    | Q(created_by=request.user)
+                    | Q(memberships__user=request.user)
+                ).distinct().prefetch_related('units')
+                return render(request, 'voting/profile.html', {
+                    'password_form': form,
+                    'communities': communities,
+                })
+
+    # ── GET ────────────────────────────────────────────────────────────────
+    from django.contrib.auth.forms import PasswordChangeForm
+    password_form = PasswordChangeForm(request.user)
+
+    communities = Community.objects.filter(
+        Q(units__owner=request.user)
+        | Q(created_by=request.user)
+        | Q(memberships__user=request.user)
+    ).distinct().prefetch_related('units')
+
+    return render(request, 'voting/profile.html', {
+        'password_form': password_form,
+        'communities': communities,
     })
