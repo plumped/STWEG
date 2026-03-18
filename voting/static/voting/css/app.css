@@ -72,7 +72,7 @@
     --t-base: 0.18s;
 
     /* Layout */
-    --max: 720px;
+    --max: 1100px;
     --nav-h: 60px;
 }
 
@@ -316,25 +316,28 @@ nav {
 }
 
 /* ── Responsive: show hamburger, hide desktop links on mobile ── */
-@media (max-width: 640px) {
-    .nav-links--desktop { display: none; }
-    .nav-hamburger      { display: flex; }
-    .nav-mobile-overlay { display: block; }
-    .nav-brand-label    { display: none; }
-}
+@media (max-width: 768px) {
+      .nav-links--desktop { display: none; }
+      .nav-hamburger      { display: flex; }
+      .nav-mobile-overlay { display: block; }
+      .nav-brand-label    { display: none; }
+  }
 
 /* ═══════════════════════════════════════════════════════
    MAIN LAYOUT
 ═══════════════════════════════════════════════════════ */
 main {
-    max-width: var(--max);
-    margin: 0 auto;
-    padding: calc(var(--nav-h) + 2.5rem) 1.5rem 5rem;
-}
+          max-width: var(--max);
+          margin: 0 auto;
+          padding: calc(var(--nav-h) + 2.5rem) 2.5rem 5rem;
+      }
 
-@media (max-width: 640px) {
-    main { padding: calc(var(--nav-h) + 1.5rem) 1rem 4rem; }
-}
+      @media (min-width: 1200px) {
+          main {
+              padding-left: 3rem;
+              padding-right: 3rem;
+          }
+      }
 
 /* ═══════════════════════════════════════════════════════
    TYPOGRAPHY
