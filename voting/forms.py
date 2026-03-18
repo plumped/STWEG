@@ -68,8 +68,12 @@ class ProposalForm(forms.ModelForm):
     )
 
     class Meta:
-        model  = Proposal
-        fields = ['title', 'description', 'majority_type', 'deadline']
+        model = Proposal
+        fields = [
+            'title', 'description',
+            'area', 'proposal_type', 'cost_estimate',  # ← NEU
+            'majority_type', 'deadline',
+        ]
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'form-input',
@@ -84,6 +88,16 @@ class ProposalForm(forms.ModelForm):
                     'Was sind die Kosten? Gibt es Alternativen?'
                 ),
             }),
+            # ── NEU ──────────────────────────────────────────────────────────
+            'area': forms.Select(attrs={'class': 'form-select'}),
+            'proposal_type': forms.Select(attrs={'class': 'form-select'}),
+            'cost_estimate': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'step': '100',
+                'min': '0',
+                'placeholder': '0.00',
+            }),
+            # ── bestehend ────────────────────────────────────────────────────
             'deadline': forms.DateTimeInput(
                 format='%Y-%m-%dT%H:%M',
                 attrs={
@@ -93,11 +107,17 @@ class ProposalForm(forms.ModelForm):
             ),
         }
         labels = {
-            'title':       'Titel',
+            'title': 'Titel',
             'description': 'Beschreibung',
-            'deadline':    'Abstimmungsfrist (optional)',
+            'area': 'Bereich',  # ← NEU
+            'proposal_type': 'Art des Antrags',  # ← NEU
+            'cost_estimate': 'Kostenrahmen (CHF)',  # ← NEU
+            'deadline': 'Abstimmungsfrist (optional)',
         }
         help_texts = {
+            'area': 'Welchen Gebäudebereich betrifft der Antrag?',
+            'proposal_type': 'Rechtliche Einordnung gemäss ZGB.',
+            'cost_estimate': 'Geschätzter oder offertierter Betrag in CHF (optional).',
             'deadline': (
                 'Leer lassen für unbegrenzte Frist. Nach Ablauf der Frist wird die '
                 'Abstimmung automatisch geschlossen.'

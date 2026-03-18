@@ -146,12 +146,44 @@ class Proposal(models.Model):
         QUALIFIED = 'qualified', 'Qualifiziertes Mehr (2/3 Köpfe + 2/3 Wertquoten)'
         UNANIMOUS = 'unanimous', 'Einstimmigkeit (alle Eigentümer müssen Ja stimmen)'
 
+    class Area(models.TextChoices):
+        ROOF = 'roof', 'Dach'
+        FACADE = 'facade', 'Fassade'
+        HEATING = 'heating', 'Heizung'
+        ELEVATOR = 'elevator', 'Lift'
+        STAIRCASE = 'staircase', 'Treppenhaus'
+        GARDEN = 'garden', 'Aussenanlage / Garten'
+        PARKING = 'parking', 'Parkplatz / Garage'
+        WATER = 'water', 'Wasser / Sanitär'
+        ELECTRIC = 'electric', 'Elektro'
+        OTHER = 'other', 'Sonstiges'
+
+    class ProposalType(models.TextChoices):
+        ORDINARY = 'ordinary', 'Ordentliche Verwaltung'
+        IMPORTANT = 'important', 'Wichtige Verwaltungshandlung'
+        STRUCTURAL = 'structural', 'Bauliche Änderung'
+        REGULATION = 'regulation', 'Reglement / Begründungsakt'
+        OTHER = 'other', 'Sonstiges'
+
     community     = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='proposals')
     created_by    = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name='created_proposals',
     )
     title         = models.CharField(max_length=300, verbose_name="Titel")
     description   = models.TextField(verbose_name="Beschreibung")
+    area = models.CharField(
+        max_length=20, choices=Area.choices, blank=True,
+        verbose_name='Bereich',
+    )
+    proposal_type = models.CharField(
+        max_length=20, choices=ProposalType.choices, blank=True,
+        verbose_name='Art des Antrags',
+    )
+    cost_estimate = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        verbose_name='Kostenrahmen (CHF)',
+        help_text='Geschätzter oder offertierter Betrag in CHF (optional).',
+    )
     majority_type = models.CharField(
         max_length=10, choices=MajorityType.choices, default=MajorityType.ABSOLUTE,
         verbose_name="Mehrheitsart",

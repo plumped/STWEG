@@ -16,8 +16,10 @@
 </div>
 
 <div class="card card--padded">
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
+
+        {# ── Basisdaten ──────────────────────────────────────────────────── #}
         <div class="form-group">
             <label for="id_title">Titel *</label>
             <input type="text" name="title" id="id_title" class="form-input"
@@ -25,6 +27,7 @@
                    value="{{ form.title.value|default:'' }}">
             {% if form.title.errors %}<div class="form-error">{{ form.title.errors.0 }}</div>{% endif %}
         </div>
+
         <div class="form-group">
             <label for="id_description">Beschreibung *</label>
             <textarea name="description" id="id_description" class="form-textarea" rows="6"
@@ -32,18 +35,85 @@
                       required>{{ form.description.value|default:'' }}</textarea>
             {% if form.description.errors %}<div class="form-error">{{ form.description.errors.0 }}</div>{% endif %}
         </div>
+
+        {# ── Klassifizierung ─────────────────────────────────────────────── #}
+        <div class="grid-2">
+            <div class="form-group">
+                <label for="id_area">Bereich</label>
+                <select name="area" id="id_area" class="form-select">
+                    <option value="">– Kein Bereich –</option>
+                    {% for val, label in form.fields.area.choices %}
+                        {% if val %}
+                        <option value="{{ val }}" {% if form.area.value == val %}selected{% endif %}>{{ label }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                <div class="form-hint">Welchen Gebäudebereich betrifft der Antrag?</div>
+                {% if form.area.errors %}<div class="form-error">{{ form.area.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_proposal_type">Art des Antrags</label>
+                <select name="proposal_type" id="id_proposal_type" class="form-select">
+                    <option value="">– Keine Angabe –</option>
+                    {% for val, label in form.fields.proposal_type.choices %}
+                        {% if val %}
+                        <option value="{{ val }}" {% if form.proposal_type.value == val %}selected{% endif %}>{{ label }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                <div class="form-hint">Rechtliche Einordnung gemäss ZGB.</div>
+                {% if form.proposal_type.errors %}<div class="form-error">{{ form.proposal_type.errors.0 }}</div>{% endif %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="id_cost_estimate">Kostenrahmen (CHF)</label>
+            <input type="number" name="cost_estimate" id="id_cost_estimate" class="form-input"
+                   step="100" min="0" placeholder="z.B. 45000"
+                   value="{{ form.cost_estimate.value|default:'' }}">
+            <div class="form-hint">Geschätzter oder offertierter Betrag in CHF (optional).</div>
+            {% if form.cost_estimate.errors %}<div class="form-error">{{ form.cost_estimate.errors.0 }}</div>{% endif %}
+        </div>
+
+        {# ── Dateianhang ─────────────────────────────────────────────────── #}
+        <fieldset class="fieldset-subtle">
+            <legend>Dokument anhängen <span class="text-muted">(optional)</span></legend>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label for="{{ doc_form.name.id_for_label }}">Bezeichnung</label>
+                    <input type="text" name="name" id="{{ doc_form.name.id_for_label }}"
+                           class="form-input"
+                           placeholder="z.B. Offerte Sanitär GmbH, Grundrissplan"
+                           value="{{ doc_form.name.value|default:'' }}">
+                    {% if doc_form.name.errors %}<div class="form-error">{{ doc_form.name.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="form-group">
+                    <label for="{{ doc_form.file.id_for_label }}">Datei (PDF, Bild, …)</label>
+                    <input type="file" name="file" id="{{ doc_form.file.id_for_label }}"
+                           class="form-input" accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx">
+                    {% if doc_form.file.errors %}<div class="form-error">{{ doc_form.file.errors.0 }}</div>{% endif %}
+                </div>
+            </div>
+            <div class="form-hint">Weitere Dokumente können nach dem Erstellen des Antrags hinzugefügt werden.</div>
+        </fieldset>
+
+        {# ── Admin-Felder ────────────────────────────────────────────────── #}
         {% if is_admin %}
+        <hr class="hr-subtle">
+
         <div class="form-group">
             <label for="id_majority_type">Mehrheitsart *</label>
             <select name="majority_type" id="id_majority_type" class="form-select" onchange="updateMajorityHint(this.value)">
                 <option value="simple"    {% if form.majority_type.value == 'simple' %}selected{% endif %}>Einfaches Mehr (nur Köpfe)</option>
-                <option value="absolute"  {% if form.majority_type.value == 'absolute' %}selected{% endif %}>Absolutes Mehr (Köpfe + Wertquoten) ✦ Standard</option>
+                <option value="absolute"  {% if form.majority_type.value == 'absolute' or not form.majority_type.value %}selected{% endif %}>Absolutes Mehr (Köpfe + Wertquoten) ✦ Standard</option>
                 <option value="qualified" {% if form.majority_type.value == 'qualified' %}selected{% endif %}>Qualifiziertes Mehr (2/3 Köpfe + 2/3 Wertquoten)</option>
                 <option value="unanimous" {% if form.majority_type.value == 'unanimous' %}selected{% endif %}>Einstimmigkeit (alle Eigentümer)</option>
             </select>
             <div id="majority-hint" class="majority-hint"></div>
             {% if form.majority_type.errors %}<div class="form-error">{{ form.majority_type.errors.0 }}</div>{% endif %}
         </div>
+
         <div class="form-group">
             <label for="id_deadline">Abstimmungsfrist (optional)</label>
             <input type="datetime-local" name="deadline" id="id_deadline" class="form-input"
@@ -52,6 +122,7 @@
             {% if form.deadline.errors %}<div class="form-error">{{ form.deadline.errors.0 }}</div>{% endif %}
         </div>
         {% endif %}
+
         <div class="flex gap-1 mt-2">
             <button type="submit" class="btn btn-primary">
                 {% if is_admin %}Antrag erstellen{% else %}Antrag einreichen{% endif %}
@@ -66,14 +137,15 @@
 const hints = {
     simple:    'Mehr als die Hälfte der abstimmenden Köpfe müssen Ja stimmen.',
     absolute:  'Mehr als die Hälfte der abstimmenden Köpfe UND mehr als die Hälfte der vertretenen Wertquoten müssen Ja stimmen (ZGB Art. 712m).',
-    qualified: '2/3 der Köpfe und 2/3 der Wertquoten — für bauliche Veränderungen (ZGB Art. 647d).',
-    unanimous: 'Alle Eigentümer müssen Ja stimmen. Enthaltungen zählen als fehlende Zustimmung.',
+    qualified: 'Mindestens 2/3 der Köpfe UND 2/3 der Wertquoten müssen Ja stimmen. Typisch für grössere bauliche Änderungen (ZGB Art. 647d).',
+    unanimous: 'Alle Eigentümer müssen Ja stimmen. Typisch für Änderungen des Begründungsakts / Reglements (ZGB Art. 648).',
 };
 function updateMajorityHint(val) {
     const el = document.getElementById('majority-hint');
-    if (el) el.textContent = hints[val] || '';
+    if (el) el.innerHTML = hints[val] || '';
 }
-document.addEventListener('DOMContentLoaded', function() {
+// Beim Laden initialisieren
+document.addEventListener('DOMContentLoaded', () => {
     const sel = document.getElementById('id_majority_type');
     if (sel) updateMajorityHint(sel.value);
 });

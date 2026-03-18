@@ -430,13 +430,32 @@ def proposal_create(request, community_id):
         messages.error(request, "Keine Berechtigung.")
         return redirect('voting:dashboard')
     is_admin = community.is_admin(request.user)
+
     if request.method == 'POST':
-        form = ProposalForm(request.POST)
+        # Nicht-Admins sehen das majority_type-Dropdown nicht →
+        # Standardwert 'absolute' injizieren, damit die Formularvalidierung nicht fehlschlägt.
+        post_data = request.POST.copy()
+        if not is_admin:
+            post_data['majority_type'] = 'absolute'
+        form = ProposalForm(post_data)
+
         if form.is_valid():
-            proposal            = form.save(commit=False)
-            proposal.community  = community
+            proposal = form.save(commit=False)
+            proposal.community = community
             proposal.created_by = request.user
             proposal.save()
+
+            # ── Datei-Anhang: nur verarbeiten wenn tatsächlich eine Datei da ist
+            uploaded_file = request.FILES.get('file')
+            if uploaded_file:
+                doc_name = request.POST.get('name', '').strip() or uploaded_file.name
+                ProposalDocument.objects.create(
+                    proposal=proposal,
+                    name=doc_name,
+                    file=uploaded_file,
+                    uploaded_by=request.user,
+                )
+
             if is_admin:
                 messages.success(request, "Antrag erstellt.")
             else:
@@ -447,10 +466,11 @@ def proposal_create(request, community_id):
             return redirect('voting:proposal_detail', pk=proposal.pk)
     else:
         form = ProposalForm()
+
     return render(request, 'voting/proposal_create.html', {
         'community': community,
-        'form':      form,
-        'is_admin':  is_admin,
+        'form': form,
+        'is_admin': is_admin,
     })
 
 
@@ -522,6 +542,10 @@ def proposal_duplicate(request, pk):
             majority_type = original.majority_type,
             deadline      = None,
             status        = Proposal.Status.DRAFT,
+            # ── NEU: neue Felder mitkopieren ──────────────────────────────
+            area          = original.area,
+            proposal_type = original.proposal_type,
+            cost_estimate = original.cost_estimate,
         )
         messages.success(request, f"Antrag «{original.title}» wurde dupliziert.")
         return redirect('voting:proposal_detail', pk=new_proposal.pk)

@@ -10,19 +10,64 @@
 </div>
 
 <div class="card card--padded">
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
+
+        {# ── Basisdaten ──────────────────────────────────────────────────── #}
         <div class="form-group">
             <label for="id_title">Titel *</label>
             <input type="text" name="title" id="id_title" class="form-input"
                    value="{{ form.title.value|default:'' }}" required>
             {% if form.title.errors %}<div class="form-error">{{ form.title.errors.0 }}</div>{% endif %}
         </div>
+
         <div class="form-group">
             <label for="id_description">Beschreibung *</label>
-            <textarea name="description" id="id_description" class="form-textarea" rows="6" required>{{ form.description.value|default:'' }}</textarea>
+            <textarea name="description" id="id_description" class="form-textarea" rows="6"
+                      required>{{ form.description.value|default:'' }}</textarea>
             {% if form.description.errors %}<div class="form-error">{{ form.description.errors.0 }}</div>{% endif %}
         </div>
+
+        {# ── Klassifizierung ─────────────────────────────────────────────── #}
+        <div class="grid-2">
+            <div class="form-group">
+                <label for="id_area">Bereich</label>
+                <select name="area" id="id_area" class="form-select">
+                    <option value="">– Kein Bereich –</option>
+                    {% for val, label in form.fields.area.choices %}
+                        {% if val %}
+                        <option value="{{ val }}" {% if form.area.value == val %}selected{% endif %}>{{ label }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                {% if form.area.errors %}<div class="form-error">{{ form.area.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="id_proposal_type">Art des Antrags</label>
+                <select name="proposal_type" id="id_proposal_type" class="form-select">
+                    <option value="">– Keine Angabe –</option>
+                    {% for val, label in form.fields.proposal_type.choices %}
+                        {% if val %}
+                        <option value="{{ val }}" {% if form.proposal_type.value == val %}selected{% endif %}>{{ label }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                {% if form.proposal_type.errors %}<div class="form-error">{{ form.proposal_type.errors.0 }}</div>{% endif %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="id_cost_estimate">Kostenrahmen (CHF)</label>
+            <input type="number" name="cost_estimate" id="id_cost_estimate" class="form-input"
+                   step="100" min="0" placeholder="z.B. 45000"
+                   value="{{ form.cost_estimate.value|default:'' }}">
+            <div class="form-hint">Geschätzter oder offertierter Betrag in CHF (optional).</div>
+            {% if form.cost_estimate.errors %}<div class="form-error">{{ form.cost_estimate.errors.0 }}</div>{% endif %}
+        </div>
+
+        {# ── Abstimmungsparameter ─────────────────────────────────────────── #}
+        <hr class="hr-subtle">
+
         <div class="form-group">
             <label for="id_majority_type">Mehrheitsart *</label>
             <select name="majority_type" id="id_majority_type" class="form-select" onchange="updateMajorityHint(this.value)">
@@ -34,6 +79,7 @@
             <div id="majority-hint" class="majority-hint"></div>
             {% if form.majority_type.errors %}<div class="form-error">{{ form.majority_type.errors.0 }}</div>{% endif %}
         </div>
+
         <div class="form-group">
             <label for="id_deadline">Abstimmungsfrist (optional)</label>
             <input type="datetime-local" name="deadline" id="id_deadline" class="form-input"
@@ -41,6 +87,7 @@
             <div class="form-hint">Leer lassen für unbegrenzte Frist.</div>
             {% if form.deadline.errors %}<div class="form-error">{{ form.deadline.errors.0 }}</div>{% endif %}
         </div>
+
         <div class="flex gap-1 mt-2">
             <button type="submit" class="btn btn-primary">Änderungen speichern</button>
             <a href="{% url 'voting:proposal_detail' proposal.pk %}" class="btn btn-outline">Abbrechen</a>
@@ -57,7 +104,7 @@ const hints = {
 };
 function updateMajorityHint(val) {
     const el = document.getElementById('majority-hint');
-    if (el) el.textContent = hints[val] || '';
+    if (el) el.innerHTML = hints[val] || '';
 }
 document.addEventListener('DOMContentLoaded', function() {
     const sel = document.getElementById('id_majority_type');

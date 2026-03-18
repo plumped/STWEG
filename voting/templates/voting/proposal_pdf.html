@@ -321,6 +321,26 @@
             {% if proposal.created_by %}{{ proposal.created_by.get_full_name|default:proposal.created_by.username }}{% else %}—{% endif %}
         </div>
     </div>
+    {% if proposal.area %}
+    <div class="stat-box">
+        <div class="stat-label">Bereich</div>
+        <div class="stat-value">{{ proposal.get_area_display }}</div>
+    </div>
+    {% endif %}
+
+    {% if proposal.proposal_type %}
+    <div class="stat-box">
+        <div class="stat-label">Art des Antrags</div>
+        <div class="stat-value">{{ proposal.get_proposal_type_display }}</div>
+    </div>
+    {% endif %}
+
+    {% if proposal.cost_estimate %}
+    <div class="stat-box">
+        <div class="stat-label">Kostenrahmen</div>
+        <div class="stat-value">CHF {{ proposal.cost_estimate|floatformat:"2g" }}</div>
+    </div>
+    {% endif %}
 </div>
 
 <!-- FIX: Umlaufbeschluss-Hinweis im Protokoll -->

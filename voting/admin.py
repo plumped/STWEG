@@ -95,22 +95,41 @@ class UnitAdmin(admin.ModelAdmin):
 
 @admin.register(Proposal)
 class ProposalAdmin(admin.ModelAdmin):
-    list_display  = ['title', 'community', 'status', 'majority_type', 'created_at', 'deadline']
-    list_filter   = ['status', 'community', 'majority_type']
+    list_display = [
+        'title', 'community', 'status', 'majority_type',
+        'area', 'proposal_type', 'cost_estimate',  # ← NEU
+        'created_at', 'deadline',
+    ]
+    list_filter = ['status', 'community', 'majority_type', 'area', 'proposal_type']
     search_fields = ['title']
-    actions       = ['duplicate_proposals']
+    actions = ['duplicate_proposals']
+
+    fieldsets = (
+        (None, {
+            'fields': ('community', 'created_by', 'title', 'description', 'status'),
+        }),
+        ('Klassifizierung', {  # ← NEU
+            'fields': ('area', 'proposal_type', 'cost_estimate'),
+        }),
+        ('Abstimmung', {
+            'fields': ('majority_type', 'deadline'),
+        }),
+    )
 
     @admin.action(description='Ausgewählte Anträge duplizieren')
     def duplicate_proposals(self, request, queryset):
         count = 0
         for proposal in queryset:
             Proposal.objects.create(
-                community     = proposal.community,
-                created_by    = request.user,
-                title         = f"{proposal.title} (Kopie)",
-                description   = proposal.description,
-                majority_type = proposal.majority_type,
-                status        = Proposal.Status.DRAFT,
+                community=proposal.community,
+                created_by=request.user,
+                title=f"{proposal.title} (Kopie)",
+                description=proposal.description,
+                majority_type=proposal.majority_type,
+                area=proposal.area,  # ← NEU
+                proposal_type=proposal.proposal_type,  # ← NEU
+                cost_estimate=proposal.cost_estimate,  # ← NEU
+                status=Proposal.Status.DRAFT,
             )
             count += 1
         self.message_user(request, f"{count} Antrag/Anträge dupliziert.")

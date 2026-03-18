@@ -219,12 +219,65 @@
 
 <!-- ─── TAB: Beschreibung / Details ────────────────────────────────────────── -->
 <div class="tab-panel" id="tab-beschreibung">
+
+    {{# ── Beschreibung ──────────────────────────────────────────────────── #}}
     <div class="card">
         <div class="section-label">Beschreibung</div>
         <div class="description-block">{{ proposal.description }}</div>
     </div>
 
-    <div class="card">
+    {{# ── Kurzinfo-Kacheln ──────────────────────────────────────────────── #}}
+    <div class="stats-grid mt-md">
+
+        {% if proposal.area %}
+        <div class="stat-box">
+            <div class="stat-label">Bereich</div>
+            <div class="stat-value">{{ proposal.get_area_display }}</div>
+        </div>
+        {% endif %}
+
+        {% if proposal.proposal_type %}
+        <div class="stat-box">
+            <div class="stat-label">Art des Antrags</div>
+            <div class="stat-value">{{ proposal.get_proposal_type_display }}</div>
+        </div>
+        {% endif %}
+
+        {% if proposal.cost_estimate %}
+        <div class="stat-box">
+            <div class="stat-label">Kostenrahmen</div>
+            <div class="stat-value">CHF {{ proposal.cost_estimate|floatformat:"2g" }}</div>
+        </div>
+        {% endif %}
+
+        <div class="stat-box">
+            <div class="stat-label">Mehrheitsart</div>
+            <div class="stat-value">{{ proposal.get_majority_type_display }}</div>
+        </div>
+
+        {% if proposal.deadline %}
+        <div class="stat-box">
+            <div class="stat-label">Abstimmungsfrist</div>
+            <div class="stat-value">{{ proposal.deadline|date:"d.m.Y, H:i" }}</div>
+        </div>
+        {% endif %}
+
+        <div class="stat-box">
+            <div class="stat-label">Erstellt am</div>
+            <div class="stat-value">{{ proposal.created_at|date:"d.m.Y" }}</div>
+        </div>
+
+        {% if proposal.created_by %}
+        <div class="stat-box">
+            <div class="stat-label">Eingereicht von</div>
+            <div class="stat-value">{{ proposal.created_by.get_full_name|default:proposal.created_by.username }}</div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    {{# ── Mehrheitsregel-Erläuterung ─────────────────────────────────────── #}}
+    <div class="card mt-md">
         <div class="section-label">Mehrheitsregel</div>
         <div class="majority-hint-box">
             {% if proposal.majority_type == 'simple' %}
@@ -242,6 +295,7 @@
             {% endif %}
         </div>
     </div>
+
 </div>
 
 <!-- ─── TAB: Ergebnis ─────────────────────────────────────────────────────── -->

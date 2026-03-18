@@ -95,6 +95,8 @@
                     {% if proposal.deadline %}Frist: {{ proposal.deadline|date:"d.m.Y" }} · {% endif %}
                     {{ proposal.created_at|date:"d.m.Y" }}
                     {% if is_admin and proposal.created_by %} · {{ proposal.created_by.get_full_name|default:proposal.created_by.username }}{% endif %}
+                    {% if proposal.area %} · {{ proposal.get_area_display }}{% endif %}
+                    {% if proposal.cost_estimate %} · CHF {{ proposal.cost_estimate|floatformat:"0g" }}{% endif %}
                 </div>
             </div>
             <span class="chevron">›</span>
