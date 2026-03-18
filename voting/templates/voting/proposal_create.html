@@ -1,114 +1,206 @@
 {% extends "voting/base.html" %}
 {% block title %}Neuer Antrag – {{ community.name }}{% endblock %}
 
+{% block extra_head %}
+<style>
+/* ── Collapsible advanced section ──────────────────── */
+.advanced-toggle {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    cursor: pointer;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: .65rem 0;
+    border: none;
+    background: none;
+    font-family: var(--sans);
+    width: 100%;
+    text-align: left;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin: 1rem 0 0;
+    transition: color var(--t-base);
+    user-select: none;
+}
+.advanced-toggle:hover { color: var(--accent); }
+.advanced-toggle .toggle-arrow {
+    display: inline-block;
+    transition: transform .2s var(--ease);
+    font-style: normal;
+    margin-left: auto;
+}
+.advanced-toggle[aria-expanded="true"] .toggle-arrow {
+    transform: rotate(180deg);
+}
+.advanced-body {
+    display: none;
+    padding-top: .5rem;
+}
+.advanced-body.open {
+    display: block;
+}
+
+/* ── Majority hint ─────────────────────────────────── */
+.majority-hint {
+    font-size: .78rem;
+    color: var(--text-muted);
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: .6rem .85rem;
+    margin-top: .4rem;
+    line-height: 1.55;
+    min-height: 0;
+    transition: all .15s;
+}
+.majority-hint:empty { display: none; }
+
+/* ── Fieldset for file upload ──────────────────────── */
+.fieldset-subtle {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 1rem 1.25rem;
+    background: var(--surface-alt);
+}
+.fieldset-subtle legend {
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 0 .4rem;
+    letter-spacing: .02em;
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<a href="{% url 'voting:proposal_list' community.id %}" class="back-link">{{ community.name }}</a>
+
+<!-- Breadcrumb -->
+<nav class="breadcrumb">
+    <a href="{% url 'voting:dashboard' %}">Dashboard</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="{% url 'voting:proposal_list' community.id %}">{{ community.name }}</a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Neuer Antrag</span>
+</nav>
 
 <div class="page-header">
-    <h1>{% if is_admin %}Neuer Antrag{% else %}Antrag einreichen{% endif %}</h1>
-    <p>
-        {% if is_admin %}
-        Erstelle einen Abstimmungsantrag für {{ community.name }}
-        {% else %}
-        Reiche einen Antragsvorschlag für {{ community.name }} ein — der Verwalter gibt ihn zur Abstimmung frei.
-        {% endif %}
-    </p>
+    <h1>Neuer Antrag</h1>
+    <p>{{ community.name }}</p>
 </div>
 
-<div class="card card--padded">
+{% if not is_admin %}
+<div class="info-banner info-banner-warning mb-2" style="display:flex;align-items:flex-start;gap:.75rem;">
+    <span>ℹ</span>
+    <div>
+        <strong>Entwurf-Modus:</strong> Dein Antrag wird als Entwurf eingereicht.
+        Der Verwalter prüft und gibt ihn zur Abstimmung frei.
+    </div>
+</div>
+{% endif %}
+
+<div class="card" style="max-width:660px;">
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
-        {# ── Basisdaten ──────────────────────────────────────────────────── #}
+        {% if form.non_field_errors %}
+        <div class="form-errors-banner mb-md">
+            {% for error in form.non_field_errors %}{{ error }}<br>{% endfor %}
+        </div>
+        {% endif %}
+
+        {# ══ PFLICHTFELDER ═══════════════════════════════════════════════════ #}
+
         <div class="form-group">
             <label for="id_title">Titel *</label>
             <input type="text" name="title" id="id_title" class="form-input"
                    placeholder="z.B. Erneuerung Flachdach Hauptgebäude" required
                    value="{{ form.title.value|default:'' }}">
-            {% if form.title.errors %}<div class="form-error">{{ form.title.errors.0 }}</div>{% endif %}
+            {% if form.title.errors %}
+                <div class="form-error">{{ form.title.errors.0 }}</div>
+            {% endif %}
         </div>
 
         <div class="form-group">
             <label for="id_description">Beschreibung *</label>
             <textarea name="description" id="id_description" class="form-textarea" rows="6"
-                      placeholder="Beschreibe den Antrag detailliert. Was soll beschlossen werden? Was sind die Kosten?"
-                      required>{{ form.description.value|default:'' }}</textarea>
-            {% if form.description.errors %}<div class="form-error">{{ form.description.errors.0 }}</div>{% endif %}
+                      placeholder="Was soll beschlossen werden?&#10;Welche Kosten entstehen?&#10;Gibt es Alternativen?" required>{{ form.description.value|default:'' }}</textarea>
+            {% if form.description.errors %}
+                <div class="form-error">{{ form.description.errors.0 }}</div>
+            {% endif %}
         </div>
 
-        {# ── Klassifizierung ─────────────────────────────────────────────── #}
-        <div class="grid-2">
-            <div class="form-group">
-                <label for="id_area">Bereich</label>
-                <select name="area" id="id_area" class="form-select">
-                    <option value="">– Kein Bereich –</option>
-                    {% for val, label in form.fields.area.choices %}
-                        {% if val %}
-                        <option value="{{ val }}" {% if form.area.value == val %}selected{% endif %}>{{ label }}</option>
-                        {% endif %}
-                    {% endfor %}
-                </select>
-                <div class="form-hint">Welchen Gebäudebereich betrifft der Antrag?</div>
-                {% if form.area.errors %}<div class="form-error">{{ form.area.errors.0 }}</div>{% endif %}
-            </div>
+        {# ══ ERWEITERTE ANGABEN (einklappbar) ════════════════════════════════ #}
+        <button type="button" class="advanced-toggle" id="advanced-toggle"
+                aria-expanded="false" aria-controls="advanced-body">
+            <span>Klassifizierung &amp; Kostenrahmen</span>
+            <span style="font-size:.72rem;font-weight:400;color:var(--text-muted);margin-left:.25rem;">(optional)</span>
+            <span class="toggle-arrow">▾</span>
+        </button>
 
-            <div class="form-group">
-                <label for="id_proposal_type">Art des Antrags</label>
-                <select name="proposal_type" id="id_proposal_type" class="form-select">
-                    <option value="">– Keine Angabe –</option>
-                    {% for val, label in form.fields.proposal_type.choices %}
-                        {% if val %}
-                        <option value="{{ val }}" {% if form.proposal_type.value == val %}selected{% endif %}>{{ label }}</option>
-                        {% endif %}
-                    {% endfor %}
-                </select>
-                <div class="form-hint">Rechtliche Einordnung gemäss ZGB.</div>
-                {% if form.proposal_type.errors %}<div class="form-error">{{ form.proposal_type.errors.0 }}</div>{% endif %}
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label for="id_cost_estimate">Kostenrahmen (CHF)</label>
-            <input type="number" name="cost_estimate" id="id_cost_estimate" class="form-input"
-                   step="100" min="0" placeholder="z.B. 45000"
-                   value="{{ form.cost_estimate.value|default:'' }}">
-            <div class="form-hint">Geschätzter oder offertierter Betrag in CHF (optional).</div>
-            {% if form.cost_estimate.errors %}<div class="form-error">{{ form.cost_estimate.errors.0 }}</div>{% endif %}
-        </div>
-
-        {# ── Dateianhang ─────────────────────────────────────────────────── #}
-        <fieldset class="fieldset-subtle">
-            <legend>Dokument anhängen <span class="text-muted">(optional)</span></legend>
-            <div class="grid-2">
+        <div class="advanced-body" id="advanced-body">
+            <div class="grid-2 mt-md">
                 <div class="form-group">
-                    <label for="{{ doc_form.name.id_for_label }}">Bezeichnung</label>
-                    <input type="text" name="name" id="{{ doc_form.name.id_for_label }}"
-                           class="form-input"
-                           placeholder="z.B. Offerte Sanitär GmbH, Grundrissplan"
-                           value="{{ doc_form.name.value|default:'' }}">
-                    {% if doc_form.name.errors %}<div class="form-error">{{ doc_form.name.errors.0 }}</div>{% endif %}
+                    <label for="id_area">Bereich</label>
+                    <select name="area" id="id_area" class="form-select">
+                        <option value="">– Kein Bereich –</option>
+                        {% for val, label in form.fields.area.choices %}
+                            {% if val %}
+                            <option value="{{ val }}" {% if form.area.value == val %}selected{% endif %}>{{ label }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <div class="form-hint">Welchen Gebäudebereich betrifft der Antrag?</div>
+                    {% if form.area.errors %}<div class="form-error">{{ form.area.errors.0 }}</div>{% endif %}
                 </div>
+
                 <div class="form-group">
-                    <label for="{{ doc_form.file.id_for_label }}">Datei (PDF, Bild, …)</label>
-                    <input type="file" name="file" id="{{ doc_form.file.id_for_label }}"
-                           class="form-input" accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx">
-                    {% if doc_form.file.errors %}<div class="form-error">{{ doc_form.file.errors.0 }}</div>{% endif %}
+                    <label for="id_proposal_type">Art des Antrags</label>
+                    <select name="proposal_type" id="id_proposal_type" class="form-select">
+                        <option value="">– Keine Angabe –</option>
+                        {% for val, label in form.fields.proposal_type.choices %}
+                            {% if val %}
+                            <option value="{{ val }}" {% if form.proposal_type.value == val %}selected{% endif %}>{{ label }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <div class="form-hint">Rechtliche Einordnung gemäss ZGB.</div>
+                    {% if form.proposal_type.errors %}<div class="form-error">{{ form.proposal_type.errors.0 }}</div>{% endif %}
                 </div>
             </div>
-            <div class="form-hint">Weitere Dokumente können nach dem Erstellen des Antrags hinzugefügt werden.</div>
-        </fieldset>
 
-        {# ── Admin-Felder ────────────────────────────────────────────────── #}
+            <div class="form-group">
+                <label for="id_cost_estimate">Kostenrahmen (CHF)</label>
+                <input type="number" name="cost_estimate" id="id_cost_estimate" class="form-input"
+                       step="100" min="0" placeholder="z.B. 45000"
+                       value="{{ form.cost_estimate.value|default:'' }}">
+                <div class="form-hint">Geschätzter oder offertierter Betrag in CHF (optional).</div>
+                {% if form.cost_estimate.errors %}<div class="form-error">{{ form.cost_estimate.errors.0 }}</div>{% endif %}
+            </div>
+        </div>
+
+        {# ══ ABSTIMMUNGSPARAMETER (nur Verwalter) ════════════════════════════ #}
         {% if is_admin %}
-        <hr class="hr-subtle">
+        <hr class="hr-subtle" style="margin-top:1.25rem;">
 
         <div class="form-group">
             <label for="id_majority_type">Mehrheitsart *</label>
-            <select name="majority_type" id="id_majority_type" class="form-select" onchange="updateMajorityHint(this.value)">
-                <option value="simple"    {% if form.majority_type.value == 'simple' %}selected{% endif %}>Einfaches Mehr (nur Köpfe)</option>
-                <option value="absolute"  {% if form.majority_type.value == 'absolute' or not form.majority_type.value %}selected{% endif %}>Absolutes Mehr (Köpfe + Wertquoten) ✦ Standard</option>
-                <option value="qualified" {% if form.majority_type.value == 'qualified' %}selected{% endif %}>Qualifiziertes Mehr (2/3 Köpfe + 2/3 Wertquoten)</option>
-                <option value="unanimous" {% if form.majority_type.value == 'unanimous' %}selected{% endif %}>Einstimmigkeit (alle Eigentümer)</option>
+            <select name="majority_type" id="id_majority_type" class="form-select"
+                    onchange="updateMajorityHint(this.value)">
+                <option value="simple"    {% if form.majority_type.value == 'simple' %}selected{% endif %}>
+                    Einfaches Mehr (nur Köpfe)
+                </option>
+                <option value="absolute"
+                    {% if form.majority_type.value == 'absolute' or not form.majority_type.value %}selected{% endif %}>
+                    Absolutes Mehr (Köpfe + Wertquoten) ✦ Standard
+                </option>
+                <option value="qualified" {% if form.majority_type.value == 'qualified' %}selected{% endif %}>
+                    Qualifiziertes Mehr (2/3 Köpfe + 2/3 Wertquoten)
+                </option>
+                <option value="unanimous" {% if form.majority_type.value == 'unanimous' %}selected{% endif %}>
+                    Einstimmigkeit (alle Eigentümer)
+                </option>
             </select>
             <div id="majority-hint" class="majority-hint"></div>
             {% if form.majority_type.errors %}<div class="form-error">{{ form.majority_type.errors.0 }}</div>{% endif %}
@@ -118,34 +210,77 @@
             <label for="id_deadline">Abstimmungsfrist (optional)</label>
             <input type="datetime-local" name="deadline" id="id_deadline" class="form-input"
                    value="{{ form.deadline.value|default:'' }}">
-            <div class="form-hint">Leer lassen für unbegrenzte Frist.</div>
+            <div class="form-hint">Leer lassen für unbegrenzte Frist. Nach Ablauf kann nicht mehr abgestimmt werden.</div>
             {% if form.deadline.errors %}<div class="form-error">{{ form.deadline.errors.0 }}</div>{% endif %}
         </div>
         {% endif %}
 
-        <div class="flex gap-1 mt-2">
+        {# ══ DOKUMENT ANHÄNGEN ═══════════════════════════════════════════════ #}
+        <fieldset class="fieldset-subtle mt-md">
+            <legend>Dokument anhängen <span style="font-weight:400;">(optional)</span></legend>
+            <div class="grid-2 mt-sm">
+                <div class="form-group form-group--flush">
+                    <label for="doc-name" style="font-size:.8rem;">Bezeichnung</label>
+                    <input type="text" name="name" id="doc-name" class="form-input"
+                           placeholder="z.B. Offerte Sanitär GmbH">
+                </div>
+                <div class="form-group form-group--flush">
+                    <label for="doc-file" style="font-size:.8rem;">Datei (PDF, Bild …)</label>
+                    <input type="file" name="file" id="doc-file" class="form-input"
+                           accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx">
+                </div>
+            </div>
+            <div class="form-hint">Weitere Dokumente können nach dem Erstellen hinzugefügt werden.</div>
+        </fieldset>
+
+        {# ══ ACTIONS ═════════════════════════════════════════════════════════ #}
+        <div class="flex gap-1 mt-2" style="margin-top:1.5rem;">
             <button type="submit" class="btn btn-primary">
                 {% if is_admin %}Antrag erstellen{% else %}Antrag einreichen{% endif %}
             </button>
-            <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline">Abbrechen</a>
+            <a href="{% url 'voting:proposal_list' community.id %}" class="btn btn-outline">
+                Abbrechen
+            </a>
         </div>
+
     </form>
 </div>
 
-{% block extra_head %}{% endblock %}
 <script>
-const hints = {
-    simple:    'Mehr als die Hälfte der abstimmenden Köpfe müssen Ja stimmen.',
-    absolute:  'Mehr als die Hälfte der abstimmenden Köpfe UND mehr als die Hälfte der vertretenen Wertquoten müssen Ja stimmen (ZGB Art. 712m).',
-    qualified: 'Mindestens 2/3 der Köpfe UND 2/3 der Wertquoten müssen Ja stimmen. Typisch für grössere bauliche Änderungen (ZGB Art. 647d).',
-    unanimous: 'Alle Eigentümer müssen Ja stimmen. Typisch für Änderungen des Begründungsakts / Reglements (ZGB Art. 648).',
+// ── Mehrheitsart-Hinweise ─────────────────────────────
+const HINTS = {
+    simple:    'Mehr Ja- als Nein-Stimmen nach Köpfen. Enthaltungen zählen nicht. <strong style="color:var(--amber)">Nur zulässig, wenn das Reglement es vorsieht.</strong>',
+    absolute:  'Mehr als die Hälfte der abstimmenden Köpfe <em>und</em> der Wertquoten müssen Ja stimmen. <strong>Gesetzlicher Standard — ZGB Art. 712m Abs. 1.</strong>',
+    qualified: 'Mindestens 2/3 der Ja+Nein-Stimmen nach Köpfen <em>und</em> Wertquoten. <strong>ZGB Art. 712g Abs. 2 — für grössere bauliche Massnahmen.</strong>',
+    unanimous: '<strong style="color:var(--red)">Alle Eigentümer müssen Ja stimmen.</strong> Eine fehlende Stimmabgabe gilt als fehlende Zustimmung. ZGB Art. 648 — für Änderungen des Begründungsakts.',
 };
+
 function updateMajorityHint(val) {
     const el = document.getElementById('majority-hint');
-    if (el) el.innerHTML = hints[val] || '';
+    if (el) el.innerHTML = HINTS[val] || '';
 }
-// Beim Laden initialisieren
-document.addEventListener('DOMContentLoaded', () => {
+
+// ── Collapsible Advanced Section ─────────────────────
+(function () {
+    const btn  = document.getElementById('advanced-toggle');
+    const body = document.getElementById('advanced-body');
+    if (!btn || !body) return;
+
+    // Automatically open if there are validation errors inside
+    const hasErrors = body.querySelector('.form-error');
+    if (hasErrors) {
+        body.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+    }
+
+    btn.addEventListener('click', function () {
+        const open = body.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+})();
+
+// ── Beim Laden initialisieren ─────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
     const sel = document.getElementById('id_majority_type');
     if (sel) updateMajorityHint(sel.value);
 });
