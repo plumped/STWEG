@@ -114,6 +114,7 @@ class Ticket(models.Model):
 
 class TicketUpdate(models.Model):
     """Comment or status-change entry on a ticket."""
+
     ticket     = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='updates')
     author     = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True,
@@ -135,6 +136,17 @@ class TicketUpdate(models.Model):
     @property
     def is_status_change(self):
         return bool(self.old_status and self.new_status and self.old_status != self.new_status)
+
+    # ── FIX: Lesbare Status-Bezeichnungen statt DB-Rohdaten ─────────────────
+    @property
+    def old_status_display(self):
+        """Gibt den lesbaren deutschen Label des alten Status zurück."""
+        return dict(Ticket.Status.choices).get(self.old_status, self.old_status)
+
+    @property
+    def new_status_display(self):
+        """Gibt den lesbaren deutschen Label des neuen Status zurück."""
+        return dict(Ticket.Status.choices).get(self.new_status, self.new_status)
 
 
 # ── TicketAttachment ──────────────────────────────────────────────────────────

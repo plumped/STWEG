@@ -25,25 +25,35 @@ from .models import (
 )
 from maintenance.models import Ticket
 
-from .notifications import (
-    notify_draft_approved, notify_proposal_closed,
-    notify_proposal_opened, notify_reminder,
-)
+from .notifications import notify_draft_approved, notify_invite_created, notify_proposal_closed, notify_proposal_opened, notify_reminder
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 @login_required
 def dashboard(request):
-    communities = Community.objects.filter(
-        Q(units__owner=request.user)
-        | Q(created_by=request.user)
-        | Q(memberships__user=request.user)
-    ).distinct()
+    communities = list(
+        __import__('voting.models', fromlist=['Community']).Community.objects.filter(
+            Q(units__owner=request.user)
+            | Q(created_by=request.user)
+            | Q(memberships__user=request.user)
+        ).distinct()
+    )
+
+    # Importiere lokal damit keine Zirkelimporte entstehen
+    from .models import Community, CommunityMembership, InviteToken, Proposal, Proxy, Unit, Vote
+    from maintenance.models import Ticket
+
+    communities = list(
+        Community.objects.filter(
+            Q(units__owner=request.user)
+            | Q(created_by=request.user)
+            | Q(memberships__user=request.user)
+        ).distinct()
+    )
 
     user_units = Unit.objects.filter(owner=request.user)
     user_unit_ids = set(user_units.values_list('id', flat=True))
-    # Map unit_id → community_id for fast lookup
     unit_community_map = {u.id: u.community_id for u in user_units}
 
     proxy_proposal_ids = Proxy.objects.filter(
@@ -58,52 +68,69 @@ def dashboard(request):
         ).distinct().order_by('deadline').select_related('community')
     )
 
-    # ── N+1 FIX: Preload all proxy and vote data in bulk queries ─────────────
-    # 1. All proxies for this user across all open proposals
-    proxy_map_by_proposal: dict[int, set[int]] = {}  # proposal_id → set of unit_ids
+    # Preload votes + proxies (N+1 fix)
+    proxy_map_by_proposal: dict = {}
     for p in Proxy.objects.filter(
-        delegate=request.user,
-        proposal__in=open_proposals,
+            delegate=request.user, proposal__in=open_proposals,
     ).values('proposal_id', 'unit_id'):
         proxy_map_by_proposal.setdefault(p['proposal_id'], set()).add(p['unit_id'])
 
-    # 2. All votes for open proposals
-    voted_unit_by_proposal: dict[int, set[int]] = {}  # proposal_id → set of voted unit_ids
+    voted_unit_by_proposal: dict = {}
     for v in Vote.objects.filter(
-        proposal__in=open_proposals,
+            proposal__in=open_proposals,
     ).values('proposal_id', 'unit_id'):
         voted_unit_by_proposal.setdefault(v['proposal_id'], set()).add(v['unit_id'])
 
-    # 3. Compute voted_counts / unit_counts per proposal without extra queries
-    voted_counts: dict[int, int] = {}
-    unit_counts:  dict[int, int] = {}
+    voted_counts: dict = {}
+    unit_counts: dict = {}
     for proposal in open_proposals:
-        own_ids   = {uid for uid, cid in unit_community_map.items() if cid == proposal.community_id}
+        own_ids = {uid for uid, cid in unit_community_map.items() if cid == proposal.community_id}
         proxy_ids = proxy_map_by_proposal.get(proposal.id, set())
-        all_ids   = own_ids | proxy_ids
-        voted     = voted_unit_by_proposal.get(proposal.id, set())
+        all_ids = own_ids | proxy_ids
+        voted = voted_unit_by_proposal.get(proposal.id, set())
         voted_counts[proposal.id] = len(voted & all_ids)
-        unit_counts[proposal.id]  = len(all_ids)
+        unit_counts[proposal.id] = len(all_ids)
 
     admin_community_ids = {c.id for c in communities if c.is_admin(request.user)}
 
-    pending_drafts = Proposal.objects.filter(
-        community__id__in=admin_community_ids,
-        status=Proposal.Status.DRAFT,
-    ).exclude(
-        created_by=request.user,
-    ).select_related('community', 'created_by').order_by('created_at')
+    # Freigabe-Queue: fremde Entwürfe, die auf Admin-Freigabe warten
+    pending_drafts = list(
+        Proposal.objects.filter(
+            community__id__in=admin_community_ids,
+            status=Proposal.Status.DRAFT,
+        ).exclude(created_by=request.user)
+        .select_related('community', 'created_by')
+        .order_by('created_at')
+    )
 
-    open_tickets = Ticket.objects.filter(
-        community__id__in=admin_community_ids,
-    ).exclude(
-        status__in=[Ticket.Status.DONE, Ticket.Status.ARCHIVED],
-    ).select_related('community').order_by('-created_at')
+    # NEU: Eigene Entwürfe des Admins (wurden von ihm selbst erstellt)
+    my_drafts = list(
+        Proposal.objects.filter(
+            community__id__in=admin_community_ids,
+            status=Proposal.Status.DRAFT,
+            created_by=request.user,
+        ).select_related('community').order_by('created_at')
+    ) if admin_community_ids else []
 
-    # Notification badge count for nav
-    pending_count = pending_drafts.count()
+    # Offene Mängeltickets
+    open_tickets = list(
+        Ticket.objects.filter(
+            community__id__in=admin_community_ids,
+        ).exclude(
+            status__in=[Ticket.Status.DONE, Ticket.Status.ARCHIVED],
+        ).select_related('community').order_by('-created_at')
+    )
 
-    # ── Setup-Status: Gemeinschaften ohne Einheiten (für Admin-Hinweis) ──────
+    # NEU: Letzte abgeschlossene Abstimmungen (für alle User sichtbar)
+    recent_closed = list(
+        Proposal.objects.filter(
+            community__in=communities,
+            status=Proposal.Status.CLOSED,
+        ).order_by('-closed_at')
+        .select_related('community')[:5]
+    )
+
+    # Setup-Status: Gemeinschaften ohne Einheiten
     communities_with_units_ids = set(
         Unit.objects.filter(community__in=communities)
         .values_list('community_id', flat=True)
@@ -114,16 +141,20 @@ def dashboard(request):
         if c.id in admin_community_ids and c.id not in communities_with_units_ids
     }
 
+    pending_count = len(pending_drafts)
+
     return render(request, 'voting/dashboard.html', {
-        'communities':            communities,
-        'open_proposals':         open_proposals,
-        'voted_counts':           voted_counts,
-        'unit_counts':            unit_counts,
-        'pending_drafts':         pending_drafts,
-        'admin_community_ids':    admin_community_ids,
-        'open_tickets':           open_tickets,
-        'pending_count':          pending_count,
-        'setup_incomplete_ids':   setup_incomplete_ids,
+        'communities': communities,
+        'open_proposals': open_proposals,
+        'voted_counts': voted_counts,
+        'unit_counts': unit_counts,
+        'pending_drafts': pending_drafts,
+        'my_drafts': my_drafts,  # NEU
+        'admin_community_ids': admin_community_ids,
+        'open_tickets': open_tickets,
+        'pending_count': pending_count,
+        'setup_incomplete_ids': setup_incomplete_ids,
+        'recent_closed': recent_closed,  # NEU
     })
 
 
@@ -1150,6 +1181,12 @@ def unit_export_csv(request, community_id):
 
 @login_required
 def invite_manage(request, community_id):
+    from .models import Community, InviteToken
+    from .forms import InviteTokenForm
+    from django.shortcuts import get_object_or_404
+    from django.contrib import messages
+    from .notifications import notify_invite_created
+
     community = get_object_or_404(Community, id=community_id)
     if not community.is_admin(request.user):
         messages.error(request, "Keine Berechtigung.")
@@ -1158,30 +1195,42 @@ def invite_manage(request, community_id):
     if request.method == 'POST':
         form = InviteTokenForm(request.POST, community=community)
         if form.is_valid():
-            token            = form.save(commit=False)
-            token.community  = community
+            token = form.save(commit=False)
+            token.community = community
             token.created_by = request.user
             token.save()
-            messages.success(request, "Einladungslink erstellt.")
+
+            # NEU: Einladungslink per E-Mail versenden wenn E-Mail angegeben
+            if token.email:
+                notify_invite_created(token)
+                messages.success(
+                    request,
+                    f"Einladungslink erstellt und an {token.email} gesendet."
+                )
+            else:
+                messages.success(request, "Einladungslink erstellt.")
+
             return redirect('voting:invite_manage', community_id=community_id)
+        else:
+            messages.error(request, "Fehler beim Erstellen des Einladungslinks.")
     else:
         form = InviteTokenForm(community=community)
 
     show_all = request.GET.get('show_all') == '1'
-    tokens   = community.invite_tokens.select_related('unit', 'used_by', 'created_by')
+    qs = community.invite_tokens.select_related('unit', 'used_by', 'created_by')
     if not show_all:
-        tokens = tokens.filter(is_active=True)
-    tokens = tokens.order_by('-created_at')
+        qs = qs.filter(is_active=True)
+    tokens = qs.order_by('unit__unit_number', '-created_at')
 
-    active_count   = community.invite_tokens.filter(is_active=True, used_at__isnull=True).count()
-    inactive_count = community.invite_tokens.exclude(is_active=True, used_at__isnull=True).count()
+    active_count = community.invite_tokens.filter(is_active=True).count()
+    inactive_count = community.invite_tokens.filter(is_active=False).count()
 
     return render(request, 'voting/invite_manage.html', {
-        'community':      community,
-        'form':           form,
-        'tokens':         tokens,
-        'show_all':       show_all,
-        'active_count':   active_count,
+        'community': community,
+        'form': form,
+        'tokens': tokens,
+        'show_all': show_all,
+        'active_count': active_count,
         'inactive_count': inactive_count,
     })
 

@@ -2,9 +2,12 @@
 Email notification helpers for the STWEG voting portal.
 All functions use fail_silently=True so missing email config never breaks the app.
 
-Improvements:
-- All emails now send both plain-text and HTML versions (EmailMultiAlternatives)
-- New: notify_draft_approved() — notifies proposal creator when admin opens their draft
+Functions:
+  notify_proposal_opened()     — Owner-Benachrichtigung bei neuer Abstimmung
+  notify_proposal_closed()     — Owner-Benachrichtigung bei Abschluss + Ergebnis
+  notify_draft_approved()      — Benachrichtigung an Antragsteller bei Freigabe
+  notify_reminder()            — Erinnerung an nicht-abgestimmte Eigentümer
+  notify_invite_created()      — Einladungslink per E-Mail versenden (NEU)
 """
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib.auth.models import User
@@ -51,7 +54,6 @@ def _html_wrapper(title: str, body_html: str, cta_url: str = None, cta_label: st
     <tr><td align="center" style="padding:40px 16px;">
       <table width="560" cellpadding="0" cellspacing="0" border="0"
              style="background:#FFFFFF;border:1px solid #E2DDD5;border-radius:10px;overflow:hidden;max-width:100%;">
-        <!-- Header -->
         <tr>
           <td style="background:#1B5E35;padding:20px 32px;">
             <span style="font-family:Georgia,serif;font-size:20px;font-weight:600;
@@ -62,7 +64,6 @@ def _html_wrapper(title: str, body_html: str, cta_url: str = None, cta_label: st
             </span>
           </td>
         </tr>
-        <!-- Title -->
         <tr>
           <td style="padding:28px 32px 4px;">
             <h1 style="margin:0;font-size:20px;font-weight:600;color:#1C1A17;line-height:1.3;">
@@ -70,14 +71,12 @@ def _html_wrapper(title: str, body_html: str, cta_url: str = None, cta_label: st
             </h1>
           </td>
         </tr>
-        <!-- Body -->
         <tr>
           <td style="padding:8px 32px 0;font-size:14px;color:#4A4640;line-height:1.7;">
             {body_html}
           </td>
         </tr>
         {cta_block}
-        <!-- Footer -->
         <tr>
           <td style="padding:24px 32px 28px;border-top:1px solid #E2DDD5;margin-top:20px;">
             <p style="margin:0;font-size:12px;color:#8C877F;">
@@ -170,10 +169,10 @@ def notify_proposal_closed(proposal, results):
     if not owners.exists():
         return
 
-    verdict_text = "angenommen ✅" if results['passed'] else "abgelehnt ❌"
+    verdict_text  = "angenommen ✅" if results['passed'] else "abgelehnt ❌"
     verdict_color = "#1B5E35" if results['passed'] else "#B5302A"
     verdict_label = "Antrag angenommen" if results['passed'] else "Antrag abgelehnt"
-    url = f"{_site_url()}/antrag/{proposal.pk}/"
+    url     = f"{_site_url()}/antrag/{proposal.pk}/"
     subject = f"[STWEG] Ergebnis: {proposal.title}"
 
     plain = (
@@ -224,10 +223,7 @@ def notify_proposal_closed(proposal, results):
 
 
 def notify_draft_approved(proposal):
-    """
-    Notify the proposal creator that their draft was approved (opened) by an admin.
-    Only sent when the creator is NOT the admin (i.e. owner submitted a draft).
-    """
+    """Notify the proposal creator that their draft was approved by an admin."""
     creator = proposal.created_by
     if not creator or not creator.email:
         return
@@ -291,8 +287,7 @@ def notify_reminder(proposal, pending_units):
             f"Guten Tag {owner.get_full_name() or owner.username},\n\n"
             f"die Abstimmung «{proposal.title}» in {proposal.community.name} "
             f"läuft bald ab (Frist: {deadline_str}).\n\n"
-            f"Sie haben noch nicht für alle Ihre Einheiten abgestimmt. "
-            f"Bitte tun Sie dies jetzt:\n\n"
+            f"Sie haben noch nicht abgestimmt. Bitte tun Sie dies jetzt:\n\n"
             f"{url}\n\n"
             f"Freundliche Grüsse\n"
             f"STWEG Abstimmungsportal"
@@ -320,3 +315,59 @@ def notify_reminder(proposal, pending_units):
         )
 
     return len(notified)
+
+
+# ── NEU: Einladungslink per E-Mail versenden ──────────────────────────────────
+
+def notify_invite_created(token):
+    """
+    Sendet den Einladungslink direkt per E-Mail an den Eigentümer.
+    Wird aufgerufen wenn ein InviteToken mit E-Mail-Adresse erstellt wird.
+    Kein Fehler wenn keine E-Mail konfiguriert — fail_silently.
+    """
+    if not token.email:
+        return
+
+    url = f"{_site_url()}/einladen/{token.token}/"
+    community = token.community
+    unit_info = f"Einheit {token.unit.unit_number}" if token.unit else "Verwalter-Zugang"
+    subject   = f"[STWEG] Einladung zur Stockwerkeigentümergemeinschaft {community.name}"
+
+    plain = (
+        f"Guten Tag,\n\n"
+        f"Sie wurden eingeladen, dem STWEG-Abstimmungsportal für\n"
+        f"{community.name} beizutreten ({unit_info}).\n\n"
+        f"Klicken Sie auf folgenden Link, um sich zu registrieren:\n"
+        f"{url}\n\n"
+        f"Dieser Link ist einmalig gültig.\n\n"
+        f"Freundliche Grüsse\n"
+        f"{community.name}"
+    )
+
+    html_body = f'''
+        <p>Guten Tag,</p>
+        <p>Sie wurden eingeladen, dem digitalen Abstimmungsportal für die
+           Stockwerkeigentümergemeinschaft <strong>{community.name}</strong> beizutreten.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="background:#F4F1EC;border-radius:8px;margin:16px 0;">
+          <tr><td style="padding:16px 20px;">
+            <p style="margin:0 0 4px;font-size:14px;font-weight:600;color:#1C1A17;">
+              {community.name}
+            </p>
+            <p style="margin:0;font-size:13px;color:#5C5750;">
+              Ihr Zugang: <strong>{unit_info}</strong>
+            </p>
+          </td></tr>
+        </table>
+        <p>Klicken Sie auf den Button unten, um Ihr Konto zu erstellen.
+           Der Link ist <strong>einmalig gültig</strong>.</p>
+        <p style="font-size:12px;color:#8C877F;margin-top:12px;">
+          Falls der Button nicht funktioniert, kopieren Sie diesen Link in Ihren Browser:<br>
+          <a href="{url}" style="color:#1B5E35;">{url}</a>
+        </p>
+    '''
+
+    _send_html(
+        token.email, subject, plain,
+        _html_wrapper(f"Einladung: {community.name}", html_body, url, "Jetzt registrieren →"),
+    )

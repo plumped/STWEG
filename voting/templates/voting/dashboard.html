@@ -4,25 +4,22 @@
 
 {% block content %}
 
-<!-- ── Page Header ────────────────────────────────────────────────────────── -->
 <div class="page-header flex-between">
     <div>
         <h1>Guten Tag, {{ user.first_name|default:user.username }}</h1>
         <p>Deine laufenden Abstimmungen auf einen Blick</p>
     </div>
     {% if user.is_staff %}
-    <a href="{% url 'voting:community_create' %}" class="btn btn-primary">
-        + Neue Gemeinschaft
-    </a>
+    <a href="{% url 'voting:community_create' %}" class="btn btn-primary">+ Neue Gemeinschaft</a>
     {% endif %}
 </div>
 
+{# ══ BLOCK 1: Freigabe-Queue ═════════════════════════════════════════════════ #}
 {% if pending_drafts %}
 <div class="section-label">
     Freigabe ausstehend
     <span class="badge badge-pending ml-sm">{{ pending_drafts|length }}</span>
 </div>
-
 {% for proposal in pending_drafts %}
 <div class="card card-interactive card--amber-left" style="margin-bottom:.6rem;">
     <div class="flex-between items-center">
@@ -36,21 +33,16 @@
             </a>
             <div class="card-meta mt-xs">
                 {{ proposal.community.name }}
-                · Eingereicht von {{ proposal.created_by.get_full_name|default:proposal.created_by.username }}
+                · von {{ proposal.created_by.get_full_name|default:proposal.created_by.username }}
                 · {{ proposal.created_at|date:"d.m.Y" }}
             </div>
         </div>
-        <!-- ✦ QUICK-APPROVE: direkt freigeben ohne Umweg zur Detailseite -->
         <div class="flex gap-1 items-center" style="flex-shrink:0;margin-left:1rem;">
-            <a href="{% url 'voting:proposal_detail' proposal.pk %}" class="btn btn-outline btn-sm">
-                Ansehen
-            </a>
+            <a href="{% url 'voting:proposal_detail' proposal.pk %}" class="btn btn-outline btn-sm">Ansehen</a>
             <form method="post" action="{% url 'voting:proposal_open' proposal.pk %}"
-                  onsubmit="return confirm('Antrag «{{ proposal.title|escapejs }}» wirklich freigeben und Eigentümer per E-Mail benachrichtigen?')">
+                  onsubmit="return confirm('Antrag freigeben und Eigentümer benachrichtigen?')">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-primary btn-sm">
-                    ✓ Freigeben
-                </button>
+                <button type="submit" class="btn btn-primary btn-sm">✓ Freigeben</button>
             </form>
         </div>
     </div>
@@ -58,16 +50,38 @@
 {% endfor %}
 {% endif %}
 
-
-{% if open_proposals %}
+{# ══ BLOCK 2: Eigene Entwürfe (Admin) ════════════════════════════════════════ #}
+{% if my_drafts %}
 <div class="section-label {% if pending_drafts %}mt-lg{% endif %}">
-    Offene Abstimmungen
+    Meine Entwürfe
+    <span class="badge badge-draft ml-sm">{{ my_drafts|length }}</span>
 </div>
+{% for proposal in my_drafts %}
+<a href="{% url 'voting:proposal_detail' proposal.pk %}" class="card-link">
+    <div class="card card-interactive" style="margin-bottom:.5rem;">
+        <div class="flex-between items-center">
+            <div class="flex-1">
+                <div class="flex items-center gap-xs mb-xs flex-wrap">
+                    <span class="badge badge-draft">Entwurf</span>
+                    <span class="badge badge-closed">{{ proposal.community.name }}</span>
+                </div>
+                <div class="card-title">{{ proposal.title }}</div>
+                <div class="card-meta mt-xs">Erstellt {{ proposal.created_at|date:"d.m.Y" }} · noch nicht freigegeben</div>
+            </div>
+            <span class="chevron">›</span>
+        </div>
+    </div>
+</a>
+{% endfor %}
+{% endif %}
 
+{# ══ BLOCK 3: Offene Abstimmungen ════════════════════════════════════════════ #}
+{% if open_proposals %}
+<div class="section-label {% if pending_drafts or my_drafts %}mt-lg{% endif %}">Offene Abstimmungen</div>
 {% for proposal in open_proposals %}
 {% with voted=voted_counts|get_item:proposal.id total=unit_counts|get_item:proposal.id %}
 <a href="{% url 'voting:proposal_detail' proposal.pk %}" class="card-link">
-    <div class="card card-interactive">
+    <div class="card card-interactive" style="margin-bottom:.5rem;">
         <div class="flex-between items-center">
             <div class="flex-1">
                 <div class="flex items-center gap-xs mb-xs flex-wrap">
@@ -84,19 +98,17 @@
                 <div class="card-title">{{ proposal.title }}</div>
                 {% if total %}
                 <div class="mt-xs">
-                    <div class="flex-between" style="margin-bottom:.25rem;">
+                    <div class="flex-between" style="margin-bottom:.2rem;">
                         <span class="text-xs text-muted">Beteiligung</span>
-                        <span class="text-xs text-muted">{{ voted|default:0 }}/{{ total }} Eigentümer</span>
+                        <span class="text-xs text-muted">{{ voted|default:0 }}/{{ total }}</span>
                     </div>
                     <div class="progress-bar">
-                        {% if total %}
                         <div class="progress-bar__fill
                             {% if voted == total %}progress-bar__fill--complete
                             {% elif voted > 0 %}progress-bar__fill--partial
                             {% else %}progress-bar__fill--empty{% endif %}"
-                            style="width:{% if total %}{% widthratio voted|default:0 total 100 %}{% else %}0{% endif %}%">
+                             style="width:{% if total %}{% widthratio voted|default:0 total 100 %}{% else %}0{% endif %}%">
                         </div>
-                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
@@ -107,48 +119,26 @@
 </a>
 {% endwith %}
 {% endfor %}
-
-{% elif not pending_drafts and not open_proposals and communities %}
-{# ── Kein Content: onboarding-freundlicher Leer-Zustand ── #}
-<div class="card" style="text-align:center;padding:3rem 2rem;margin-top:1rem;">
-    <span class="empty-state-icon">✅</span>
-    <div class="empty-state-title">Alles erledigt</div>
-    <div class="empty-state-sub">Keine offenen Abstimmungen — alles auf dem neuesten Stand.</div>
-    {% if communities %}
-    <div class="empty-state-action">
-        <a href="{% url 'voting:proposal_list' communities.0.id %}" class="btn btn-outline btn-sm">
-            Alle Anträge anzeigen
-        </a>
-    </div>
-    {% endif %}
-</div>
 {% endif %}
 
-
+{# ══ BLOCK 4: Offene Mängeltickets ═══════════════════════════════════════════ #}
 {% if open_tickets %}
 <div class="section-label mt-lg">
     Offene Mängel
     <span class="badge badge-urgent ml-sm">{{ open_tickets|length }}</span>
 </div>
-
 {% for ticket in open_tickets %}
 <a href="{% url 'maintenance:ticket_detail' ticket.pk %}" class="card-link">
     <div class="card card-interactive" style="margin-bottom:.5rem;">
         <div class="flex-between items-center">
             <div class="flex-1">
                 <div class="flex items-center gap-xs mb-xs flex-wrap">
-                    {% if ticket.priority_is_urgent %}
-                        <span class="badge badge-urgent">Dringend</span>
-                    {% endif %}
+                    {% if ticket.priority_is_urgent %}<span class="badge badge-urgent">Dringend</span>{% endif %}
                     <span class="badge badge-closed">{{ ticket.community.name }}</span>
                     <span class="badge badge-pending">{{ ticket.get_status_display }}</span>
                 </div>
                 <div class="card-title">{{ ticket.title }}</div>
-                <div class="card-meta mt-xs">
-                    {{ ticket.get_area_display }}
-                    · {{ ticket.created_at|date:"d.m.Y" }}
-                    {% if ticket.reported_by %} · {{ ticket.reported_by.get_full_name|default:ticket.reported_by.username }}{% endif %}
-                </div>
+                <div class="card-meta mt-xs">{{ ticket.get_area_display }} · {{ ticket.created_at|date:"d.m.Y" }}</div>
             </div>
             <span class="chevron">›</span>
         </div>
@@ -157,15 +147,46 @@
 {% endfor %}
 {% endif %}
 
+{# ══ BLOCK 5: Letzte Beschlüsse ══════════════════════════════════════════════ #}
+{% if recent_closed %}
+<div class="section-label mt-lg">Letzte Beschlüsse</div>
+{% for proposal in recent_closed %}
+<a href="{% url 'voting:proposal_detail' proposal.pk %}" class="card-link">
+    <div class="card card-interactive" style="margin-bottom:.5rem;opacity:.85;">
+        <div class="flex-between items-center">
+            <div class="flex-1">
+                <div class="flex items-center gap-xs mb-xs flex-wrap">
+                    <span class="badge badge-closed">Abgeschlossen</span>
+                    <span class="badge badge-closed">{{ proposal.community.name }}</span>
+                </div>
+                <div class="card-title" style="font-size:.9rem;">{{ proposal.title }}</div>
+                <div class="card-meta mt-xs">{{ proposal.closed_at|date:"d.m.Y" }}</div>
+            </div>
+            <span class="chevron" style="opacity:.4;">›</span>
+        </div>
+    </div>
+</a>
+{% endfor %}
+{% endif %}
 
+{# Leer-Zustand #}
+{% if not open_proposals and not pending_drafts and not my_drafts and communities %}
+<div class="card" style="text-align:center;padding:2.5rem 2rem;margin-top:1rem;">
+    <span style="display:block;font-size:2rem;margin-bottom:.75rem;">✅</span>
+    <div class="empty-state-title">Alles auf dem neuesten Stand</div>
+    <div class="empty-state-sub">Keine offenen Abstimmungen.</div>
+    <div class="empty-state-action">
+        <a href="{% url 'voting:proposal_list' communities.0.id %}" class="btn btn-outline btn-sm">Alle Anträge anzeigen</a>
+    </div>
+</div>
+{% endif %}
+
+{# ══ BLOCK 6: Gemeinschaften ══════════════════════════════════════════════════ #}
 {% if communities %}
 <div class="section-label mt-lg">Meine Gemeinschaften</div>
-
 {% for community in communities %}
 <div style="margin-bottom:1rem;">
-
     {% if community.id in setup_incomplete_ids %}
-    <!-- Setup noch nicht abgeschlossen -->
     <div class="card" style="padding:0;overflow:hidden;border-color:var(--amber-border);">
         <a href="{% url 'voting:proposal_list' community.id %}" class="card-link" style="display:block;">
             <div class="flex-between items-center" style="padding:1rem 1.25rem;">
@@ -181,20 +202,15 @@
             </div>
         </a>
         <div style="border-top:1px solid var(--amber-border);padding:.75rem 1.25rem;background:var(--amber-light);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-            <span style="font-size:.82rem;color:var(--amber);">
-                Noch keine Einheiten erfasst — Setup abschliessen, damit Abstimmungen möglich sind.
-            </span>
+            <span style="font-size:.82rem;color:var(--amber);">Noch keine Einheiten erfasst — Setup abschliessen.</span>
             <a href="{% url 'voting:community_setup' community.id %}" class="btn btn-outline btn-sm"
                style="white-space:nowrap;border-color:var(--amber);color:var(--amber);">
                 Setup abschliessen →
             </a>
         </div>
     </div>
-
     {% else %}
-    <!-- Normale Gemeinschaftskarte -->
     <div class="card" style="padding:0;overflow:hidden;">
-        <!-- Hauptlink zur Antrags-Liste -->
         <a href="{% url 'voting:proposal_list' community.id %}" class="card-link" style="display:block;">
             <div class="flex-between items-center" style="padding:1rem 1.25rem;">
                 <div class="flex-1">
@@ -211,48 +227,27 @@
                 <span class="chevron">›</span>
             </div>
         </a>
-
         {% if community.id in admin_community_ids %}
-        <!-- Quick-Actions für Verwalter: direkte Links ohne Umweg -->
         <div style="border-top:1px solid var(--border);padding:.6rem 1.25rem;display:flex;gap:.5rem;flex-wrap:wrap;background:var(--surface-alt);">
-            <a href="{% url 'voting:proposal_create' community.id %}"
-               class="btn btn-outline btn-sm" style="font-size:.75rem;">
-                + Antrag
-            </a>
-            <a href="{% url 'maintenance:ticket_list' community.id %}"
-               class="btn btn-outline btn-sm" style="font-size:.75rem;">
-                🔧 Mängel
-            </a>
-            <a href="{% url 'voting:unit_manage' community.id %}"
-               class="btn btn-outline btn-sm" style="font-size:.75rem;">
-                Einheiten
-            </a>
-            <a href="{% url 'voting:invite_manage' community.id %}"
-               class="btn btn-outline btn-sm" style="font-size:.75rem;">
-                Einladungen
-            </a>
+            <a href="{% url 'voting:proposal_create' community.id %}" class="btn btn-outline btn-sm" style="font-size:.75rem;">+ Antrag</a>
+            <a href="{% url 'maintenance:ticket_list' community.id %}" class="btn btn-outline btn-sm" style="font-size:.75rem;">🔧 Mängel</a>
+            <a href="{% url 'voting:unit_manage' community.id %}" class="btn btn-outline btn-sm" style="font-size:.75rem;">Einheiten</a>
+            <a href="{% url 'voting:invite_manage' community.id %}" class="btn btn-outline btn-sm" style="font-size:.75rem;">Einladungen</a>
         </div>
         {% endif %}
     </div>
     {% endif %}
-
 </div>
 {% endfor %}
 {% endif %}
 
-{# ── Kein einziger Zugang: komplett leerer State ── #}
 {% if not communities %}
 <div class="card" style="text-align:center;padding:3.5rem 2rem;margin-top:2rem;">
-    <span class="empty-state-icon" style="display:block;font-size:2.5rem;margin-bottom:1rem;">🏢</span>
+    <span style="display:block;font-size:2.5rem;margin-bottom:1rem;">🏢</span>
     <div class="empty-state-title">Willkommen beim STWEG-Portal</div>
-    <div class="empty-state-sub" style="margin-bottom:1.5rem;">
-        Du bist noch keiner Gemeinschaft zugeordnet.<br>
-        Warte auf eine Einladung deines Verwalters, oder erstelle eine neue Gemeinschaft.
-    </div>
+    <div class="empty-state-sub" style="margin-bottom:1.5rem;">Du bist noch keiner Gemeinschaft zugeordnet.</div>
     {% if user.is_staff %}
-    <a href="{% url 'voting:community_create' %}" class="btn btn-primary">
-        Erste Gemeinschaft anlegen
-    </a>
+    <a href="{% url 'voting:community_create' %}" class="btn btn-primary">Erste Gemeinschaft anlegen</a>
     {% endif %}
 </div>
 {% endif %}

@@ -10,12 +10,13 @@
 .tc-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
 .tc-title { font-weight:600; font-size:.95rem; color:var(--text); margin-bottom:.25rem; }
 .tc-meta  { font-size:.78rem; color:var(--text-muted); }
-.tc-badges { display:flex; gap:.4rem; flex-wrap:wrap; align-items:center; }
-.filter-bar { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1.25rem; }
-.filter-btn { padding:.3rem .75rem; border-radius:var(--r-pill); font-size:.78rem; font-weight:600; border:1px solid var(--border-mid); background:var(--surface); color:var(--text-secondary); text-decoration:none; transition:all var(--t-base); }
+.tc-badges { display:flex; gap:.4rem; flex-wrap:wrap; align-items:center; flex-shrink:0; }
+.filter-bar { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem; align-items:center; }
+.filter-btn { padding:.3rem .75rem; border-radius:var(--r-pill); font-size:.78rem; font-weight:600; border:1px solid var(--border); background:var(--surface); color:var(--text-secondary); text-decoration:none; transition:all var(--t-base); }
 .filter-btn:hover, .filter-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 .count-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; margin-bottom:1.5rem; }
-.count-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:.75rem 1rem; text-align:center; }
+.count-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:.75rem 1rem; text-align:center; cursor:pointer; text-decoration:none; display:block; transition:border-color var(--t-base); }
+.count-card:hover { border-color:var(--border-strong); }
 .count-num  { font-family:var(--serif); font-size:1.8rem; font-weight:500; color:var(--text); line-height:1; }
 .count-lbl  { font-size:.72rem; color:var(--text-muted); margin-top:.2rem; text-transform:uppercase; letter-spacing:.05em; }
 /* Status badges */
@@ -26,82 +27,126 @@
 .badge-archived { background:var(--surface-alt); color:var(--text-muted); border:1px solid var(--border); }
 .badge-urgent   { background:var(--red-light); color:var(--red); border:1px solid var(--red-border); }
 .badge-private  { background:#FDF4FF; color:#7E22CE; border:1px solid #E9D5FF; }
-.badge { padding:.15rem .55rem; border-radius:var(--r-pill); font-size:.7rem; font-weight:700; letter-spacing:.03em; }
-@media(max-width:600px){.count-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px) { .count-grid { grid-template-columns:repeat(2,1fr); } }
 </style>
 {% endblock %}
 
 {% block content %}
-<a href="{% url 'voting:proposal_list' community.id %}" class="back-link">{{ community.name }}</a>
+
+<nav class="breadcrumb">
+    <a href="{% url 'voting:dashboard' %}">Dashboard</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="{% url 'voting:proposal_list' community.id %}">{{ community.name }}</a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Mängel</span>
+</nav>
 
 <div class="page-header flex-between">
-  <div>
-    <h1>Mängelmanagement</h1>
-    <p>{{ community.name }}</p>
-  </div>
-  <a href="{% url 'maintenance:ticket_create' community.id %}" class="btn btn-primary">+ Mangel melden</a>
+    <div>
+        <h1>Mängel</h1>
+        <p>{{ community.name }}</p>
+    </div>
+    <a href="{% url 'maintenance:ticket_create' community.id %}" class="btn btn-primary">+ Mangel melden</a>
 </div>
 
-<!-- Count badges -->
+<!-- Status-Kacheln -->
 <div class="count-grid">
-  <div class="count-card">
-    <div class="count-num">{{ counts.open }}</div>
-    <div class="count-lbl">Offen</div>
-  </div>
-  <div class="count-card">
-    <div class="count-num">{{ counts.in_progress }}</div>
-    <div class="count-lbl">In Bearbeitung</div>
-  </div>
-  <div class="count-card">
-    <div class="count-num">{{ counts.offer_received }}</div>
-    <div class="count-lbl">Angebot liegt vor</div>
-  </div>
-  <div class="count-card">
-    <div class="count-num">{{ counts.done }}</div>
-    <div class="count-lbl">Erledigt</div>
-  </div>
+    <a href="?status=open{% if scope_filter %}&scope={{ scope_filter }}{% endif %}" class="count-card">
+        <div class="count-num">{{ counts.open }}</div>
+        <div class="count-lbl">Offen</div>
+    </a>
+    <a href="?status=in_progress{% if scope_filter %}&scope={{ scope_filter }}{% endif %}" class="count-card">
+        <div class="count-num">{{ counts.in_progress }}</div>
+        <div class="count-lbl">In Bearbeitung</div>
+    </a>
+    <a href="?status=offer_received{% if scope_filter %}&scope={{ scope_filter }}{% endif %}" class="count-card">
+        <div class="count-num">{{ counts.offer_received }}</div>
+        <div class="count-lbl">Angebot liegt vor</div>
+    </a>
+    <a href="?status=done{% if scope_filter %}&scope={{ scope_filter }}{% endif %}" class="count-card">
+        <div class="count-num">{{ counts.done }}</div>
+        <div class="count-lbl">Erledigt</div>
+    </a>
 </div>
 
-<!-- Filters -->
-<div class="filter-bar">
-  <a href="?{% if scope_filter %}scope={{ scope_filter }}{% endif %}" class="filter-btn {% if not status_filter %}active{% endif %}">Alle Status</a>
-  {% for val, lbl in status_choices %}
-  <a href="?status={{ val }}{% if scope_filter %}&scope={{ scope_filter }}{% endif %}" class="filter-btn {% if status_filter == val %}active{% endif %}">{{ lbl }}</a>
-  {% endfor %}
-  <span style="margin-left:.5rem;color:var(--border-mid)">|</span>
-  <a href="?{% if status_filter %}status={{ status_filter }}{% endif %}" class="filter-btn {% if not scope_filter %}active{% endif %}">Alle</a>
-  {% for val, lbl in scope_choices %}
-  <a href="?scope={{ val }}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="filter-btn {% if scope_filter == val %}active{% endif %}">{{ lbl }}</a>
-  {% endfor %}
-</div>
+<!-- Filter-Bar mit Suche -->
+<form method="get" id="ticket-filter-form">
+    <div class="filter-bar">
+        <a href="?{% if scope_filter %}scope={{ scope_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="filter-btn {% if not status_filter %}active{% endif %}">Alle Status</a>
+        {% for val, lbl in status_choices %}
+        <a href="?status={{ val }}{% if scope_filter %}&scope={{ scope_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="filter-btn {% if status_filter == val %}active{% endif %}">{{ lbl }}</a>
+        {% endfor %}
+    </div>
+
+    <div class="filter-bar">
+        <a href="?{% if status_filter %}status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="filter-btn {% if not scope_filter %}active{% endif %}">Alle</a>
+        {% for val, lbl in scope_choices %}
+        <a href="?scope={{ val }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="filter-btn {% if scope_filter == val %}active{% endif %}">{{ lbl }}</a>
+        {% endfor %}
+
+        <!-- Suche (NEU) -->
+        <div class="search-box" style="margin-left:auto;">
+            <input type="text" name="q" value="{{ search_query|default:'' }}"
+                   class="search-input" id="ticket-search"
+                   placeholder="Ticket suchen …">
+            {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+            {% if scope_filter %}<input type="hidden" name="scope" value="{{ scope_filter }}">{% endif %}
+        </div>
+    </div>
+</form>
 
 <!-- Ticket list -->
 {% if tickets %}
-  {% for ticket in tickets %}
-  <a href="{% url 'maintenance:ticket_detail' ticket.pk %}" class="ticket-card {% if ticket.priority_is_urgent %}urgent{% endif %}">
-    <div class="tc-head">
-      <div class="flex-1">
-        <div class="tc-title">{{ ticket.title }}</div>
-        <div class="tc-meta">
-          {{ ticket.get_area_display }}
-          · {{ ticket.created_at|date:"d.m.Y" }}
-          {% if ticket.reported_by %}· {{ ticket.reported_by.get_full_name|default:ticket.reported_by.username }}{% endif %}
-          {% if ticket.assigned_to %} · Handwerker: {{ ticket.assigned_to }}{% endif %}
-          {% if ticket.offer_amount %} · CHF {{ ticket.offer_amount|floatformat:"0" }}{% endif %}
+    {% for ticket in tickets %}
+    <a href="{% url 'maintenance:ticket_detail' ticket.pk %}" class="ticket-card {% if ticket.priority_is_urgent %}urgent{% endif %}">
+        <div class="tc-head">
+            <div class="flex-1">
+                <div class="tc-title">{{ ticket.title }}</div>
+                <div class="tc-meta">
+                    {{ ticket.get_area_display }}
+                    · {{ ticket.created_at|date:"d.m.Y" }}
+                    {% if ticket.reported_by %}· {{ ticket.reported_by.get_full_name|default:ticket.reported_by.username }}{% endif %}
+                    {% if ticket.assigned_to %} · {{ ticket.assigned_to }}{% endif %}
+                    {% if ticket.offer_amount %} · CHF {{ ticket.offer_amount|floatformat:"0" }}{% endif %}
+                </div>
+            </div>
+            <div class="tc-badges">
+                {% if ticket.priority_is_urgent %}<span class="badge badge-urgent">Dringend</span>{% endif %}
+                {% if ticket.scope == 'private' %}<span class="badge badge-private">Privat</span>{% endif %}
+                <span class="badge {{ ticket.status_css }}">{{ ticket.get_status_display }}</span>
+                {% if ticket.proposal %}<span class="badge badge-done">Antrag verknüpft</span>{% endif %}
+            </div>
         </div>
-      </div>
-      <div class="tc-badges">
-        {% if ticket.priority_is_urgent %}<span class="badge badge-urgent">Dringend</span>{% endif %}
-        {% if ticket.scope == 'private' %}<span class="badge badge-private">Privat</span>{% endif %}
-        <span class="badge {{ ticket.status_css }}">{{ ticket.get_status_display }}</span>
-        {% if ticket.proposal %}<span class="badge badge-done">Antrag verknüpft</span>{% endif %}
-      </div>
-    </div>
-  </a>
-  {% endfor %}
+    </a>
+    {% endfor %}
 {% else %}
-  <div class="card card--padded" style="text-align:center;color:var(--text-muted);padding:3rem;">
-    {% if status_filter or scope_filter %}Keine Tickets mit diesem Filter.{% else %}Noch keine Mängel gemeldet.{% endif %}
-  </div>
+    <div class="card card--padded" style="text-align:center;color:var(--text-muted);padding:3rem;">
+        {% if status_filter or scope_filter or search_query %}
+            Keine Tickets mit diesem Filter.
+            <div style="margin-top:.75rem;">
+                <a href="{% url 'maintenance:ticket_list' community.id %}" class="btn btn-outline btn-sm">Filter zurücksetzen</a>
+            </div>
+        {% else %}
+            Noch keine Mängel gemeldet.
+        {% endif %}
+    </div>
 {% endif %}
+
+<script>
+(function () {
+    var input = document.getElementById('ticket-search');
+    if (!input) return;
+    var timer;
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+            document.getElementById('ticket-filter-form').submit();
+        }, 500);
+    });
+})();
+</script>
 {% endblock %}
